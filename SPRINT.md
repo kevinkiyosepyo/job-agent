@@ -14,7 +14,7 @@ Ends: approximately 2026-08-23 15:34 PDT
 
 ## Build queue
 
-1. Add a persistent SQLite application queue with idempotent state transitions and tests.
+1. ✅ Add a persistent SQLite application queue with idempotent state transitions and tests.
 2. Add structured JSONL audit logging with redaction and tests.
 3. Add a top-level CLI orchestrator for scan → classify → plan → report in dry-run mode.
 4. Add source adapters for public Greenhouse and Lever APIs with bounded retries and tests.
@@ -28,3 +28,5 @@ Ends: approximately 2026-08-23 15:34 PDT
 ## Sprint log
 
 Autonomous runs append concise verified entries here. Never report work as complete until tests or real read-back verification pass.
+
+- 2026-08-23 11:58 PDT — Completed task 1: added `app_queue.py` SQLite queue with normalized-URL idempotent enqueue plus explicit `discovered -> prepared -> applied` transition rules. Verified with strict RED→GREEN tests in `tests/test_app_queue.py` and full suite: `python -m pytest tests -q` → `17 passed in 0.03s`. Next task: structured JSONL audit logging with redaction.
