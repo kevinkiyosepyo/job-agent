@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Personal data and credentials
+profile.json
+current-tracker.csv
+*.pdf
+*.docx
+.env
+*client_secret*.json
+google_token.json
+google_client_secret.json
+
+# Runtime and generated artifacts
+scan-results.json
+pipeline-plan.json
+e2e-*.json
+sheet-api-test-append.json
+discord-target.json
+*.log
+.DS_Store

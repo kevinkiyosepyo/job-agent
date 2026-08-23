@@ -1,0 +1,38 @@
+[
+  {
+    "company": "Anduril Industries",
+    "role": "2027 Software Engineer Intern",
+    "url": "https://job-boards.greenhouse.io/andurilindustries/jobs/5148079007",
+    "location": "Multiple United States locations",
+    "source": "official Greenhouse listing"
+  },
+  {
+    "company": "Medtronic",
+    "role": "Software Engineering Intern - Summer 2027",
+    "url": "https://medtronic.wd1.myworkdayjobs.com/en-US/MedtronicCareers/job/Software-Engineering-Intern---Summer-2027_R73630-1",
+    "location": "Multiple United States locations",
+    "deadline": "2026-10-16",
+    "source": "official Workday listing"
+  },
+  {
+    "company": "Palantir Technologies",
+    "role": "Software Engineer Internship",
+    "url": "https://jobs.lever.co/palantir/e27af7ab-41fc-40c9-b31d-02c6cb1c505c",
+    "location": "Palo Alto, California",
+    "source": "official Lever listing"
+  },
+  {
+    "company": "Google",
+    "role": "Software Engineering Intern, BS, Summer 2027",
+    "url": "https://www.google.com/about/careers/applications/jobs/results/85564713261245126-software-engineering-intern/",
+    "location": "Multiple United States locations",
+    "source": "official Google Careers listing"
+  },
+  {
+    "company": "Anduril Industries",
+    "role": "2027 Software Engineer Intern",
+    "url": "https://job-boards.greenhouse.io/andurilindustries/jobs/5148079007?utm_source=duplicate-test",
+    "location": "Multiple United States locations",
+    "source": "intentional duplicate for dedup verification"
+  }
+]

@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Greenhouse Fixture</title></head><body>
+<h1>Software Engineer Intern</h1><p>Fixture Company — United States</p>
+<form id="application">
+<label>First Name <input id="first_name" name="first_name" required></label><br>
+<label>Last Name <input id="last_name" name="last_name" required></label><br>
+<label>Email <input id="email" name="email" type="email" required></label><br>
+<label>Phone <input id="phone" name="phone" required></label><br>
+<label>Resume <input id="resume" name="resume" type="file" accept=".pdf,.doc,.docx" required></label><br>
+<label>Work authorization <select id="authorization" required><option value="">Select</option><option>Yes</option><option>No</option></select></label><br>
+<label>Sponsorship <select id="sponsorship" required><option value="">Select</option><option>Yes</option><option>No</option></select></label><br>
+<button id="review" type="button">Review only</button>
+<button id="submit" type="submit">Submit fixture</button>
+</form>
+<pre id="state"></pre>
+<script>
+const form=document.querySelector('#application');
+function snapshot(){
+ const f=document.querySelector('#resume').files[0];
+ document.querySelector('#state').textContent=JSON.stringify({
+  first_name:first_name.value,last_name:last_name.value,email:email.value,phone:phone.value,
+  resume:f?f.name:'',authorization:authorization.value,sponsorship:sponsorship.value
+ },null,2);
+}
+document.querySelector('#review').addEventListener('click',snapshot);
+form.addEventListener('submit',e=>{e.preventDefault();snapshot();document.body.dataset.submitted='true';});
+</script></body></html>

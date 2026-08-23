@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Workday Fixture</title></head><body>
+<h1>Software Engineering Intern — Workday Fixture</h1>
+<div id="step1" class="step">
+<h2>My Information</h2>
+<label>Email <input id="wd_email" type="email" required></label>
+<label>Phone <input id="wd_phone" required></label>
+<button type="button" onclick="go(2)">Save and Continue</button>
+</div>
+<div id="step2" class="step" hidden>
+<h2>My Experience</h2>
+<label>Resume <input id="wd_resume" type="file" accept=".pdf,.doc,.docx" required></label>
+<label>School <input id="wd_school"></label>
+<button type="button" onclick="go(3)">Save and Continue</button>
+</div>
+<div id="step3" class="step" hidden>
+<h2>Application Questions</h2>
+<label>Authorized <select id="wd_auth"><option></option><option>Yes</option><option>No</option></select></label>
+<label>Sponsorship <select id="wd_sponsor"><option></option><option>Yes</option><option>No</option></select></label>
+<button type="button" onclick="go(4)">Save and Continue</button>
+</div>
+<div id="step4" class="step" hidden>
+<h2>Review</h2><pre id="review_state"></pre>
+<button id="wd_submit" type="button">Submit fixture</button>
+</div>
+<script>
+function go(n){document.querySelectorAll('.step').forEach(x=>x.hidden=true);document.querySelector('#step'+n).hidden=false;if(n===4){const f=wd_resume.files[0];review_state.textContent=JSON.stringify({email:wd_email.value,phone:wd_phone.value,resume:f?f.name:'',school:wd_school.value,authorized:wd_auth.value,sponsorship:wd_sponsor.value},null,2)}}
+wd_submit.addEventListener('click',()=>document.body.dataset.submitted='true');
+</script></body></html>
