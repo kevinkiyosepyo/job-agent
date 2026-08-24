@@ -221,7 +221,14 @@ def _has_inconsistent_top_level_source_health_flags(report: dict) -> bool:
     if report.get("stale_result") or report.get("freshness_unknown"):
         return True
     if "latest_posting_at" in report:
-        return report["latest_posting_at"] != _expected_latest_posting_at(report)
+        expected_latest_posting_at = _expected_latest_posting_at(report)
+        if expected_latest_posting_at is None:
+            return True
+        top_level_timestamp = _parse_timestamp_string(report["latest_posting_at"])
+        expected_timestamp = _parse_timestamp_string(expected_latest_posting_at)
+        if top_level_timestamp is None or expected_timestamp is None:
+            return True
+        return top_level_timestamp != expected_timestamp
     return False
 
 
