@@ -145,6 +145,8 @@ def _has_invalid_top_level_source_health_flags_schema(report: dict) -> bool:
     for field_name in ("stale_result", "freshness_unknown"):
         if field_name in report and not isinstance(report[field_name], bool):
             return True
+    if "warning" in report and not isinstance(report["warning"], str):
+        return True
     return False
 
 
