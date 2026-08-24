@@ -72,12 +72,16 @@ def duplicate(rows: list[dict[str, str]], company: str, role: str, url: str = ""
     return None
 
 
-def append_via_api(values: list[str]) -> dict:
+def ensure_write_oauth() -> None:
     if not (Path.home() / ".hermes/google_token.json").exists():
         raise RuntimeError(
             "Google Sheets write OAuth is not configured. Run the google-workspace setup, "
             f"or add the row manually at {SHEET_URL}."
         )
+
+
+def append_via_api(values: list[str]) -> dict:
+    ensure_write_oauth()
     cmd = [
         sys.executable, str(GAPI), "sheets", "append", SHEET_ID,
         f"'{SHEET_NAME}'!A:H", "--values", json.dumps([values]),
@@ -86,6 +90,44 @@ def append_via_api(values: list[str]) -> dict:
     if proc.returncode:
         raise RuntimeError(proc.stderr.strip() or proc.stdout.strip())
     return json.loads(proc.stdout)
+
+
+def row_to_values(row: dict[str, str]) -> list[str]:
+    return [(row.get(header) or "") for header in HEADERS]
+
+
+def restore_rows(rows: list[dict[str, str]], *, blank_tail_rows: int = 1) -> dict:
+    ensure_write_oauth()
+    values = [row_to_values(row) for row in rows]
+    values.extend([[""] * len(HEADERS) for _ in range(blank_tail_rows)])
+    cmd = [
+        sys.executable, str(GAPI), "sheets", "update", SHEET_ID,
+        f"'{SHEET_NAME}'!A2:H", "--values", json.dumps(values),
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    if proc.returncode:
+        raise RuntimeError(proc.stderr.strip() or proc.stdout.strip())
+    return json.loads(proc.stdout)
+
+
+def run_integration_check(*, tag: str = "tracker-smoke") -> dict:
+    original_rows = fetch_rows()
+    values = [
+        f"Hermes Test Row {tag}",
+        "Discovered",
+        "Software Engineer Intern",
+        "",
+        "",
+        f"https://example.invalid/tracker-smoke/{tag}",
+        "N/A",
+        f"cleanup-marker:{tag}",
+    ]
+    try:
+        append_result = append_verified(values)
+        return {"status": "verified", "appended": append_result, "cleanup": restore_rows(original_rows, blank_tail_rows=1)}
+    finally:
+        if 'append_result' not in locals():
+            restore_rows(original_rows, blank_tail_rows=1)
 
 
 def append_verified(values: list[str]) -> dict:
@@ -116,7 +158,13 @@ def main() -> int:
     add.add_argument("--rejection", default="N/A")
     add.add_argument("--notes", default="")
     add.add_argument("--dry-run", action="store_true")
+    integration = sub.add_parser("integration-check")
+    integration.add_argument("--tag", default="tracker-smoke")
     args = parser.parse_args()
+
+    if args.command == "integration-check":
+        print(json.dumps(run_integration_check(tag=args.tag), indent=2))
+        return 0
 
     rows = fetch_rows()
     if args.command == "summary":

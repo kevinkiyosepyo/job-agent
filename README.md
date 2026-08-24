@@ -11,7 +11,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `sources.py` — bounded-retry adapters for public Greenhouse and Lever job APIs that normalize active internship candidates.
 - `app_queue.py` — persist discovered jobs in SQLite with idempotent URL-based enqueue and explicit state transitions.
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
-- `tracker.py` — read the live Google Sheet and append rows with mandatory API read-back verification.
+- `tracker.py` — read the live Google Sheet, append rows with mandatory API read-back verification, and run a self-cleaning integration check.
 - `notifier.py` — send deterministic Discord alerts.
 - `tests/` — behavior and safety tests.
 - `fixtures/` — harmless Greenhouse and Workday test pages.
@@ -37,6 +37,14 @@ python browser_health.py --base-url http://127.0.0.1:9222
 ```
 
 Exit code `0` means the endpoint is ready for automation. Exit code `1` means the issue is recoverable and the JSON payload includes a stable `error_code` such as `connection_refused` or `no_page_targets`.
+
+## Tracker integration smoke test
+
+```bash
+python tracker.py integration-check --tag local-smoke
+```
+
+This command snapshots the current tracking rows, appends one clearly-marked test row, verifies the append via fresh read-back, and then rewrites the original rows with a blank tail row so the smoke-test data is cleaned up.
 
 ## Privacy
 
