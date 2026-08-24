@@ -83,7 +83,7 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     if "source_health_status" not in report:
         raise SystemExit("Invalid source report: missing_source_health_status")
     status = report["source_health_status"]
-    if status not in VALID_SOURCE_HEALTH_STATUSES:
+    if not isinstance(status, str) or status not in VALID_SOURCE_HEALTH_STATUSES:
         raise SystemExit("Invalid source report: invalid_source_health_status")
     if status != "healthy":
         raise SystemExit(f"Source health check failed: {status}")

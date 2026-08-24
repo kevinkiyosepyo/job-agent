@@ -294,3 +294,33 @@ def test_main_fails_closed_with_stable_reason_when_source_report_path_is_missing
     assert not (tmp_path / "orchestrator-report.json").exists()
     assert not (tmp_path / "audit.jsonl").exists()
     assert not (tmp_path / "queue.sqlite3").exists()
+
+
+
+def test_main_fails_closed_with_stable_reason_when_source_report_status_is_not_a_string(tmp_path, monkeypatch):
+    profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
+    source_report_path = tmp_path / "sources-report.json"
+    source_report_path.write_text(json.dumps({"source_health_status": ["healthy"]}))
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    with pytest.raises(SystemExit, match="Invalid source report: invalid_source_health_status"):
+        orchestrator.main(
+            [
+                str(candidates_path),
+                "--profile",
+                str(profile_path),
+                "--output",
+                str(tmp_path / "orchestrator-report.json"),
+                "--queue-db",
+                str(tmp_path / "queue.sqlite3"),
+                "--audit-log",
+                str(tmp_path / "audit.jsonl"),
+                "--source-report",
+                str(source_report_path),
+            ]
+        )
+
+    assert not (tmp_path / "orchestrator-report.json").exists()
+    assert not (tmp_path / "audit.jsonl").exists()
+    assert not (tmp_path / "queue.sqlite3").exists()
