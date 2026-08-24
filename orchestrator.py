@@ -168,8 +168,26 @@ def _has_invalid_top_level_source_health_flags_schema(report: dict) -> bool:
     return False
 
 
+def _expected_latest_posting_at(report: dict) -> str | None:
+    source_runs = report.get("source_runs")
+    if not isinstance(source_runs, list):
+        return None
+    timestamps: list[str] = [
+        run["latest_posting_at"]
+        for run in source_runs
+        if isinstance(run, dict) and isinstance(run.get("latest_posting_at"), str)
+    ]
+    if not timestamps:
+        return None
+    return max(timestamps)
+
+
 def _has_inconsistent_top_level_source_health_flags(report: dict) -> bool:
-    return bool(report.get("stale_result") or report.get("freshness_unknown"))
+    if report.get("stale_result") or report.get("freshness_unknown"):
+        return True
+    if "latest_posting_at" in report:
+        return report["latest_posting_at"] != _expected_latest_posting_at(report)
+    return False
 
 
 def _expected_freshness_summary(report: dict) -> dict[str, int] | None:
