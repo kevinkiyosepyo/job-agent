@@ -83,6 +83,21 @@ def _has_non_ok_source_runs(report: dict) -> bool:
     return False
 
 
+def _has_duplicate_source_run_identity(report: dict) -> bool:
+    source_runs = report.get("source_runs")
+    if not isinstance(source_runs, list):
+        return False
+    seen: set[tuple[object, object]] = set()
+    for run in source_runs:
+        if not isinstance(run, dict):
+            continue
+        identity = (run.get("source"), run.get("token"))
+        if identity in seen:
+            return True
+        seen.add(identity)
+    return False
+
+
 def _expected_freshness_summary(report: dict) -> dict[str, int] | None:
     source_runs = report.get("source_runs")
     if not isinstance(source_runs, list):
@@ -163,6 +178,7 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     if status == "healthy" and (
         report.get("failures")
         or _has_non_ok_source_runs(report)
+        or _has_duplicate_source_run_identity(report)
         or _has_inconsistent_freshness_summary(report)
         or _has_inconsistent_freshness_buckets(report)
     ):
