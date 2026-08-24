@@ -176,6 +176,24 @@ def _expected_freshness_buckets(report: dict) -> dict[str, list[dict[str, str]]]
     return buckets
 
 
+def _has_invalid_freshness_buckets_schema(report: dict) -> bool:
+    freshness_buckets = report.get("freshness_buckets")
+    if not isinstance(freshness_buckets, dict):
+        return False
+    for bucket_name in ("healthy", "stale", "freshness_unknown", "error"):
+        entries = freshness_buckets.get(bucket_name)
+        if not isinstance(entries, list):
+            return True
+        for entry in entries:
+            if not isinstance(entry, dict):
+                return True
+            if not isinstance(entry.get("source"), str) or not entry["source"].strip():
+                return True
+            if not isinstance(entry.get("token"), str) or not entry["token"].strip():
+                return True
+    return False
+
+
 def _has_inconsistent_freshness_buckets(report: dict) -> bool:
     freshness_buckets = report.get("freshness_buckets")
     if not isinstance(freshness_buckets, dict):
@@ -209,6 +227,8 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     if status == "healthy" and not isinstance(report.get("freshness_buckets"), dict):
         raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and _has_invalid_source_run_schema(report):
+        raise SystemExit("Invalid source report: invalid_schema")
+    if status == "healthy" and _has_invalid_freshness_buckets_schema(report):
         raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and (
         report.get("failures")
