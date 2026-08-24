@@ -2,8 +2,11 @@
 """Public job source adapters with deterministic normalization."""
 from __future__ import annotations
 
+import argparse
 import json
+from pathlib import Path
 from typing import Any, Callable, Protocol
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import urlopen
 
 
@@ -26,6 +29,28 @@ def _default_open(url: str, timeout: float) -> ResponseLike:
 
 def _company_name(token: str) -> str:
     return token.replace("-", " ").title()
+
+
+def _normalize_url(url: str) -> str:
+    parts = urlsplit(url.strip())
+    keep = [
+        (key, value)
+        for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        if not key.lower().startswith("utm_") and key.lower() not in {"ref", "source", "trk", "trackingid", "gh_src"}
+    ]
+    return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), parts.path.rstrip("/"), urlencode(keep), ""))
+
+
+def _dedupe_jobs(jobs: list[dict]) -> list[dict]:
+    seen: set[str] = set()
+    unique: list[dict] = []
+    for job in sorted(jobs, key=lambda item: (item.get("company", ""), item.get("role", ""), _normalize_url(item.get("url", "")))):
+        normalized_url = _normalize_url(job.get("url", ""))
+        if not normalized_url or normalized_url in seen:
+            continue
+        seen.add(normalized_url)
+        unique.append({**job, "url": normalized_url})
+    return unique
 
 
 def _load_json(url: str, *, opener: OpenUrl, timeout: float = DEFAULT_TIMEOUT, attempts: int = DEFAULT_ATTEMPTS) -> Any:
@@ -84,3 +109,36 @@ def fetch_lever_jobs(company_token: str, *, opener: OpenUrl = _default_open, att
             }
         )
     return jobs
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--greenhouse", action="append", default=[], help="Greenhouse board token")
+    parser.add_argument("--lever", action="append", default=[], help="Lever company token")
+    parser.add_argument("--output", required=True, help="Output JSON array path")
+    args = parser.parse_args(argv)
+
+    jobs: list[dict] = []
+    for token in args.greenhouse:
+        jobs.extend(fetch_greenhouse_jobs(token))
+    for token in args.lever:
+        jobs.extend(fetch_lever_jobs(token))
+
+    unique_jobs = _dedupe_jobs(jobs)
+    output_path = Path(args.output)
+    output_path.write_text(json.dumps(unique_jobs, indent=2) + "\n")
+    print(
+        json.dumps(
+            {
+                "greenhouse_tokens": args.greenhouse,
+                "lever_tokens": args.lever,
+                "candidates": len(unique_jobs),
+                "output": str(output_path),
+            }
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

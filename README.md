@@ -9,7 +9,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `orchestrator.py` — dry-run CLI that scans verified candidates, routes them, stages supported jobs into the local queue, and writes an audit-backed report.
 - `setup_diagnostics.py` — offline readiness checks for profile, resume, Google Sheets OAuth, and optional browser/CDP access.
 - `browser_health.py` — probe a local Chrome DevTools endpoint, classify recoverable CDP failures, and emit machine-readable health JSON.
-- `sources.py` — bounded-retry adapters for public Greenhouse and Lever job APIs that normalize active internship candidates.
+- `sources.py` — bounded-retry adapters plus a token-driven CLI for public Greenhouse and Lever job APIs that normalize active internship candidates into a deterministic JSON artifact.
 - `app_queue.py` — persist discovered jobs in SQLite with idempotent URL-based enqueue and explicit state transitions.
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
 - `tracker.py` — read the live Google Sheet, append rows with mandatory API read-back verification, and run a self-cleaning integration check.
@@ -30,6 +30,14 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 ```
 
 `orchestrator.py` runs scanner + pipeline in `dry_run` mode, persists supported jobs into the local SQLite queue as `discovered`, and appends a redacted audit event. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
+
+## Safe source collection
+
+```bash
+python sources.py --greenhouse example --lever example --output verified-candidates.json
+```
+
+This writes a deterministic JSON array of internship candidates gathered from the supplied public board tokens, normalizes tracking parameters out of URLs, and deduplicates repeated postings across the configured sources.
 
 ## Browser/CDP health check
 
