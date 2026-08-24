@@ -85,6 +85,16 @@ def _latest_posting_at(jobs: list[dict]) -> str | None:
     return max(timestamps).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _stale_warning(latest_posting_at: str | None) -> str | None:
+    if latest_posting_at is None:
+        return None
+    latest_posting_dt = _parse_timestamp(latest_posting_at)
+    assert latest_posting_dt is not None
+    if latest_posting_dt <= _utcnow() - timedelta(days=STALE_POSTING_DAYS):
+        return f"Newest posting timestamp is older than {STALE_POSTING_DAYS} days"
+    return None
+
+
 def _load_json(url: str, *, opener: OpenUrl, timeout: float = DEFAULT_TIMEOUT, attempts: int = DEFAULT_ATTEMPTS) -> Any:
     last_error: Exception | None = None
     for _ in range(max(1, attempts)):
@@ -173,7 +183,15 @@ def main(argv: list[str] | None = None) -> int:
         try:
             token_jobs = fetch_greenhouse_jobs(token)
             jobs.extend(token_jobs)
-            source_runs.append({"source": "greenhouse", "token": token, "status": "ok", "candidates": len(token_jobs)})
+            run = {"source": "greenhouse", "token": token, "status": "ok", "candidates": len(token_jobs)}
+            latest_posting_at = _latest_posting_at(token_jobs)
+            if latest_posting_at is not None:
+                run["latest_posting_at"] = latest_posting_at
+                warning = _stale_warning(latest_posting_at)
+                if warning is not None:
+                    run["warning"] = warning
+                    run["stale_result"] = True
+            source_runs.append(run)
         except Exception as exc:
             failures.append({"source": "greenhouse", "token": token, "error": str(exc)})
             source_runs.append({"source": "greenhouse", "token": token, "status": "error", "error": str(exc), "candidates": 0})
@@ -181,7 +199,15 @@ def main(argv: list[str] | None = None) -> int:
         try:
             token_jobs = fetch_lever_jobs(token)
             jobs.extend(token_jobs)
-            source_runs.append({"source": "lever", "token": token, "status": "ok", "candidates": len(token_jobs)})
+            run = {"source": "lever", "token": token, "status": "ok", "candidates": len(token_jobs)}
+            latest_posting_at = _latest_posting_at(token_jobs)
+            if latest_posting_at is not None:
+                run["latest_posting_at"] = latest_posting_at
+                warning = _stale_warning(latest_posting_at)
+                if warning is not None:
+                    run["warning"] = warning
+                    run["stale_result"] = True
+            source_runs.append(run)
         except Exception as exc:
             failures.append({"source": "lever", "token": token, "error": str(exc)})
             source_runs.append({"source": "lever", "token": token, "status": "error", "error": str(exc), "candidates": 0})
@@ -204,10 +230,9 @@ def main(argv: list[str] | None = None) -> int:
         result["warning"] = "Configured source tokens returned zero internship candidates"
         result["stale_result"] = True
     elif not failures and latest_posting_at is not None:
-        latest_posting_dt = _parse_timestamp(latest_posting_at)
-        assert latest_posting_dt is not None
-        if latest_posting_dt <= _utcnow() - timedelta(days=STALE_POSTING_DAYS):
-            result["warning"] = f"Newest posting timestamp is older than {STALE_POSTING_DAYS} days"
+        warning = _stale_warning(latest_posting_at)
+        if warning is not None:
+            result["warning"] = warning
             result["stale_result"] = True
 
     print(json.dumps(result))

@@ -384,12 +384,84 @@ def test_main_signals_stale_non_empty_results_when_newest_posting_is_old(tmp_pat
                 "token": "green-co",
                 "status": "ok",
                 "candidates": 1,
+                "latest_posting_at": "2026-06-01T00:00:00Z",
+                "stale_result": True,
+                "warning": "Newest posting timestamp is older than 30 days",
             }
         ],
         "output": str(output),
         "warning": "Newest posting timestamp is older than 30 days",
         "stale_result": True,
         "latest_posting_at": "2026-06-01T00:00:00Z",
+    }
+
+
+
+def test_main_reports_per_token_freshness_when_one_source_is_stale(tmp_path, monkeypatch, capsys):
+    output = tmp_path / "candidates.json"
+
+    def fake_greenhouse(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        assert token == "green-co"
+        return [
+            {
+                "company": "Green Co",
+                "role": "Software Engineer Intern",
+                "url": "https://job-boards.greenhouse.io/green/jobs/1",
+                "location": "Remote",
+                "source": "Greenhouse public API",
+                "updated_at": "2026-06-01T00:00:00Z",
+            }
+        ]
+
+    def fake_lever(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        assert token == "lever-co"
+        return [
+            {
+                "company": "Lever Co",
+                "role": "Data Scientist Intern",
+                "url": "https://jobs.lever.co/lever/2",
+                "location": "Remote",
+                "source": "Lever public API",
+                "created_at": 1787443200000,
+            }
+        ]
+
+    monkeypatch.setattr(sources, "fetch_greenhouse_jobs", fake_greenhouse)
+    monkeypatch.setattr(sources, "fetch_lever_jobs", fake_lever)
+    monkeypatch.setattr(sources, "_utcnow", lambda: datetime(2026, 8, 23, tzinfo=timezone.utc), raising=False)
+
+    exit_code = sources.main([
+        "--greenhouse", "green-co",
+        "--lever", "lever-co",
+        "--output", str(output),
+    ])
+
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "greenhouse_tokens": ["green-co"],
+        "lever_tokens": ["lever-co"],
+        "candidates": 2,
+        "failures": [],
+        "source_runs": [
+            {
+                "source": "greenhouse",
+                "token": "green-co",
+                "status": "ok",
+                "candidates": 1,
+                "latest_posting_at": "2026-06-01T00:00:00Z",
+                "stale_result": True,
+                "warning": "Newest posting timestamp is older than 30 days",
+            },
+            {
+                "source": "lever",
+                "token": "lever-co",
+                "status": "ok",
+                "candidates": 1,
+                "latest_posting_at": "2026-08-23T00:00:00Z",
+            },
+        ],
+        "output": str(output),
+        "latest_posting_at": "2026-08-23T00:00:00Z",
     }
 
 
