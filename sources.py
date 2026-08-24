@@ -121,6 +121,28 @@ def _freshness_summary(source_runs: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
+
+def _freshness_buckets(source_runs: list[dict[str, Any]]) -> dict[str, list[dict[str, str]]]:
+    buckets = {
+        "healthy": [],
+        "stale": [],
+        "freshness_unknown": [],
+        "error": [],
+    }
+    for run in source_runs:
+        bucket = "healthy"
+        if run.get("status") == "error":
+            bucket = "error"
+        elif run.get("freshness_unknown"):
+            bucket = "freshness_unknown"
+        elif run.get("stale_result"):
+            bucket = "stale"
+        buckets[bucket].append({"source": str(run["source"]), "token": str(run["token"])})
+    for key in buckets:
+        buckets[key].sort(key=lambda item: (item["source"], item["token"]))
+    return buckets
+
+
 def _load_json(url: str, *, opener: OpenUrl, timeout: float = DEFAULT_TIMEOUT, attempts: int = DEFAULT_ATTEMPTS) -> Any:
     last_error: Exception | None = None
     for _ in range(max(1, attempts)):
@@ -196,6 +218,7 @@ def main(argv: list[str] | None = None) -> int:
                     "candidates": 0,
                     "failures": [],
                     "freshness_summary": _freshness_summary([]),
+                    "freshness_buckets": _freshness_buckets([]),
                     "output": str(output_path),
                     "error": "At least one --greenhouse or --lever token is required",
                 }
@@ -260,6 +283,7 @@ def main(argv: list[str] | None = None) -> int:
         "failures": failures,
         "source_runs": source_runs,
         "freshness_summary": _freshness_summary(source_runs),
+        "freshness_buckets": _freshness_buckets(source_runs),
         "output": str(output_path),
     }
     if latest_posting_at is not None:
