@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
+import re
 from datetime import date
 from pathlib import Path
 
@@ -28,12 +30,39 @@ def route_candidates(scan: dict) -> dict[str, list[dict]]:
     return routed
 
 
-def submission_row(job: dict, *, confirmation_url: str, confirmation_text: str) -> list[str]:
-    evidence = " ".join((confirmation_url.strip(), confirmation_text.strip())).strip()
+def normalize_confirmation_text(text: str) -> str:
+    cleaned = re.sub(r"<[^>]+>", " ", text or " ")
+    cleaned = html.unescape(cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
+
+
+def validate_confirmation_evidence(*, confirmation_url: str, confirmation_text: str) -> str:
+    normalized_text = normalize_confirmation_text(confirmation_text)
+    evidence = " ".join((confirmation_url.strip(), normalized_text)).strip()
     if not evidence:
         raise ValueError("Verified confirmation evidence is required before recording submission")
-    notes = f"Confirmation verified: {confirmation_text.strip() or confirmation_url.strip()}"
-    if confirmation_url.strip() and confirmation_text.strip():
+
+    lowered = evidence.casefold()
+    success_markers = (
+        "application received",
+        "application submitted",
+        "thank you for applying",
+        "submission confirmed",
+        "received your application",
+    )
+    if not any(marker in lowered for marker in success_markers):
+        raise ValueError("Verified confirmation evidence is required before recording submission")
+    return normalized_text
+
+
+def submission_row(job: dict, *, confirmation_url: str, confirmation_text: str) -> list[str]:
+    normalized_text = validate_confirmation_evidence(
+        confirmation_url=confirmation_url,
+        confirmation_text=confirmation_text,
+    )
+    notes = f"Confirmation verified: {normalized_text or confirmation_url.strip()}"
+    if confirmation_url.strip() and normalized_text:
         notes += f" ({confirmation_url.strip()})"
     return [
         job["company"].strip(),

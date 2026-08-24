@@ -4,6 +4,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -46,3 +48,29 @@ def test_submission_record_is_eight_columns_with_confirmation():
     assert len(row) == 8
     assert row[1] == "Submitted - Pending Response"
     assert "confirmation" in row[7].lower()
+
+
+def test_submission_record_rejects_presubmit_greenhouse_fixture_text():
+    job = {"company": "A", "role": "Software Engineer Intern", "url": "https://example.com/1"}
+    fixture_text = (ROOT / "fixtures" / "greenhouse.html").read_text()
+
+    with pytest.raises(ValueError, match="confirmation"):
+        pipeline.submission_row(
+            job,
+            confirmation_url="https://job-boards.greenhouse.io/example/jobs/1",
+            confirmation_text=fixture_text,
+        )
+
+
+def test_submission_record_accepts_workday_confirmation_fixture_text():
+    job = {"company": "A", "role": "Software Engineer Intern", "url": "https://example.com/1"}
+    fixture_text = (ROOT / "fixtures" / "workday_confirmation.html").read_text()
+
+    row = pipeline.submission_row(
+        job,
+        confirmation_url="https://example.wd1.myworkdayjobs.com/en-US/apply/confirmation",
+        confirmation_text=fixture_text,
+    )
+
+    assert row[1] == "Submitted - Pending Response"
+    assert "we've received your application" in row[7].lower()
