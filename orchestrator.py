@@ -121,8 +121,10 @@ def _has_invalid_source_run_schema(report: dict) -> bool:
             return True
         if "warning" in run and not isinstance(run["warning"], str):
             return True
-        if "latest_posting_at" in run and not isinstance(run["latest_posting_at"], str):
-            return True
+        if "latest_posting_at" in run:
+            latest_posting_at = run["latest_posting_at"]
+            if not isinstance(latest_posting_at, str) or not _is_valid_timestamp_string(latest_posting_at):
+                return True
     return False
 
 
