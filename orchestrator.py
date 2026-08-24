@@ -147,6 +147,8 @@ def _has_invalid_top_level_source_health_flags_schema(report: dict) -> bool:
             return True
     if "warning" in report and not isinstance(report["warning"], str):
         return True
+    if "latest_posting_at" in report and not isinstance(report["latest_posting_at"], str):
+        return True
     return False
 
 
