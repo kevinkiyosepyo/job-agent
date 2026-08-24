@@ -7,6 +7,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `scanner.py` — normalize candidates, detect ATS platforms, check relevance and duplicates, and enforce MAANGO manual-only routing.
 - `pipeline.py` — route supported ATS candidates and reject submission records without confirmation evidence.
 - `orchestrator.py` — dry-run CLI that scans verified candidates, routes them, stages supported jobs into the local queue, and writes an audit-backed report.
+- `browser_health.py` — probe a local Chrome DevTools endpoint, classify recoverable CDP failures, and emit machine-readable health JSON.
 - `sources.py` — bounded-retry adapters for public Greenhouse and Lever job APIs that normalize active internship candidates.
 - `app_queue.py` — persist discovered jobs in SQLite with idempotent URL-based enqueue and explicit state transitions.
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
@@ -28,6 +29,14 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 ```
 
 `orchestrator.py` runs scanner + pipeline in `dry_run` mode, persists supported jobs into the local SQLite queue as `discovered`, and appends a redacted audit event. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
+
+## Browser/CDP health check
+
+```bash
+python browser_health.py --base-url http://127.0.0.1:9222
+```
+
+Exit code `0` means the endpoint is ready for automation. Exit code `1` means the issue is recoverable and the JSON payload includes a stable `error_code` such as `connection_refused` or `no_page_targets`.
 
 ## Privacy
 
