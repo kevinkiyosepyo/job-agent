@@ -74,6 +74,8 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
         return None
     try:
         report = json.loads(source_report_path.read_text())
+    except OSError as exc:
+        raise SystemExit("Invalid source report: unreadable") from exc
     except json.JSONDecodeError as exc:
         raise SystemExit("Invalid source report: invalid_json") from exc
     if not isinstance(report, dict):
