@@ -141,6 +141,10 @@ def _has_invalid_failures_schema(report: dict) -> bool:
     return False
 
 
+def _has_inconsistent_top_level_source_health_flags(report: dict) -> bool:
+    return bool(report.get("stale_result") or report.get("freshness_unknown"))
+
+
 def _expected_freshness_summary(report: dict) -> dict[str, int] | None:
     source_runs = report.get("source_runs")
     if not isinstance(source_runs, list):
@@ -268,7 +272,8 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     if status == "healthy" and _has_invalid_freshness_buckets_schema(report):
         raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and (
-        report.get("failures")
+        _has_inconsistent_top_level_source_health_flags(report)
+        or report.get("failures")
         or _has_non_ok_source_runs(report)
         or _has_duplicate_source_run_identity(report)
         or _has_inconsistent_freshness_summary(report)
