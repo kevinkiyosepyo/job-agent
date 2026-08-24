@@ -253,6 +253,40 @@ def test_main_reports_failed_tokens_without_losing_successful_candidates(tmp_pat
 
 
 
+def test_main_signals_zero_candidates_when_sources_return_no_internships(tmp_path, monkeypatch, capsys):
+    output = tmp_path / "candidates.json"
+
+    def fake_greenhouse(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        assert token == "green-co"
+        return []
+
+    def fake_lever(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        assert token == "lever-co"
+        return []
+
+    monkeypatch.setattr(sources, "fetch_greenhouse_jobs", fake_greenhouse)
+    monkeypatch.setattr(sources, "fetch_lever_jobs", fake_lever)
+
+    exit_code = sources.main([
+        "--greenhouse", "green-co",
+        "--lever", "lever-co",
+        "--output", str(output),
+    ])
+
+    assert exit_code == 3
+    assert json.loads(output.read_text()) == []
+    assert json.loads(capsys.readouterr().out) == {
+        "greenhouse_tokens": ["green-co"],
+        "lever_tokens": ["lever-co"],
+        "candidates": 0,
+        "failures": [],
+        "output": str(output),
+        "warning": "Configured source tokens returned zero internship candidates",
+        "stale_result": True,
+    }
+
+
+
 def test_main_requires_at_least_one_source_token(tmp_path, capsys):
     output = tmp_path / "candidates.json"
 

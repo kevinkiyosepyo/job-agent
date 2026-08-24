@@ -149,18 +149,24 @@ def main(argv: list[str] | None = None) -> int:
 
     unique_jobs = _dedupe_jobs(jobs)
     output_path.write_text(json.dumps(unique_jobs, indent=2) + "\n")
-    print(
-        json.dumps(
-            {
-                "greenhouse_tokens": args.greenhouse,
-                "lever_tokens": args.lever,
-                "candidates": len(unique_jobs),
-                "failures": failures,
-                "output": str(output_path),
-            }
-        )
-    )
-    return 1 if failures else 0
+
+    result = {
+        "greenhouse_tokens": args.greenhouse,
+        "lever_tokens": args.lever,
+        "candidates": len(unique_jobs),
+        "failures": failures,
+        "output": str(output_path),
+    }
+    if not failures and not unique_jobs:
+        result["warning"] = "Configured source tokens returned zero internship candidates"
+        result["stale_result"] = True
+
+    print(json.dumps(result))
+    if failures:
+        return 1
+    if not unique_jobs:
+        return 3
+    return 0
 
 
 if __name__ == "__main__":
