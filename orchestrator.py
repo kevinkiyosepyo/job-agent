@@ -69,6 +69,20 @@ def enqueue_plan_jobs(queue_db: Path, routed: dict[str, list[dict]]) -> list[dic
     return [asdict(job) for job in app_queue.list_jobs()]
 
 
+def _has_non_ok_source_runs(report: dict) -> bool:
+    source_runs = report.get("source_runs")
+    if not isinstance(source_runs, list):
+        return False
+    for run in source_runs:
+        if not isinstance(run, dict):
+            continue
+        if run.get("status") != "ok":
+            return True
+        if run.get("stale_result") or run.get("freshness_unknown"):
+            return True
+    return False
+
+
 def load_source_report(source_report_path: Path | None) -> dict | None:
     if source_report_path is None:
         return None
@@ -85,7 +99,7 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     status = report["source_health_status"]
     if not isinstance(status, str) or status not in VALID_SOURCE_HEALTH_STATUSES:
         raise SystemExit("Invalid source report: invalid_source_health_status")
-    if status == "healthy" and report.get("failures"):
+    if status == "healthy" and (report.get("failures") or _has_non_ok_source_runs(report)):
         raise SystemExit("Invalid source report: inconsistent_source_health")
     if status != "healthy":
         raise SystemExit(f"Source health check failed: {status}")
