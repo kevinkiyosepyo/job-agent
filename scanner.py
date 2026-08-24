@@ -83,6 +83,47 @@ def relevant(role: str, profile: dict) -> bool:
     return target and level and not senior
 
 
+US_LOCATION_TOKENS = {
+    "united states", "united states of america", "usa", "u.s.", "u.s.a", "us", "u.s",
+}
+
+
+def location_allowed(location: str, profile: dict) -> bool:
+    preference = (profile.get("preferences", {}).get("location_preference") or "").casefold()
+    if "u.s." not in preference and "united states" not in preference:
+        return True
+
+    low = location.strip().casefold()
+    if not low:
+        return True
+    if "remote" in low:
+        return True
+    if any(token in low for token in US_LOCATION_TOKENS):
+        return True
+    if re.search(r",\s*[A-Z]{2}(\b|$)", location):
+        return True
+    return False
+
+
+def rejection_reasons(job: dict, profile: dict) -> list[str]:
+    reasons: list[str] = []
+    if not relevant(job["role"], profile):
+        reasons.append("role:not_target_level")
+    if not location_allowed(job.get("location", ""), profile):
+        reasons.append("location:not_us_or_remote")
+    timeline = " ".join(
+        str(value).strip() for value in (job.get("season"), job.get("role")) if str(value).strip()
+    ).casefold()
+    target_timelines = [item.casefold() for item in profile.get("preferences", {}).get("target_timelines", [])]
+    if target_timelines and any(season in timeline for season in ("winter", "spring", "summer", "fall")):
+        if not any(target in timeline for target in target_timelines):
+            reasons.append("timeline:not_target")
+    require_sponsorship = profile.get("screening_defaults", {}).get("require_sponsorship")
+    if require_sponsorship is False and job.get("requires_sponsorship") is True:
+        reasons.append("eligibility:sponsorship_required")
+    return reasons
+
+
 def tracker_duplicate(company: str, role: str, url: str) -> bool:
     proc = subprocess.run([sys.executable, str(TRACKER), "check", "--company", company,
                            "--role", role, "--url", normalize_url(url)], capture_output=True, text=True)
@@ -95,8 +136,10 @@ def classify(job: dict, profile: dict) -> dict:
     company, role = job["company"].strip(), job["role"].strip()
     url = normalize_url(job["url"])
     parent = maango_company(company, url)
+    reasons = rejection_reasons({**job, "company": company, "role": role, "url": url}, profile)
     return {**job, "company": company, "role": role, "url": url,
-            "ats_platform": detect_ats(url), "relevant": relevant(role, profile),
+            "ats_platform": detect_ats(url), "relevant": not reasons,
+            "rejection_reasons": reasons,
             "duplicate": tracker_duplicate(company, role, url),
             "manual_only": bool(parent), "maango_parent": parent}
 
