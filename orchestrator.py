@@ -98,6 +98,33 @@ def _has_duplicate_source_run_identity(report: dict) -> bool:
     return False
 
 
+def _has_invalid_source_run_schema(report: dict) -> bool:
+    source_runs = report.get("source_runs")
+    if not isinstance(source_runs, list):
+        return False
+    for run in source_runs:
+        if not isinstance(run, dict):
+            return True
+        if not isinstance(run.get("source"), str) or not run["source"].strip():
+            return True
+        if not isinstance(run.get("token"), str) or not run["token"].strip():
+            return True
+        if run.get("status") != "ok":
+            return True
+        candidates = run.get("candidates")
+        if not isinstance(candidates, int) or candidates < 0:
+            return True
+        if "stale_result" in run and not isinstance(run["stale_result"], bool):
+            return True
+        if "freshness_unknown" in run and not isinstance(run["freshness_unknown"], bool):
+            return True
+        if "warning" in run and not isinstance(run["warning"], str):
+            return True
+        if "latest_posting_at" in run and not isinstance(run["latest_posting_at"], str):
+            return True
+    return False
+
+
 def _expected_freshness_summary(report: dict) -> dict[str, int] | None:
     source_runs = report.get("source_runs")
     if not isinstance(source_runs, list):
@@ -180,6 +207,8 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     if status == "healthy" and not isinstance(report.get("freshness_summary"), dict):
         raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and not isinstance(report.get("freshness_buckets"), dict):
+        raise SystemExit("Invalid source report: invalid_schema")
+    if status == "healthy" and _has_invalid_source_run_schema(report):
         raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and (
         report.get("failures")
