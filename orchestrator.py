@@ -125,6 +125,22 @@ def _has_invalid_source_run_schema(report: dict) -> bool:
     return False
 
 
+def _has_invalid_failures_schema(report: dict) -> bool:
+    failures = report.get("failures", [])
+    if not isinstance(failures, list):
+        return True
+    for failure in failures:
+        if not isinstance(failure, dict):
+            return True
+        if not isinstance(failure.get("source"), str) or not failure["source"].strip():
+            return True
+        if not isinstance(failure.get("token"), str) or not failure["token"].strip():
+            return True
+        if not isinstance(failure.get("error"), str) or not failure["error"].strip():
+            return True
+    return False
+
+
 def _expected_freshness_summary(report: dict) -> dict[str, int] | None:
     source_runs = report.get("source_runs")
     if not isinstance(source_runs, list):
@@ -242,6 +258,8 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     if status == "healthy" and not isinstance(report.get("freshness_summary"), dict):
         raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and not isinstance(report.get("freshness_buckets"), dict):
+        raise SystemExit("Invalid source report: invalid_schema")
+    if status == "healthy" and _has_invalid_failures_schema(report):
         raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and _has_invalid_source_run_schema(report):
         raise SystemExit("Invalid source report: invalid_schema")
