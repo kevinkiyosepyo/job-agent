@@ -138,3 +138,64 @@ def test_main_exits_without_side_effects_when_lock_is_already_held(tmp_path, mon
     assert not (tmp_path / "orchestrator-report.json").exists()
     assert not (tmp_path / "audit.jsonl").exists()
     assert not (tmp_path / "queue.sqlite3").exists()
+
+
+def test_main_fails_closed_when_source_report_is_not_healthy(tmp_path, monkeypatch):
+    profile_path = tmp_path / "profile.json"
+    resume_path = tmp_path / "resume.pdf"
+    resume_path.write_text("fixture resume")
+    profile_path.write_text(
+        json.dumps(
+            {
+                "name": {"full": "Test User"},
+                "contact": {"email": "test@example.com", "phone": "555-1111"},
+                "resume": {"primary": str(resume_path)},
+                "preferences": {"target_roles": ["Software Engineer Intern"]},
+            }
+        )
+    )
+    candidates_path = tmp_path / "candidates.json"
+    candidates_path.write_text(
+        json.dumps(
+            [
+                {
+                    "company": "Example",
+                    "role": "Software Engineer Intern",
+                    "url": "https://job-boards.greenhouse.io/example/jobs/1",
+                }
+            ]
+        )
+    )
+    source_report_path = tmp_path / "sources-report.json"
+    source_report_path.write_text(
+        json.dumps(
+            {
+                "source_health_status": "partial_error",
+                "failures": [{"source": "greenhouse", "token": "example", "error": "timeout"}],
+                "warning": "One configured source failed",
+            }
+        )
+    )
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    with pytest.raises(SystemExit, match="Source health check failed: partial_error"):
+        orchestrator.main(
+            [
+                str(candidates_path),
+                "--profile",
+                str(profile_path),
+                "--output",
+                str(tmp_path / "orchestrator-report.json"),
+                "--queue-db",
+                str(tmp_path / "queue.sqlite3"),
+                "--audit-log",
+                str(tmp_path / "audit.jsonl"),
+                "--source-report",
+                str(source_report_path),
+            ]
+        )
+
+    assert not (tmp_path / "orchestrator-report.json").exists()
+    assert not (tmp_path / "audit.jsonl").exists()
+    assert not (tmp_path / "queue.sqlite3").exists()

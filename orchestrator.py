@@ -68,11 +68,30 @@ def enqueue_plan_jobs(queue_db: Path, routed: dict[str, list[dict]]) -> list[dic
     return [asdict(job) for job in app_queue.list_jobs()]
 
 
-def run(candidates_path: Path, profile_path: Path, output_path: Path, queue_db: Path, audit_log_path: Path) -> dict:
+def load_source_report(source_report_path: Path | None) -> dict | None:
+    if source_report_path is None:
+        return None
+    report = json.loads(source_report_path.read_text())
+    status = report.get("source_health_status")
+    if status != "healthy":
+        raise SystemExit(f"Source health check failed: {status}")
+    return report
+
+
+def run(
+    candidates_path: Path,
+    profile_path: Path,
+    output_path: Path,
+    queue_db: Path,
+    audit_log_path: Path,
+    source_report_path: Path | None = None,
+) -> dict:
     profile = json.loads(profile_path.read_text())
     errors = pipeline.validate_profile(profile)
     if errors:
         raise SystemExit("Invalid profile: " + ", ".join(errors))
+
+    source_report = load_source_report(source_report_path)
 
     candidates = json.loads(candidates_path.read_text())
     scan = build_scan(candidates, profile)
@@ -90,6 +109,8 @@ def run(candidates_path: Path, profile_path: Path, output_path: Path, queue_db: 
         "plan": plan,
         "queue": {"count": len(queued_jobs), "jobs": queued_jobs},
     }
+    if source_report is not None:
+        payload["source_report"] = source_report
     output_path.write_text(json.dumps(payload, indent=2) + "\n")
 
     logger = AuditLogger(audit_log_path)
@@ -113,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--queue-db", default=str(BASE / "runtime/app_queue.sqlite3"))
     parser.add_argument("--audit-log", default=str(BASE / "runtime/audit.jsonl"))
     parser.add_argument("--lock-path", default=str(BASE / "runtime/orchestrator.lock"))
+    parser.add_argument("--source-report", help="Optional sources.py report JSON path")
     args = parser.parse_args(argv)
 
     with RunLock(Path(args.lock_path)):
@@ -122,6 +144,7 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.output),
             Path(args.queue_db),
             Path(args.audit_log),
+            Path(args.source_report) if args.source_report else None,
         )
     print(json.dumps(payload, indent=2))
     return 0

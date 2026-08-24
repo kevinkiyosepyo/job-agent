@@ -26,10 +26,12 @@ python -m pytest tests -q
 ## Safe dry run
 
 ```bash
-python orchestrator.py verified-candidates.json --output orchestrator-report.json
+python orchestrator.py verified-candidates.json --output orchestrator-report.json --source-report sources-report.json
 ```
 
 `orchestrator.py` runs scanner + pipeline in `dry_run` mode, persists supported jobs into the local SQLite queue as `discovered`, and appends a redacted audit event. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
+
+When `--source-report` is supplied, `orchestrator.py` consumes the JSON sidecar written by `sources.py --report` and fails closed before any queue, audit, or output side effects unless `source_health_status` is exactly `healthy`.
 
 ## Safe source collection
 
