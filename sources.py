@@ -118,6 +118,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", required=True, help="Output JSON array path")
     args = parser.parse_args(argv)
 
+    output_path = Path(args.output)
+    if not args.greenhouse and not args.lever:
+        print(
+            json.dumps(
+                {
+                    "greenhouse_tokens": args.greenhouse,
+                    "lever_tokens": args.lever,
+                    "candidates": 0,
+                    "failures": [],
+                    "output": str(output_path),
+                    "error": "At least one --greenhouse or --lever token is required",
+                }
+            )
+        )
+        return 2
+
     jobs: list[dict] = []
     failures: list[dict[str, str]] = []
     for token in args.greenhouse:
@@ -132,7 +148,6 @@ def main(argv: list[str] | None = None) -> int:
             failures.append({"source": "lever", "token": token, "error": str(exc)})
 
     unique_jobs = _dedupe_jobs(jobs)
-    output_path = Path(args.output)
     output_path.write_text(json.dumps(unique_jobs, indent=2) + "\n")
     print(
         json.dumps(

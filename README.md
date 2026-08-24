@@ -37,7 +37,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 python sources.py --greenhouse example --lever example --output verified-candidates.json
 ```
 
-This writes a deterministic JSON array of internship candidates gathered from the supplied public board tokens, normalizes tracking parameters out of URLs, and deduplicates repeated postings across the configured sources. If one token fails, the CLI still writes the successfully collected candidates, reports a `failures` array in stdout JSON, and exits with code `1` so partial collection cannot be mistaken for a clean run.
+This writes a deterministic JSON array of internship candidates gathered from the supplied public board tokens, normalizes tracking parameters out of URLs, and deduplicates repeated postings across the configured sources. You must pass at least one `--greenhouse` or `--lever` token; otherwise the CLI exits `2`, prints a machine-readable configuration error, and does not create a misleading empty artifact. If one token fails, the CLI still writes the successfully collected candidates, reports a `failures` array in stdout JSON, and exits with code `1` so partial collection cannot be mistaken for a clean run.
 
 ## Browser/CDP health check
 

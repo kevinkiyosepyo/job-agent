@@ -250,3 +250,23 @@ def test_main_reports_failed_tokens_without_losing_successful_candidates(tmp_pat
         ],
         "output": str(output),
     }
+
+
+
+def test_main_requires_at_least_one_source_token(tmp_path, capsys):
+    output = tmp_path / "candidates.json"
+
+    exit_code = sources.main([
+        "--output", str(output),
+    ])
+
+    assert exit_code == 2
+    assert not output.exists()
+    assert json.loads(capsys.readouterr().out) == {
+        "greenhouse_tokens": [],
+        "lever_tokens": [],
+        "candidates": 0,
+        "failures": [],
+        "output": str(output),
+        "error": "At least one --greenhouse or --lever token is required",
+    }
