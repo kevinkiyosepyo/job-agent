@@ -140,7 +140,7 @@ def test_main_exits_without_side_effects_when_lock_is_already_held(tmp_path, mon
     assert not (tmp_path / "queue.sqlite3").exists()
 
 
-def test_main_fails_closed_when_source_report_is_not_healthy(tmp_path, monkeypatch):
+def _write_valid_profile_and_candidates(tmp_path: Path) -> tuple[Path, Path]:
     profile_path = tmp_path / "profile.json"
     resume_path = tmp_path / "resume.pdf"
     resume_path.write_text("fixture resume")
@@ -166,6 +166,12 @@ def test_main_fails_closed_when_source_report_is_not_healthy(tmp_path, monkeypat
             ]
         )
     )
+    return profile_path, candidates_path
+
+
+
+def test_main_fails_closed_when_source_report_is_not_healthy(tmp_path, monkeypatch):
+    profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
     source_report_path = tmp_path / "sources-report.json"
     source_report_path.write_text(
         json.dumps(
@@ -180,6 +186,66 @@ def test_main_fails_closed_when_source_report_is_not_healthy(tmp_path, monkeypat
     monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
 
     with pytest.raises(SystemExit, match="Source health check failed: partial_error"):
+        orchestrator.main(
+            [
+                str(candidates_path),
+                "--profile",
+                str(profile_path),
+                "--output",
+                str(tmp_path / "orchestrator-report.json"),
+                "--queue-db",
+                str(tmp_path / "queue.sqlite3"),
+                "--audit-log",
+                str(tmp_path / "audit.jsonl"),
+                "--source-report",
+                str(source_report_path),
+            ]
+        )
+
+    assert not (tmp_path / "orchestrator-report.json").exists()
+    assert not (tmp_path / "audit.jsonl").exists()
+    assert not (tmp_path / "queue.sqlite3").exists()
+
+
+
+def test_main_fails_closed_with_stable_reason_when_source_report_is_malformed_json(tmp_path, monkeypatch):
+    profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
+    source_report_path = tmp_path / "sources-report.json"
+    source_report_path.write_text("{not valid json")
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    with pytest.raises(SystemExit, match="Invalid source report: invalid_json"):
+        orchestrator.main(
+            [
+                str(candidates_path),
+                "--profile",
+                str(profile_path),
+                "--output",
+                str(tmp_path / "orchestrator-report.json"),
+                "--queue-db",
+                str(tmp_path / "queue.sqlite3"),
+                "--audit-log",
+                str(tmp_path / "audit.jsonl"),
+                "--source-report",
+                str(source_report_path),
+            ]
+        )
+
+    assert not (tmp_path / "orchestrator-report.json").exists()
+    assert not (tmp_path / "audit.jsonl").exists()
+    assert not (tmp_path / "queue.sqlite3").exists()
+
+
+
+def test_main_fails_closed_with_stable_reason_when_source_report_omits_health_status(tmp_path, monkeypatch):
+    profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
+    source_report_path = tmp_path / "sources-report.json"
+    source_report_path.write_text(json.dumps({"source_runs": []}))
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    with pytest.raises(SystemExit, match="Invalid source report: missing_source_health_status"):
         orchestrator.main(
             [
                 str(candidates_path),

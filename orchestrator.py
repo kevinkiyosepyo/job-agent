@@ -15,6 +15,7 @@ import scanner
 
 
 BASE = Path.home() / "Documents/job-agent"
+VALID_SOURCE_HEALTH_STATUSES = {"healthy", "partial_error", "stale_or_unknown"}
 
 
 class RunLock:
@@ -71,8 +72,17 @@ def enqueue_plan_jobs(queue_db: Path, routed: dict[str, list[dict]]) -> list[dic
 def load_source_report(source_report_path: Path | None) -> dict | None:
     if source_report_path is None:
         return None
-    report = json.loads(source_report_path.read_text())
-    status = report.get("source_health_status")
+    try:
+        report = json.loads(source_report_path.read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit("Invalid source report: invalid_json") from exc
+    if not isinstance(report, dict):
+        raise SystemExit("Invalid source report: invalid_schema")
+    if "source_health_status" not in report:
+        raise SystemExit("Invalid source report: missing_source_health_status")
+    status = report["source_health_status"]
+    if status not in VALID_SOURCE_HEALTH_STATUSES:
+        raise SystemExit("Invalid source report: invalid_source_health_status")
     if status != "healthy":
         raise SystemExit(f"Source health check failed: {status}")
     return report
