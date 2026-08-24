@@ -7,6 +7,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `scanner.py` — normalize candidates, detect ATS platforms, check relevance and duplicates, and enforce MAANGO manual-only routing.
 - `pipeline.py` — route supported ATS candidates and reject submission records without confirmation evidence.
 - `orchestrator.py` — dry-run CLI that scans verified candidates, routes them, stages supported jobs into the local queue, and writes an audit-backed report.
+- `sources.py` — bounded-retry adapters for public Greenhouse and Lever job APIs that normalize active internship candidates.
 - `app_queue.py` — persist discovered jobs in SQLite with idempotent URL-based enqueue and explicit state transitions.
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
 - `tracker.py` — read the live Google Sheet and append rows with mandatory API read-back verification.
