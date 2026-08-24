@@ -69,8 +69,9 @@ def maango_company(company: str, url: str) -> str | None:
     return None
 
 
-def relevant(role: str, profile: dict) -> bool:
+def relevant(role: str, profile: dict, extra_text: str = "") -> bool:
     low = role.casefold()
+    level_text = " ".join(part.casefold() for part in (role, extra_text) if part)
     role_terms = [x.casefold().replace(" intern", "") for x in profile["preferences"]["target_roles"]]
     target = any(term in low for term in role_terms)
     aliases = {
@@ -78,7 +79,7 @@ def relevant(role: str, profile: dict) -> bool:
     }
     if not target:
         target = any(alias in low for term in role_terms for alias in aliases.get(term, ()))
-    level = any(x in low for x in ("intern", "co-op", "coop", "new grad", "entry level", "fellow"))
+    level = any(x in level_text for x in ("intern", "co-op", "coop", "new grad", "entry level", "fellow"))
     senior = bool(re.search(r"\b(senior|staff|principal|lead|manager|director|vp)\b", low))
     return target and level and not senior
 
@@ -107,7 +108,7 @@ def location_allowed(location: str, profile: dict) -> bool:
 
 def rejection_reasons(job: dict, profile: dict) -> list[str]:
     reasons: list[str] = []
-    if not relevant(job["role"], profile):
+    if not relevant(job["role"], profile, extra_text=str(job.get("season", ""))):
         reasons.append("role:not_target_level")
     if not location_allowed(job.get("location", ""), profile):
         reasons.append("location:not_us_or_remote")

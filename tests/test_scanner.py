@@ -89,6 +89,24 @@ def test_classify_rejects_non_target_season_with_explicit_reason(monkeypatch):
     assert result["rejection_reasons"] == ["timeline:not_target"]
 
 
+def test_classify_accepts_active_american_express_style_2027_title_without_explicit_season(monkeypatch):
+    monkeypatch.setattr(scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    result = scanner.classify(
+        {
+            "company": "American Express",
+            "role": "2027 Software Engineer, Technology - New York, NY",
+            "url": "https://careers.americanexpress.com/en/sites/CX_1/job/26010970/",
+            "location": "New York, NY",
+            "season": "Campus Undergraduate Internship Program",
+        },
+        make_profile(),
+    )
+
+    assert result["relevant"] is True
+    assert result["rejection_reasons"] == []
+
+
 def test_classify_rejects_sponsorship_required_roles_with_explicit_reason(monkeypatch):
     monkeypatch.setattr(scanner, "tracker_duplicate", lambda company, role, url: False)
 
