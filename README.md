@@ -6,6 +6,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 
 - `scanner.py` — normalize candidates, detect ATS platforms, check relevance and duplicates, and enforce MAANGO manual-only routing.
 - `pipeline.py` — route supported ATS candidates and reject submission records without confirmation evidence.
+- `orchestrator.py` — dry-run CLI that scans verified candidates, routes them, stages supported jobs into the local queue, and writes an audit-backed report.
 - `app_queue.py` — persist discovered jobs in SQLite with idempotent URL-based enqueue and explicit state transitions.
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
 - `tracker.py` — read the live Google Sheet and append rows with mandatory API read-back verification.
@@ -22,11 +23,10 @@ python -m pytest tests -q
 ## Safe dry run
 
 ```bash
-python scanner.py verified-candidates.json --output scan-results.json
-python pipeline.py scan-results.json --output pipeline-plan.json
+python orchestrator.py verified-candidates.json --output orchestrator-report.json
 ```
 
-`pipeline.py` produces a plan with submission disabled. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
+`orchestrator.py` runs scanner + pipeline in `dry_run` mode, persists supported jobs into the local SQLite queue as `discovered`, and appends a redacted audit event. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
 
 ## Privacy
 

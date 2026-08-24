@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""Dry-run scan → route → queue → report orchestration CLI."""
+from __future__ import annotations
+
+import argparse
+import json
+from dataclasses import asdict
+from pathlib import Path
+
+from app_queue import ApplicationQueue
+from audit_log import AuditLogger
+import pipeline
+import scanner
+
+
+BASE = Path.home() / "Documents/job-agent"
+
+
+def build_scan(candidates: list[dict], profile: dict) -> dict:
+    jobs = scanner.unique_jobs(candidates)
+    results = [scanner.classify(job, profile) for job in jobs]
+    new = [job for job in results if job["relevant"] and not job["duplicate"]]
+    manual = [job for job in new if job["manual_only"]]
+    queue = [job for job in new if not job["manual_only"]]
+    return {
+        "scanned": len(results),
+        "new": len(new),
+        "manual_only": manual,
+        "auto_apply_queue": queue,
+        "all_results": results,
+    }
+
+
+def enqueue_plan_jobs(queue_db: Path, routed: dict[str, list[dict]]) -> list[dict]:
+    app_queue = ApplicationQueue(queue_db)
+    for key in ("greenhouse", "workday"):
+        for job in routed.get(key, []):
+            app_queue.enqueue(
+                company=job["company"],
+                role=job["role"],
+                url=job["url"],
+                ats_platform=job["ats_platform"],
+            )
+    return [asdict(job) for job in app_queue.list_jobs()]
+
+
+def run(candidates_path: Path, profile_path: Path, output_path: Path, queue_db: Path, audit_log_path: Path) -> dict:
+    profile = json.loads(profile_path.read_text())
+    errors = pipeline.validate_profile(profile)
+    if errors:
+        raise SystemExit("Invalid profile: " + ", ".join(errors))
+
+    candidates = json.loads(candidates_path.read_text())
+    scan = build_scan(candidates, profile)
+    plan = {
+        "mode": "plan_only",
+        "submission_enabled": False,
+        "routes": pipeline.route_candidates(scan),
+    }
+    plan["counts"] = {key: len(value) for key, value in plan["routes"].items()}
+
+    queued_jobs = enqueue_plan_jobs(queue_db, plan["routes"])
+    payload = {
+        "mode": "dry_run",
+        "scan": scan,
+        "plan": plan,
+        "queue": {"count": len(queued_jobs), "jobs": queued_jobs},
+    }
+    output_path.write_text(json.dumps(payload, indent=2) + "\n")
+
+    logger = AuditLogger(audit_log_path)
+    logger.log(
+        "dry_run_completed",
+        {
+            "profile": profile,
+            "counts": payload["plan"]["counts"],
+            "queue_count": payload["queue"]["count"],
+            "output": str(output_path),
+        },
+    )
+    return payload
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("candidates", help="Verified candidates JSON array")
+    parser.add_argument("--profile", default=str(BASE / "profile.json"))
+    parser.add_argument("--output", default=str(BASE / "orchestrator-report.json"))
+    parser.add_argument("--queue-db", default=str(BASE / "runtime/app_queue.sqlite3"))
+    parser.add_argument("--audit-log", default=str(BASE / "runtime/audit.jsonl"))
+    args = parser.parse_args(argv)
+
+    payload = run(
+        Path(args.candidates),
+        Path(args.profile),
+        Path(args.output),
+        Path(args.queue_db),
+        Path(args.audit_log),
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
