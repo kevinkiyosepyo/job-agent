@@ -107,6 +107,20 @@ def _aggregate_missing_timestamp_warning(source_runs: list[dict[str, Any]]) -> s
     return None
 
 
+def _freshness_summary(source_runs: list[dict[str, Any]]) -> dict[str, int]:
+    stale_runs = sum(1 for run in source_runs if run.get("stale_result"))
+    freshness_unknown_runs = sum(1 for run in source_runs if run.get("freshness_unknown"))
+    error_runs = sum(1 for run in source_runs if run.get("status") == "error")
+    healthy_runs = len(source_runs) - stale_runs - freshness_unknown_runs - error_runs
+    return {
+        "total_runs": len(source_runs),
+        "healthy_runs": healthy_runs,
+        "stale_runs": stale_runs,
+        "freshness_unknown_runs": freshness_unknown_runs,
+        "error_runs": error_runs,
+    }
+
+
 def _load_json(url: str, *, opener: OpenUrl, timeout: float = DEFAULT_TIMEOUT, attempts: int = DEFAULT_ATTEMPTS) -> Any:
     last_error: Exception | None = None
     for _ in range(max(1, attempts)):
@@ -181,6 +195,7 @@ def main(argv: list[str] | None = None) -> int:
                     "lever_tokens": args.lever,
                     "candidates": 0,
                     "failures": [],
+                    "freshness_summary": _freshness_summary([]),
                     "output": str(output_path),
                     "error": "At least one --greenhouse or --lever token is required",
                 }
@@ -244,6 +259,7 @@ def main(argv: list[str] | None = None) -> int:
         "candidates": len(unique_jobs),
         "failures": failures,
         "source_runs": source_runs,
+        "freshness_summary": _freshness_summary(source_runs),
         "output": str(output_path),
     }
     if latest_posting_at is not None:

@@ -196,6 +196,13 @@ def test_main_combines_source_tokens_deduplicates_urls_and_writes_candidates_jso
                 "warning": "No posting timestamps available; freshness unknown",
             },
         ],
+        "freshness_summary": {
+            "total_runs": 2,
+            "healthy_runs": 0,
+            "stale_runs": 0,
+            "freshness_unknown_runs": 2,
+            "error_runs": 0,
+        },
         "output": str(output),
         "freshness_unknown": True,
         "warning": "One or more configured source runs succeeded without posting timestamps; freshness unknown",
@@ -295,6 +302,13 @@ def test_main_reports_failed_tokens_without_losing_successful_candidates(tmp_pat
                 "warning": "No posting timestamps available; freshness unknown",
             },
         ],
+        "freshness_summary": {
+            "total_runs": 3,
+            "healthy_runs": 0,
+            "stale_runs": 0,
+            "freshness_unknown_runs": 2,
+            "error_runs": 1,
+        },
         "output": str(output),
     }
 
@@ -341,6 +355,13 @@ def test_main_signals_zero_candidates_when_sources_return_no_internships(tmp_pat
                 "candidates": 0,
             },
         ],
+        "freshness_summary": {
+            "total_runs": 2,
+            "healthy_runs": 2,
+            "stale_runs": 0,
+            "freshness_unknown_runs": 0,
+            "error_runs": 0,
+        },
         "output": str(output),
         "warning": "Configured source tokens returned zero internship candidates",
         "stale_result": True,
@@ -400,6 +421,13 @@ def test_main_signals_stale_non_empty_results_when_newest_posting_is_old(tmp_pat
                 "warning": "Newest posting timestamp is older than 30 days",
             }
         ],
+        "freshness_summary": {
+            "total_runs": 1,
+            "healthy_runs": 0,
+            "stale_runs": 1,
+            "freshness_unknown_runs": 0,
+            "error_runs": 0,
+        },
         "output": str(output),
         "warning": "Newest posting timestamp is older than 30 days",
         "stale_result": True,
@@ -471,6 +499,13 @@ def test_main_reports_per_token_freshness_when_one_source_is_stale(tmp_path, mon
                 "latest_posting_at": "2026-08-23T00:00:00Z",
             },
         ],
+        "freshness_summary": {
+            "total_runs": 2,
+            "healthy_runs": 1,
+            "stale_runs": 1,
+            "freshness_unknown_runs": 0,
+            "error_runs": 0,
+        },
         "output": str(output),
         "latest_posting_at": "2026-08-23T00:00:00Z",
     }
@@ -516,6 +551,13 @@ def test_main_marks_source_run_when_posting_timestamps_are_missing(tmp_path, mon
                 "warning": "No posting timestamps available; freshness unknown",
             }
         ],
+        "freshness_summary": {
+            "total_runs": 1,
+            "healthy_runs": 0,
+            "stale_runs": 0,
+            "freshness_unknown_runs": 1,
+            "error_runs": 0,
+        },
         "output": str(output),
         "freshness_unknown": True,
         "warning": "One or more configured source runs succeeded without posting timestamps; freshness unknown",
@@ -563,10 +605,84 @@ def test_main_fails_closed_when_any_source_run_is_missing_timestamps(tmp_path, m
                 "warning": "No posting timestamps available; freshness unknown",
             }
         ],
+        "freshness_summary": {
+            "total_runs": 1,
+            "healthy_runs": 0,
+            "stale_runs": 0,
+            "freshness_unknown_runs": 1,
+            "error_runs": 0,
+        },
         "output": str(output),
         "freshness_unknown": True,
         "warning": "One or more configured source runs succeeded without posting timestamps; freshness unknown",
         "stale_result": True,
+    }
+
+
+
+def test_main_reports_aggregate_freshness_summary_counts(tmp_path, monkeypatch, capsys):
+    output = tmp_path / "candidates.json"
+
+    def fake_greenhouse(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        if token == "stale-co":
+            return [
+                {
+                    "company": "Stale Co",
+                    "role": "Software Engineer Intern",
+                    "url": "https://job-boards.greenhouse.io/stale/jobs/1",
+                    "location": "Remote",
+                    "source": "Greenhouse public API",
+                    "updated_at": "2026-06-01T00:00:00Z",
+                }
+            ]
+        if token == "unknown-co":
+            return [
+                {
+                    "company": "Unknown Co",
+                    "role": "ML Intern",
+                    "url": "https://job-boards.greenhouse.io/unknown/jobs/2",
+                    "location": "Remote",
+                    "source": "Greenhouse public API",
+                }
+            ]
+        raise RuntimeError(f"unexpected greenhouse token: {token}")
+
+    def fake_lever(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        if token == "fresh-co":
+            return [
+                {
+                    "company": "Fresh Co",
+                    "role": "Data Intern",
+                    "url": "https://jobs.lever.co/fresh/3",
+                    "location": "Remote",
+                    "source": "Lever public API",
+                    "created_at": 1787443200000,
+                }
+            ]
+        if token == "empty-co":
+            return []
+        raise RuntimeError(f"unexpected lever token: {token}")
+
+    monkeypatch.setattr(sources, "fetch_greenhouse_jobs", fake_greenhouse)
+    monkeypatch.setattr(sources, "fetch_lever_jobs", fake_lever)
+    monkeypatch.setattr(sources, "_utcnow", lambda: datetime(2026, 8, 23, tzinfo=timezone.utc), raising=False)
+
+    exit_code = sources.main([
+        "--greenhouse", "stale-co",
+        "--greenhouse", "unknown-co",
+        "--lever", "fresh-co",
+        "--lever", "empty-co",
+        "--output", str(output),
+    ])
+
+    assert exit_code == 3
+    result = json.loads(capsys.readouterr().out)
+    assert result["freshness_summary"] == {
+        "total_runs": 4,
+        "healthy_runs": 2,
+        "stale_runs": 1,
+        "freshness_unknown_runs": 1,
+        "error_runs": 0,
     }
 
 
@@ -585,6 +701,13 @@ def test_main_requires_at_least_one_source_token(tmp_path, capsys):
         "lever_tokens": [],
         "candidates": 0,
         "failures": [],
+        "freshness_summary": {
+            "total_runs": 0,
+            "healthy_runs": 0,
+            "stale_runs": 0,
+            "freshness_unknown_runs": 0,
+            "error_runs": 0,
+        },
         "output": str(output),
         "error": "At least one --greenhouse or --lever token is required",
     }
