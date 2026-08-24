@@ -216,25 +216,26 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--greenhouse", action="append", default=[], help="Greenhouse board token")
     parser.add_argument("--lever", action="append", default=[], help="Lever company token")
     parser.add_argument("--output", required=True, help="Output JSON array path")
+    parser.add_argument("--report", help="Optional machine-readable source health report path")
     args = parser.parse_args(argv)
 
     output_path = Path(args.output)
     if not args.greenhouse and not args.lever:
-        print(
-            json.dumps(
-                {
-                    "greenhouse_tokens": args.greenhouse,
-                    "lever_tokens": args.lever,
-                    "candidates": 0,
-                    "failures": [],
-                    "source_health_status": "partial_error",
-                    "freshness_summary": _freshness_summary([]),
-                    "freshness_buckets": _freshness_buckets([]),
-                    "output": str(output_path),
-                    "error": "At least one --greenhouse or --lever token is required",
-                }
-            )
-        )
+        result = {
+            "greenhouse_tokens": args.greenhouse,
+            "lever_tokens": args.lever,
+            "candidates": 0,
+            "failures": [],
+            "source_health_status": "partial_error",
+            "freshness_summary": _freshness_summary([]),
+            "freshness_buckets": _freshness_buckets([]),
+            "output": str(output_path),
+            "error": "At least one --greenhouse or --lever token is required",
+        }
+        if args.report:
+            result["report"] = args.report
+            Path(args.report).write_text(json.dumps(result, indent=2) + "\n")
+        print(json.dumps(result))
         return 2
 
     jobs: list[dict] = []
@@ -298,6 +299,8 @@ def main(argv: list[str] | None = None) -> int:
         "freshness_buckets": _freshness_buckets(source_runs),
         "output": str(output_path),
     }
+    if args.report:
+        result["report"] = args.report
     if latest_posting_at is not None:
         result["latest_posting_at"] = latest_posting_at
     if not failures and not unique_jobs:
@@ -314,6 +317,9 @@ def main(argv: list[str] | None = None) -> int:
             if warning is not None:
                 result["warning"] = warning
                 result["stale_result"] = True
+
+    if args.report:
+        Path(args.report).write_text(json.dumps(result, indent=2) + "\n")
 
     print(json.dumps(result))
     if failures:

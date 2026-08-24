@@ -221,6 +221,48 @@ def test_main_combines_source_tokens_deduplicates_urls_and_writes_candidates_jso
 
 
 
+def test_main_writes_report_artifact_matching_stdout_payload(tmp_path, monkeypatch, capsys):
+    output = tmp_path / "candidates.json"
+    report = tmp_path / "sources-report.json"
+
+    def fake_greenhouse(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        assert token == "green-co"
+        return [
+            {
+                "company": "Green Co",
+                "role": "Software Engineer Intern",
+                "url": "https://job-boards.greenhouse.io/green/jobs/1?gh_src=test",
+                "location": "Remote",
+                "source": "Greenhouse public API",
+            }
+        ]
+
+    monkeypatch.setattr(sources, "fetch_greenhouse_jobs", fake_greenhouse)
+
+    exit_code = sources.main([
+        "--greenhouse", "green-co",
+        "--output", str(output),
+        "--report", str(report),
+    ])
+
+    stdout_payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 3
+    assert json.loads(output.read_text()) == [
+        {
+            "company": "Green Co",
+            "role": "Software Engineer Intern",
+            "url": "https://job-boards.greenhouse.io/green/jobs/1",
+            "location": "Remote",
+            "source": "Greenhouse public API",
+        }
+    ]
+    assert json.loads(report.read_text()) == stdout_payload
+    assert stdout_payload["output"] == str(output)
+    assert stdout_payload["report"] == str(report)
+    assert stdout_payload["source_health_status"] == "stale_or_unknown"
+
+
+
 def test_main_reports_failed_tokens_without_losing_successful_candidates(tmp_path, monkeypatch, capsys):
     output = tmp_path / "candidates.json"
 

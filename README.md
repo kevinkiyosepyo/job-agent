@@ -34,12 +34,14 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 ## Safe source collection
 
 ```bash
-python sources.py --greenhouse example --lever example --output verified-candidates.json
+python sources.py --greenhouse example --lever example --output verified-candidates.json --report sources-report.json
 ```
 
 This writes a deterministic JSON array of internship candidates gathered from
 the supplied public board tokens, normalizes tracking parameters out of URLs,
-and deduplicates repeated postings across the configured sources.
+and deduplicates repeated postings across the configured sources. When
+`--report` is supplied, the same machine-readable health/status payload emitted
+on stdout is also persisted to disk for downstream automation.
 
 Stdout JSON includes:
 
