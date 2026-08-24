@@ -234,8 +234,10 @@ def _has_inconsistent_top_level_source_health_flags(report: dict) -> bool:
         return True
     if _has_missing_source_run_latest_posting_at(report):
         return True
+    expected_latest_posting_at = _expected_latest_posting_at(report)
+    if expected_latest_posting_at is not None and "latest_posting_at" not in report:
+        return True
     if "latest_posting_at" in report:
-        expected_latest_posting_at = _expected_latest_posting_at(report)
         if expected_latest_posting_at is None:
             return True
         top_level_timestamp = _parse_timestamp_string(report["latest_posting_at"])

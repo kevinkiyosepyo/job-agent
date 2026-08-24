@@ -1367,6 +1367,76 @@ def test_main_fails_closed_when_healthy_source_report_hides_missing_source_run_l
     assert not (tmp_path / "queue.sqlite3").exists()
 
 
+def test_main_fails_closed_when_healthy_source_report_omits_top_level_latest_posting_at_despite_source_run_evidence(
+    tmp_path, monkeypatch
+):
+    profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
+    source_report_path = tmp_path / "sources-report.json"
+    source_report_path.write_text(
+        json.dumps(
+            {
+                "source_health_status": "healthy",
+                "failures": [],
+                "source_runs": [
+                    {
+                        "source": "greenhouse",
+                        "token": "fresh-board",
+                        "status": "ok",
+                        "candidates": 1,
+                        "latest_posting_at": "2026-08-24T00:00:00Z",
+                    },
+                    {
+                        "source": "lever",
+                        "token": "also-fresh",
+                        "status": "ok",
+                        "candidates": 1,
+                        "latest_posting_at": "2026-08-23T18:00:00-06:00",
+                    },
+                ],
+                "freshness_summary": {
+                    "total_runs": 2,
+                    "healthy_runs": 2,
+                    "stale_runs": 0,
+                    "freshness_unknown_runs": 0,
+                    "error_runs": 0,
+                },
+                "freshness_buckets": {
+                    "healthy": [
+                        {"source": "greenhouse", "token": "fresh-board"},
+                        {"source": "lever", "token": "also-fresh"},
+                    ],
+                    "stale": [],
+                    "freshness_unknown": [],
+                    "error": [],
+                },
+            }
+        )
+    )
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    with pytest.raises(SystemExit, match="Invalid source report: inconsistent_source_health"):
+        orchestrator.main(
+            [
+                str(candidates_path),
+                "--profile",
+                str(profile_path),
+                "--output",
+                str(tmp_path / "orchestrator-report.json"),
+                "--queue-db",
+                str(tmp_path / "queue.sqlite3"),
+                "--audit-log",
+                str(tmp_path / "audit.jsonl"),
+                "--source-report",
+                str(source_report_path),
+            ]
+        )
+
+    assert not (tmp_path / "orchestrator-report.json").exists()
+    assert not (tmp_path / "audit.jsonl").exists()
+    assert not (tmp_path / "queue.sqlite3").exists()
+
+
 def test_main_fails_closed_when_healthy_source_report_mixes_naive_and_offset_aware_latest_posting_at(
     tmp_path, monkeypatch
 ):
