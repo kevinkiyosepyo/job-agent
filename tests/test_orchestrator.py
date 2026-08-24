@@ -4,6 +4,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -82,3 +84,57 @@ def test_dry_run_orchestrates_scan_route_queue_and_audit(tmp_path, monkeypatch):
     assert audit_entry["event"] == "dry_run_completed"
     assert audit_entry["payload"]["profile"]["contact"]["email"] == "[REDACTED]"
     assert audit_entry["payload"]["profile"]["resume"] == "[REDACTED]"
+
+
+def test_main_exits_without_side_effects_when_lock_is_already_held(tmp_path, monkeypatch):
+    profile_path = tmp_path / "profile.json"
+    resume_path = tmp_path / "resume.pdf"
+    resume_path.write_text("fixture resume")
+    profile_path.write_text(
+        json.dumps(
+            {
+                "name": {"full": "Test User"},
+                "contact": {"email": "test@example.com", "phone": "555-1111"},
+                "resume": {"primary": str(resume_path)},
+                "preferences": {"target_roles": ["Software Engineer Intern"]},
+            }
+        )
+    )
+    candidates_path = tmp_path / "candidates.json"
+    candidates_path.write_text(
+        json.dumps(
+            [
+                {
+                    "company": "Example",
+                    "role": "Software Engineer Intern",
+                    "url": "https://job-boards.greenhouse.io/example/jobs/1",
+                }
+            ]
+        )
+    )
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    lock_path = tmp_path / "runtime" / "orchestrator.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with orchestrator.RunLock(lock_path):
+        with pytest.raises(SystemExit, match="Another job-agent run is already active"):
+            orchestrator.main(
+                [
+                    str(candidates_path),
+                    "--profile",
+                    str(profile_path),
+                    "--output",
+                    str(tmp_path / "orchestrator-report.json"),
+                    "--queue-db",
+                    str(tmp_path / "queue.sqlite3"),
+                    "--audit-log",
+                    str(tmp_path / "audit.jsonl"),
+                    "--lock-path",
+                    str(lock_path),
+                ]
+            )
+
+    assert not (tmp_path / "orchestrator-report.json").exists()
+    assert not (tmp_path / "audit.jsonl").exists()
+    assert not (tmp_path / "queue.sqlite3").exists()

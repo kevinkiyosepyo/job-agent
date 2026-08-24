@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -14,6 +15,29 @@ import scanner
 
 
 BASE = Path.home() / "Documents/job-agent"
+
+
+class RunLock:
+    def __init__(self, path: Path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._handle = None
+
+    def __enter__(self) -> "RunLock":
+        self._handle = self.path.open("a+")
+        try:
+            fcntl.flock(self._handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            self._handle.close()
+            self._handle = None
+            raise SystemExit("Another job-agent run is already active")
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        assert self._handle is not None
+        fcntl.flock(self._handle.fileno(), fcntl.LOCK_UN)
+        self._handle.close()
+        self._handle = None
 
 
 def build_scan(candidates: list[dict], profile: dict) -> dict:
@@ -88,15 +112,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", default=str(BASE / "orchestrator-report.json"))
     parser.add_argument("--queue-db", default=str(BASE / "runtime/app_queue.sqlite3"))
     parser.add_argument("--audit-log", default=str(BASE / "runtime/audit.jsonl"))
+    parser.add_argument("--lock-path", default=str(BASE / "runtime/orchestrator.lock"))
     args = parser.parse_args(argv)
 
-    payload = run(
-        Path(args.candidates),
-        Path(args.profile),
-        Path(args.output),
-        Path(args.queue_db),
-        Path(args.audit_log),
-    )
+    with RunLock(Path(args.lock_path)):
+        payload = run(
+            Path(args.candidates),
+            Path(args.profile),
+            Path(args.output),
+            Path(args.queue_db),
+            Path(args.audit_log),
+        )
     print(json.dumps(payload, indent=2))
     return 0
 
