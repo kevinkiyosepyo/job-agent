@@ -1155,6 +1155,77 @@ def test_main_fails_closed_when_healthy_source_report_top_level_latest_posting_a
     assert not (tmp_path / "queue.sqlite3").exists()
 
 
+
+def test_main_accepts_healthy_source_report_when_top_level_latest_posting_at_matches_newest_source_run_across_timezones(
+    tmp_path, monkeypatch
+):
+    profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
+    source_report_path = tmp_path / "sources-report.json"
+    source_report_path.write_text(
+        json.dumps(
+            {
+                "source_health_status": "healthy",
+                "latest_posting_at": "2026-08-24T00:00:00Z",
+                "failures": [],
+                "source_runs": [
+                    {
+                        "source": "greenhouse",
+                        "token": "offset-board",
+                        "status": "ok",
+                        "candidates": 1,
+                        "latest_posting_at": "2026-08-24T00:30:00+01:00",
+                    },
+                    {
+                        "source": "lever",
+                        "token": "utc-board",
+                        "status": "ok",
+                        "candidates": 1,
+                        "latest_posting_at": "2026-08-24T00:00:00Z",
+                    },
+                ],
+                "freshness_summary": {
+                    "total_runs": 2,
+                    "healthy_runs": 2,
+                    "stale_runs": 0,
+                    "freshness_unknown_runs": 0,
+                    "error_runs": 0,
+                },
+                "freshness_buckets": {
+                    "healthy": [
+                        {"source": "greenhouse", "token": "offset-board"},
+                        {"source": "lever", "token": "utc-board"},
+                    ],
+                    "stale": [],
+                    "freshness_unknown": [],
+                    "error": [],
+                },
+            }
+        )
+    )
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    exit_code = orchestrator.main(
+        [
+            str(candidates_path),
+            "--profile",
+            str(profile_path),
+            "--output",
+            str(tmp_path / "orchestrator-report.json"),
+            "--queue-db",
+            str(tmp_path / "queue.sqlite3"),
+            "--audit-log",
+            str(tmp_path / "audit.jsonl"),
+            "--source-report",
+            str(source_report_path),
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads((tmp_path / "orchestrator-report.json").read_text())
+    assert payload["source_report"]["latest_posting_at"] == "2026-08-24T00:00:00Z"
+
+
 def test_main_fails_closed_when_healthy_source_report_sets_top_level_stale_result(tmp_path, monkeypatch):
     profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
     source_report_path = tmp_path / "sources-report.json"

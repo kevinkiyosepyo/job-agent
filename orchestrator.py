@@ -144,15 +144,18 @@ def _has_invalid_failures_schema(report: dict) -> bool:
     return False
 
 
-def _is_valid_timestamp_string(value: str) -> bool:
+def _parse_timestamp_string(value: str) -> datetime | None:
     candidate = value.strip()
     if not candidate:
-        return False
+        return None
     try:
-        datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+        return datetime.fromisoformat(candidate.replace("Z", "+00:00"))
     except ValueError:
-        return False
-    return True
+        return None
+
+
+def _is_valid_timestamp_string(value: str) -> bool:
+    return _parse_timestamp_string(value) is not None
 
 
 def _has_invalid_top_level_source_health_flags_schema(report: dict) -> bool:
@@ -172,14 +175,21 @@ def _expected_latest_posting_at(report: dict) -> str | None:
     source_runs = report.get("source_runs")
     if not isinstance(source_runs, list):
         return None
-    timestamps: list[str] = [
-        run["latest_posting_at"]
-        for run in source_runs
-        if isinstance(run, dict) and isinstance(run.get("latest_posting_at"), str)
-    ]
-    if not timestamps:
+    latest_timestamp: tuple[datetime, str] | None = None
+    for run in source_runs:
+        if not isinstance(run, dict):
+            continue
+        raw_timestamp = run.get("latest_posting_at")
+        if not isinstance(raw_timestamp, str):
+            continue
+        parsed_timestamp = _parse_timestamp_string(raw_timestamp)
+        if parsed_timestamp is None:
+            continue
+        if latest_timestamp is None or parsed_timestamp > latest_timestamp[0]:
+            latest_timestamp = (parsed_timestamp, raw_timestamp)
+    if latest_timestamp is None:
         return None
-    return max(timestamps)
+    return latest_timestamp[1]
 
 
 def _has_inconsistent_top_level_source_health_flags(report: dict) -> bool:
