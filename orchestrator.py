@@ -230,6 +230,9 @@ def _has_missing_source_run_latest_posting_at(report: dict) -> bool:
 
 
 def _has_inconsistent_top_level_source_health_flags(report: dict) -> bool:
+    source_runs = report.get("source_runs")
+    if source_runs == [] and any(field_name in report for field_name in ("warning", "stale_result", "freshness_unknown")):
+        return True
     if report.get("stale_result") or report.get("freshness_unknown"):
         return True
     if _has_missing_source_run_latest_posting_at(report):

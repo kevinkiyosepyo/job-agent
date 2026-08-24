@@ -318,6 +318,62 @@ def test_main_fails_closed_when_healthy_source_report_omits_source_runs(tmp_path
 
 
 
+def test_main_fails_closed_when_empty_healthy_source_report_claims_aggregate_freshness_metadata(
+    tmp_path, monkeypatch
+):
+    profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
+    source_report_path = tmp_path / "sources-report.json"
+    source_report_path.write_text(
+        json.dumps(
+            {
+                "source_health_status": "healthy",
+                "failures": [],
+                "source_runs": [],
+                "freshness_summary": {
+                    "total_runs": 0,
+                    "healthy_runs": 0,
+                    "stale_runs": 0,
+                    "freshness_unknown_runs": 0,
+                    "error_runs": 0,
+                },
+                "freshness_buckets": {
+                    "healthy": [],
+                    "stale": [],
+                    "freshness_unknown": [],
+                    "error": [],
+                },
+                "warning": "No source runs were collected",
+                "stale_result": False,
+                "freshness_unknown": False,
+            }
+        )
+    )
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    with pytest.raises(SystemExit, match="Invalid source report: inconsistent_source_health"):
+        orchestrator.main(
+            [
+                str(candidates_path),
+                "--profile",
+                str(profile_path),
+                "--output",
+                str(tmp_path / "orchestrator-report.json"),
+                "--queue-db",
+                str(tmp_path / "queue.sqlite3"),
+                "--audit-log",
+                str(tmp_path / "audit.jsonl"),
+                "--source-report",
+                str(source_report_path),
+            ]
+        )
+
+    assert not (tmp_path / "orchestrator-report.json").exists()
+    assert not (tmp_path / "audit.jsonl").exists()
+    assert not (tmp_path / "queue.sqlite3").exists()
+
+
+
 def test_main_fails_closed_when_healthy_source_report_contains_malformed_source_run_entry(tmp_path, monkeypatch):
     profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
     source_report_path = tmp_path / "sources-report.json"
