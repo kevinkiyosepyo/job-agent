@@ -136,16 +136,23 @@ def main(argv: list[str] | None = None) -> int:
 
     jobs: list[dict] = []
     failures: list[dict[str, str]] = []
+    source_runs: list[dict[str, str | int]] = []
     for token in args.greenhouse:
         try:
-            jobs.extend(fetch_greenhouse_jobs(token))
+            token_jobs = fetch_greenhouse_jobs(token)
+            jobs.extend(token_jobs)
+            source_runs.append({"source": "greenhouse", "token": token, "status": "ok", "candidates": len(token_jobs)})
         except Exception as exc:
             failures.append({"source": "greenhouse", "token": token, "error": str(exc)})
+            source_runs.append({"source": "greenhouse", "token": token, "status": "error", "error": str(exc), "candidates": 0})
     for token in args.lever:
         try:
-            jobs.extend(fetch_lever_jobs(token))
+            token_jobs = fetch_lever_jobs(token)
+            jobs.extend(token_jobs)
+            source_runs.append({"source": "lever", "token": token, "status": "ok", "candidates": len(token_jobs)})
         except Exception as exc:
             failures.append({"source": "lever", "token": token, "error": str(exc)})
+            source_runs.append({"source": "lever", "token": token, "status": "error", "error": str(exc), "candidates": 0})
 
     unique_jobs = _dedupe_jobs(jobs)
     output_path.write_text(json.dumps(unique_jobs, indent=2) + "\n")
@@ -155,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
         "lever_tokens": args.lever,
         "candidates": len(unique_jobs),
         "failures": failures,
+        "source_runs": source_runs,
         "output": str(output_path),
     }
     if not failures and not unique_jobs:

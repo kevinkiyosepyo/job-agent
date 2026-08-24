@@ -177,6 +177,20 @@ def test_main_combines_source_tokens_deduplicates_urls_and_writes_candidates_jso
         "lever_tokens": ["lever-co"],
         "candidates": 2,
         "failures": [],
+        "source_runs": [
+            {
+                "source": "greenhouse",
+                "token": "green-co",
+                "status": "ok",
+                "candidates": 1,
+            },
+            {
+                "source": "lever",
+                "token": "lever-co",
+                "status": "ok",
+                "candidates": 2,
+            },
+        ],
         "output": str(output),
     }
 
@@ -248,6 +262,27 @@ def test_main_reports_failed_tokens_without_losing_successful_candidates(tmp_pat
                 "error": "Failed to fetch greenhouse token",
             }
         ],
+        "source_runs": [
+            {
+                "source": "greenhouse",
+                "token": "green-co",
+                "status": "ok",
+                "candidates": 1,
+            },
+            {
+                "source": "greenhouse",
+                "token": "broken-co",
+                "status": "error",
+                "error": "Failed to fetch greenhouse token",
+                "candidates": 0,
+            },
+            {
+                "source": "lever",
+                "token": "lever-co",
+                "status": "ok",
+                "candidates": 1,
+            },
+        ],
         "output": str(output),
     }
 
@@ -280,6 +315,20 @@ def test_main_signals_zero_candidates_when_sources_return_no_internships(tmp_pat
         "lever_tokens": ["lever-co"],
         "candidates": 0,
         "failures": [],
+        "source_runs": [
+            {
+                "source": "greenhouse",
+                "token": "green-co",
+                "status": "ok",
+                "candidates": 0,
+            },
+            {
+                "source": "lever",
+                "token": "lever-co",
+                "status": "ok",
+                "candidates": 0,
+            },
+        ],
         "output": str(output),
         "warning": "Configured source tokens returned zero internship candidates",
         "stale_result": True,
