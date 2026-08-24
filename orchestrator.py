@@ -109,6 +109,41 @@ def _has_inconsistent_freshness_summary(report: dict) -> bool:
     return freshness_summary != expected
 
 
+def _expected_freshness_buckets(report: dict) -> dict[str, list[dict[str, str]]] | None:
+    source_runs = report.get("source_runs")
+    if not isinstance(source_runs, list):
+        return None
+    buckets = {
+        "healthy": [],
+        "stale": [],
+        "freshness_unknown": [],
+        "error": [],
+    }
+    for run in source_runs:
+        if not isinstance(run, dict):
+            continue
+        entry = {"source": run.get("source"), "token": run.get("token")}
+        if run.get("status") == "error":
+            buckets["error"].append(entry)
+        elif run.get("freshness_unknown"):
+            buckets["freshness_unknown"].append(entry)
+        elif run.get("stale_result"):
+            buckets["stale"].append(entry)
+        else:
+            buckets["healthy"].append(entry)
+    return buckets
+
+
+def _has_inconsistent_freshness_buckets(report: dict) -> bool:
+    freshness_buckets = report.get("freshness_buckets")
+    if not isinstance(freshness_buckets, dict):
+        return False
+    expected = _expected_freshness_buckets(report)
+    if expected is None:
+        return False
+    return freshness_buckets != expected
+
+
 def load_source_report(source_report_path: Path | None) -> dict | None:
     if source_report_path is None:
         return None
@@ -129,6 +164,7 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
         report.get("failures")
         or _has_non_ok_source_runs(report)
         or _has_inconsistent_freshness_summary(report)
+        or _has_inconsistent_freshness_buckets(report)
     ):
         raise SystemExit("Invalid source report: inconsistent_source_health")
     if status != "healthy":
