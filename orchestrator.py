@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+from datetime import datetime
 from dataclasses import asdict
 from pathlib import Path
 
@@ -141,14 +142,27 @@ def _has_invalid_failures_schema(report: dict) -> bool:
     return False
 
 
+def _is_valid_timestamp_string(value: str) -> bool:
+    candidate = value.strip()
+    if not candidate:
+        return False
+    try:
+        datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
+
+
 def _has_invalid_top_level_source_health_flags_schema(report: dict) -> bool:
     for field_name in ("stale_result", "freshness_unknown"):
         if field_name in report and not isinstance(report[field_name], bool):
             return True
     if "warning" in report and not isinstance(report["warning"], str):
         return True
-    if "latest_posting_at" in report and not isinstance(report["latest_posting_at"], str):
-        return True
+    if "latest_posting_at" in report:
+        latest_posting_at = report["latest_posting_at"]
+        if not isinstance(latest_posting_at, str) or not _is_valid_timestamp_string(latest_posting_at):
+            return True
     return False
 
 
