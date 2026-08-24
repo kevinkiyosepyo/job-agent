@@ -184,12 +184,16 @@ def test_main_combines_source_tokens_deduplicates_urls_and_writes_candidates_jso
                 "token": "green-co",
                 "status": "ok",
                 "candidates": 1,
+                "freshness_unknown": True,
+                "warning": "No posting timestamps available; freshness unknown",
             },
             {
                 "source": "lever",
                 "token": "lever-co",
                 "status": "ok",
                 "candidates": 2,
+                "freshness_unknown": True,
+                "warning": "No posting timestamps available; freshness unknown",
             },
         ],
         "output": str(output),
@@ -269,6 +273,8 @@ def test_main_reports_failed_tokens_without_losing_successful_candidates(tmp_pat
                 "token": "green-co",
                 "status": "ok",
                 "candidates": 1,
+                "freshness_unknown": True,
+                "warning": "No posting timestamps available; freshness unknown",
             },
             {
                 "source": "greenhouse",
@@ -282,6 +288,8 @@ def test_main_reports_failed_tokens_without_losing_successful_candidates(tmp_pat
                 "token": "lever-co",
                 "status": "ok",
                 "candidates": 1,
+                "freshness_unknown": True,
+                "warning": "No posting timestamps available; freshness unknown",
             },
         ],
         "output": str(output),
@@ -462,6 +470,50 @@ def test_main_reports_per_token_freshness_when_one_source_is_stale(tmp_path, mon
         ],
         "output": str(output),
         "latest_posting_at": "2026-08-23T00:00:00Z",
+    }
+
+
+
+def test_main_marks_source_run_when_posting_timestamps_are_missing(tmp_path, monkeypatch, capsys):
+    output = tmp_path / "candidates.json"
+
+    def fake_greenhouse(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        assert token == "green-co"
+        return [
+            {
+                "company": "Green Co",
+                "role": "Software Engineer Intern",
+                "url": "https://job-boards.greenhouse.io/green/jobs/1",
+                "location": "Remote",
+                "source": "Greenhouse public API",
+            }
+        ]
+
+    monkeypatch.setattr(sources, "fetch_greenhouse_jobs", fake_greenhouse)
+    monkeypatch.setattr(sources, "fetch_lever_jobs", lambda *args, **kwargs: [])
+
+    exit_code = sources.main([
+        "--greenhouse", "green-co",
+        "--output", str(output),
+    ])
+
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "greenhouse_tokens": ["green-co"],
+        "lever_tokens": [],
+        "candidates": 1,
+        "failures": [],
+        "source_runs": [
+            {
+                "source": "greenhouse",
+                "token": "green-co",
+                "status": "ok",
+                "candidates": 1,
+                "freshness_unknown": True,
+                "warning": "No posting timestamps available; freshness unknown",
+            }
+        ],
+        "output": str(output),
     }
 
 

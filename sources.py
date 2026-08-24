@@ -95,6 +95,12 @@ def _stale_warning(latest_posting_at: str | None) -> str | None:
     return None
 
 
+def _missing_timestamp_warning(jobs: list[dict]) -> str | None:
+    if jobs and _latest_posting_at(jobs) is None:
+        return "No posting timestamps available; freshness unknown"
+    return None
+
+
 def _load_json(url: str, *, opener: OpenUrl, timeout: float = DEFAULT_TIMEOUT, attempts: int = DEFAULT_ATTEMPTS) -> Any:
     last_error: Exception | None = None
     for _ in range(max(1, attempts)):
@@ -191,6 +197,11 @@ def main(argv: list[str] | None = None) -> int:
                 if warning is not None:
                     run["warning"] = warning
                     run["stale_result"] = True
+            else:
+                warning = _missing_timestamp_warning(token_jobs)
+                if warning is not None:
+                    run["warning"] = warning
+                    run["freshness_unknown"] = True
             source_runs.append(run)
         except Exception as exc:
             failures.append({"source": "greenhouse", "token": token, "error": str(exc)})
@@ -207,6 +218,11 @@ def main(argv: list[str] | None = None) -> int:
                 if warning is not None:
                     run["warning"] = warning
                     run["stale_result"] = True
+            else:
+                warning = _missing_timestamp_warning(token_jobs)
+                if warning is not None:
+                    run["warning"] = warning
+                    run["freshness_unknown"] = True
             source_runs.append(run)
         except Exception as exc:
             failures.append({"source": "lever", "token": token, "error": str(exc)})
