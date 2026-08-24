@@ -1030,3 +1030,64 @@ def test_main_fails_closed_when_healthy_source_report_sets_top_level_stale_resul
     assert not (tmp_path / "orchestrator-report.json").exists()
     assert not (tmp_path / "audit.jsonl").exists()
     assert not (tmp_path / "queue.sqlite3").exists()
+
+
+@pytest.mark.parametrize(
+    ("field_name", "field_value"),
+    [("stale_result", "yes"), ("freshness_unknown", "yes")],
+)
+def test_main_fails_closed_when_healthy_source_report_has_non_boolean_top_level_freshness_flag(
+    tmp_path, monkeypatch, field_name, field_value
+):
+    profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
+    source_report_path = tmp_path / "sources-report.json"
+    report = {
+        "source_health_status": "healthy",
+        "failures": [],
+        "source_runs": [
+            {
+                "source": "greenhouse",
+                "token": "fresh-co",
+                "status": "ok",
+                "candidates": 1,
+            }
+        ],
+        "freshness_summary": {
+            "total_runs": 1,
+            "healthy_runs": 1,
+            "stale_runs": 0,
+            "freshness_unknown_runs": 0,
+            "error_runs": 0,
+        },
+        "freshness_buckets": {
+            "healthy": [{"source": "greenhouse", "token": "fresh-co"}],
+            "stale": [],
+            "freshness_unknown": [],
+            "error": [],
+        },
+    }
+    report[field_name] = field_value
+    source_report_path.write_text(json.dumps(report))
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    with pytest.raises(SystemExit, match="Invalid source report: invalid_schema"):
+        orchestrator.main(
+            [
+                str(candidates_path),
+                "--profile",
+                str(profile_path),
+                "--output",
+                str(tmp_path / "orchestrator-report.json"),
+                "--queue-db",
+                str(tmp_path / "queue.sqlite3"),
+                "--audit-log",
+                str(tmp_path / "audit.jsonl"),
+                "--source-report",
+                str(source_report_path),
+            ]
+        )
+
+    assert not (tmp_path / "orchestrator-report.json").exists()
+    assert not (tmp_path / "audit.jsonl").exists()
+    assert not (tmp_path / "queue.sqlite3").exists()
