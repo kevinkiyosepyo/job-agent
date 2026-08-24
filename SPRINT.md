@@ -1,4 +1,4 @@
-# Four-Hour Autonomous Build Sprint
+# Job Agent Build Backlog
 
 Started: 2026-08-23 11:34 PDT
 Ends: approximately 2026-08-23 15:34 PDT
@@ -12,20 +12,20 @@ Ends: approximately 2026-08-23 15:34 PDT
 - Greenhouse and Workday fixture workflows verified without submission.
 - Daily production job is enabled for 08:00 PDT.
 
-## Build queue
+## Next build queue
 
-1. ✅ Add a persistent SQLite application queue with idempotent state transitions and tests.
-2. ✅ Add structured JSONL audit logging with redaction and tests.
-3. ✅ Add a top-level CLI orchestrator for scan → classify → plan → report in dry-run mode.
-4. ✅ Add source adapters for public Greenhouse and Lever APIs with bounded retries and tests.
-5. ✅ Add eligibility/location/season filtering with explicit rejection reasons.
-6. ✅ Add concurrency locking so cron/manual runs cannot duplicate work.
-7. ✅ Add robust confirmation-evidence validation and fixtures.
-8. ✅ Add browser/CDP health checks and recoverable error classification.
-9. ✅ Add a safe tracker integration command that always cleans test rows.
-10. ✅ Add an offline setup diagnostics CLI and README guidance for local readiness checks.
-11. ✅ Expand operational runbooks and security review.
-12. ✅ Add a deterministic public-source collection CLI for Greenhouse/Lever tokens.
+1. Fix year-only 2027 timeline eligibility so active roles without an explicit season are accepted; add the American Express regression.
+2. Build a structured question-answer engine that uses profile facts, the Kevin Bible Google Doc, source precedence, company-specific answers, and fail-closed unknowns.
+3. Build an executable Lever handler with field inventory, file upload, read-back verification, manual-gate detection, confirmation validation, and fixtures.
+4. Build an Oracle Recruiting handler with real combobox option selection, country validation, salary dropdown handling, issue navigation, and fixtures.
+5. Extend the SQLite queue worker with leases, attempt counts, retry backoff, pending-question/CAPTCHA/approval states, terminal failures, and stale-lease recovery.
+6. Wire deterministic source collection → health report → scanner → orchestrator → queue into one production-safe command.
+7. Add Discord job-ID-bound approval/reject/retry/skip controls without changing the postponed token-rotation policy.
+8. Add real non-submitting preflight tests against live Greenhouse, Workday, Lever, and Oracle forms.
+9. Add sanitized submission-evidence artifacts and tracker/Discord reconciliation.
+10. Run a production-shaped dry run proving idempotency, no duplicate queueing, no unsupported submissions, and no external side effects.
+
+Profile confirmations applied 2026-08-24: permanent Fairfax address/current San Diego, application license state CA, outside-business answer No, exact Qualcomm/HDSI/MyEMSPath/Handshake dates with day 1 policy, and Kevin Bible source precedence. HNRC exact start month remains unknown and must fail closed if a form requires it.
 
 ## Sprint log
 
