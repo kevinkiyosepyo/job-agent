@@ -85,6 +85,8 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     status = report["source_health_status"]
     if not isinstance(status, str) or status not in VALID_SOURCE_HEALTH_STATUSES:
         raise SystemExit("Invalid source report: invalid_source_health_status")
+    if status == "healthy" and report.get("failures"):
+        raise SystemExit("Invalid source report: inconsistent_source_health")
     if status != "healthy":
         raise SystemExit(f"Source health check failed: {status}")
     return report

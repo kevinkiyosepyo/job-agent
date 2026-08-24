@@ -31,7 +31,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 
 `orchestrator.py` runs scanner + pipeline in `dry_run` mode, persists supported jobs into the local SQLite queue as `discovered`, and appends a redacted audit event. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
 
-When `--source-report` is supplied, `orchestrator.py` consumes the JSON sidecar written by `sources.py --report` and fails closed before any queue, audit, or output side effects unless `source_health_status` is exactly `healthy`. Malformed sidecars are rejected with stable reasons: `Invalid source report: unreadable`, `Invalid source report: invalid_json`, `Invalid source report: invalid_schema`, `Invalid source report: missing_source_health_status`, or `Invalid source report: invalid_source_health_status`.
+When `--source-report` is supplied, `orchestrator.py` consumes the JSON sidecar written by `sources.py --report` and fails closed before any queue, audit, or output side effects unless `source_health_status` is exactly `healthy`. Malformed sidecars are rejected with stable reasons: `Invalid source report: unreadable`, `Invalid source report: invalid_json`, `Invalid source report: invalid_schema`, `Invalid source report: missing_source_health_status`, `Invalid source report: invalid_source_health_status`, or `Invalid source report: inconsistent_source_health` when the payload claims `healthy` while still reporting failures.
 
 ## Safe source collection
 
