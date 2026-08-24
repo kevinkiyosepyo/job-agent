@@ -171,6 +171,31 @@ def _has_invalid_top_level_source_health_flags_schema(report: dict) -> bool:
     return False
 
 
+def _has_mixed_timestamp_awareness(report: dict) -> bool:
+    parsed_timestamps: list[datetime] = []
+    top_level_timestamp = report.get("latest_posting_at")
+    if isinstance(top_level_timestamp, str):
+        parsed_timestamp = _parse_timestamp_string(top_level_timestamp)
+        if parsed_timestamp is not None:
+            parsed_timestamps.append(parsed_timestamp)
+
+    source_runs = report.get("source_runs")
+    if isinstance(source_runs, list):
+        for run in source_runs:
+            if not isinstance(run, dict):
+                continue
+            raw_timestamp = run.get("latest_posting_at")
+            if not isinstance(raw_timestamp, str):
+                continue
+            parsed_timestamp = _parse_timestamp_string(raw_timestamp)
+            if parsed_timestamp is not None:
+                parsed_timestamps.append(parsed_timestamp)
+
+    has_naive = any(timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None for timestamp in parsed_timestamps)
+    has_aware = any(timestamp.tzinfo is not None and timestamp.tzinfo.utcoffset(timestamp) is not None for timestamp in parsed_timestamps)
+    return has_naive and has_aware
+
+
 def _expected_latest_posting_at(report: dict) -> str | None:
     source_runs = report.get("source_runs")
     if not isinstance(source_runs, list):
@@ -327,6 +352,8 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     if status == "healthy" and _has_invalid_freshness_buckets_schema(report):
         raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and _has_invalid_top_level_source_health_flags_schema(report):
+        raise SystemExit("Invalid source report: invalid_schema")
+    if status == "healthy" and _has_mixed_timestamp_awareness(report):
         raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and (
         _has_inconsistent_top_level_source_health_flags(report)
