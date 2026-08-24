@@ -101,6 +101,12 @@ def _missing_timestamp_warning(jobs: list[dict]) -> str | None:
     return None
 
 
+def _aggregate_missing_timestamp_warning(source_runs: list[dict[str, Any]]) -> str | None:
+    if any(run.get("freshness_unknown") for run in source_runs):
+        return "One or more configured source runs succeeded without posting timestamps; freshness unknown"
+    return None
+
+
 def _load_json(url: str, *, opener: OpenUrl, timeout: float = DEFAULT_TIMEOUT, attempts: int = DEFAULT_ATTEMPTS) -> Any:
     last_error: Exception | None = None
     for _ in range(max(1, attempts)):
@@ -245,11 +251,17 @@ def main(argv: list[str] | None = None) -> int:
     if not failures and not unique_jobs:
         result["warning"] = "Configured source tokens returned zero internship candidates"
         result["stale_result"] = True
-    elif not failures and latest_posting_at is not None:
-        warning = _stale_warning(latest_posting_at)
+    elif not failures:
+        warning = _aggregate_missing_timestamp_warning(source_runs)
         if warning is not None:
+            result["freshness_unknown"] = True
             result["warning"] = warning
             result["stale_result"] = True
+        elif latest_posting_at is not None:
+            warning = _stale_warning(latest_posting_at)
+            if warning is not None:
+                result["warning"] = warning
+                result["stale_result"] = True
 
     print(json.dumps(result))
     if failures:

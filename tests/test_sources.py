@@ -156,7 +156,7 @@ def test_main_combines_source_tokens_deduplicates_urls_and_writes_candidates_jso
         "--output", str(output),
     ])
 
-    assert exit_code == 0
+    assert exit_code == 3
     assert json.loads(output.read_text()) == [
         {
             "company": "Green Co",
@@ -197,6 +197,9 @@ def test_main_combines_source_tokens_deduplicates_urls_and_writes_candidates_jso
             },
         ],
         "output": str(output),
+        "freshness_unknown": True,
+        "warning": "One or more configured source runs succeeded without posting timestamps; freshness unknown",
+        "stale_result": True,
     }
 
 
@@ -497,7 +500,7 @@ def test_main_marks_source_run_when_posting_timestamps_are_missing(tmp_path, mon
         "--output", str(output),
     ])
 
-    assert exit_code == 0
+    assert exit_code == 3
     assert json.loads(capsys.readouterr().out) == {
         "greenhouse_tokens": ["green-co"],
         "lever_tokens": [],
@@ -514,6 +517,56 @@ def test_main_marks_source_run_when_posting_timestamps_are_missing(tmp_path, mon
             }
         ],
         "output": str(output),
+        "freshness_unknown": True,
+        "warning": "One or more configured source runs succeeded without posting timestamps; freshness unknown",
+        "stale_result": True,
+    }
+
+
+
+def test_main_fails_closed_when_any_source_run_is_missing_timestamps(tmp_path, monkeypatch, capsys):
+    output = tmp_path / "candidates.json"
+
+    def fake_greenhouse(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        assert token == "green-co"
+        return [
+            {
+                "company": "Green Co",
+                "role": "Software Engineer Intern",
+                "url": "https://job-boards.greenhouse.io/green/jobs/1",
+                "location": "Remote",
+                "source": "Greenhouse public API",
+            }
+        ]
+
+    monkeypatch.setattr(sources, "fetch_greenhouse_jobs", fake_greenhouse)
+    monkeypatch.setattr(sources, "fetch_lever_jobs", lambda *args, **kwargs: [])
+
+    exit_code = sources.main([
+        "--greenhouse", "green-co",
+        "--output", str(output),
+    ])
+
+    assert exit_code == 3
+    assert json.loads(capsys.readouterr().out) == {
+        "greenhouse_tokens": ["green-co"],
+        "lever_tokens": [],
+        "candidates": 1,
+        "failures": [],
+        "source_runs": [
+            {
+                "source": "greenhouse",
+                "token": "green-co",
+                "status": "ok",
+                "candidates": 1,
+                "freshness_unknown": True,
+                "warning": "No posting timestamps available; freshness unknown",
+            }
+        ],
+        "output": str(output),
+        "freshness_unknown": True,
+        "warning": "One or more configured source runs succeeded without posting timestamps; freshness unknown",
+        "stale_result": True,
     }
 
 
