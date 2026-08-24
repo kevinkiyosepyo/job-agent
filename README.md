@@ -55,6 +55,10 @@ python tracker.py integration-check --tag local-smoke
 
 This command snapshots the current tracking rows, appends one clearly-marked test row, verifies the append via fresh read-back, and then rewrites the original rows with a blank tail row so the smoke-test data is cleaned up.
 
+## Operations runbook
+
+See `OPERATIONS.md` for the standard operator workflow, incident triage, security review checklist, and release checklist.
+
 ## Privacy
 
 Personal profiles, resumes, OAuth credentials, tracker snapshots, and generated runtime artifacts are intentionally excluded from version control.
