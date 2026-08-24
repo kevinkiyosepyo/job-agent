@@ -119,10 +119,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     jobs: list[dict] = []
+    failures: list[dict[str, str]] = []
     for token in args.greenhouse:
-        jobs.extend(fetch_greenhouse_jobs(token))
+        try:
+            jobs.extend(fetch_greenhouse_jobs(token))
+        except Exception as exc:
+            failures.append({"source": "greenhouse", "token": token, "error": str(exc)})
     for token in args.lever:
-        jobs.extend(fetch_lever_jobs(token))
+        try:
+            jobs.extend(fetch_lever_jobs(token))
+        except Exception as exc:
+            failures.append({"source": "lever", "token": token, "error": str(exc)})
 
     unique_jobs = _dedupe_jobs(jobs)
     output_path = Path(args.output)
@@ -133,11 +140,12 @@ def main(argv: list[str] | None = None) -> int:
                 "greenhouse_tokens": args.greenhouse,
                 "lever_tokens": args.lever,
                 "candidates": len(unique_jobs),
+                "failures": failures,
                 "output": str(output_path),
             }
         )
     )
-    return 0
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":

@@ -176,5 +176,77 @@ def test_main_combines_source_tokens_deduplicates_urls_and_writes_candidates_jso
         "greenhouse_tokens": ["green-co"],
         "lever_tokens": ["lever-co"],
         "candidates": 2,
+        "failures": [],
+        "output": str(output),
+    }
+
+
+
+def test_main_reports_failed_tokens_without_losing_successful_candidates(tmp_path, monkeypatch, capsys):
+    output = tmp_path / "candidates.json"
+
+    def fake_greenhouse(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        if token == "broken-co":
+            raise RuntimeError("Failed to fetch greenhouse token")
+        return [
+            {
+                "company": "Green Co",
+                "role": "Software Engineer Intern",
+                "url": "https://job-boards.greenhouse.io/green/jobs/1?utm_source=test",
+                "location": "Remote",
+                "source": "Greenhouse public API",
+            }
+        ]
+
+    def fake_lever(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        assert token == "lever-co"
+        return [
+            {
+                "company": "Lever Co",
+                "role": "Data Scientist Intern",
+                "url": "https://jobs.lever.co/lever/2",
+                "location": "San Diego, CA",
+                "source": "Lever public API",
+            }
+        ]
+
+    monkeypatch.setattr(sources, "fetch_greenhouse_jobs", fake_greenhouse)
+    monkeypatch.setattr(sources, "fetch_lever_jobs", fake_lever)
+
+    exit_code = sources.main([
+        "--greenhouse", "green-co",
+        "--greenhouse", "broken-co",
+        "--lever", "lever-co",
+        "--output", str(output),
+    ])
+
+    assert exit_code == 1
+    assert json.loads(output.read_text()) == [
+        {
+            "company": "Green Co",
+            "role": "Software Engineer Intern",
+            "url": "https://job-boards.greenhouse.io/green/jobs/1",
+            "location": "Remote",
+            "source": "Greenhouse public API",
+        },
+        {
+            "company": "Lever Co",
+            "role": "Data Scientist Intern",
+            "url": "https://jobs.lever.co/lever/2",
+            "location": "San Diego, CA",
+            "source": "Lever public API",
+        },
+    ]
+    assert json.loads(capsys.readouterr().out) == {
+        "greenhouse_tokens": ["green-co", "broken-co"],
+        "lever_tokens": ["lever-co"],
+        "candidates": 2,
+        "failures": [
+            {
+                "source": "greenhouse",
+                "token": "broken-co",
+                "error": "Failed to fetch greenhouse token",
+            }
+        ],
         "output": str(output),
     }
