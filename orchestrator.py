@@ -83,6 +83,32 @@ def _has_non_ok_source_runs(report: dict) -> bool:
     return False
 
 
+def _expected_freshness_summary(report: dict) -> dict[str, int] | None:
+    source_runs = report.get("source_runs")
+    if not isinstance(source_runs, list):
+        return None
+    stale_runs = sum(1 for run in source_runs if isinstance(run, dict) and run.get("stale_result"))
+    freshness_unknown_runs = sum(1 for run in source_runs if isinstance(run, dict) and run.get("freshness_unknown"))
+    error_runs = sum(1 for run in source_runs if isinstance(run, dict) and run.get("status") == "error")
+    return {
+        "total_runs": len(source_runs),
+        "healthy_runs": len(source_runs) - stale_runs - freshness_unknown_runs - error_runs,
+        "stale_runs": stale_runs,
+        "freshness_unknown_runs": freshness_unknown_runs,
+        "error_runs": error_runs,
+    }
+
+
+def _has_inconsistent_freshness_summary(report: dict) -> bool:
+    freshness_summary = report.get("freshness_summary")
+    if not isinstance(freshness_summary, dict):
+        return False
+    expected = _expected_freshness_summary(report)
+    if expected is None:
+        return False
+    return freshness_summary != expected
+
+
 def load_source_report(source_report_path: Path | None) -> dict | None:
     if source_report_path is None:
         return None
@@ -99,7 +125,11 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
     status = report["source_health_status"]
     if not isinstance(status, str) or status not in VALID_SOURCE_HEALTH_STATUSES:
         raise SystemExit("Invalid source report: invalid_source_health_status")
-    if status == "healthy" and (report.get("failures") or _has_non_ok_source_runs(report)):
+    if status == "healthy" and (
+        report.get("failures")
+        or _has_non_ok_source_runs(report)
+        or _has_inconsistent_freshness_summary(report)
+    ):
         raise SystemExit("Invalid source report: inconsistent_source_health")
     if status != "healthy":
         raise SystemExit(f"Source health check failed: {status}")
