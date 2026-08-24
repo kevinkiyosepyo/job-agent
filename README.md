@@ -37,7 +37,36 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 python sources.py --greenhouse example --lever example --output verified-candidates.json
 ```
 
-This writes a deterministic JSON array of internship candidates gathered from the supplied public board tokens, normalizes tracking parameters out of URLs, and deduplicates repeated postings across the configured sources. Stdout JSON includes a per-token `source_runs` array so automation can see which configured boards returned results, which returned zero, which errored, which individual tokens look stale based on their own newest posting timestamp, and which successful tokens are missing timestamps entirely via `freshness_unknown: true`. It also includes an aggregate `freshness_summary` object with count fields (`total_runs`, `healthy_runs`, `stale_runs`, `freshness_unknown_runs`, `error_runs`) plus a `freshness_buckets` object listing the exact `{source, token}` entries in each health bucket (`healthy`, `stale`, `freshness_unknown`, `error`) so downstream orchestration can branch on source health without scanning `source_runs`. If any configured source succeeds without timestamps, the top-level stdout JSON now also fails closed with `freshness_unknown: true`, `stale_result: true`, and an aggregate warning so downstream orchestration does not mistake freshness-blind snapshots for healthy data. You must pass at least one `--greenhouse` or `--lever` token; otherwise the CLI exits `2`, prints a machine-readable configuration error, and does not create a misleading empty artifact. If one token fails, the CLI still writes the successfully collected candidates, reports a `failures` array in stdout JSON, and exits with code `1` so partial collection cannot be mistaken for a clean run. If every configured token succeeds but yields zero internship postings, the CLI writes the empty JSON artifact, emits `stale_result: true` plus a warning in stdout JSON, and exits `3` so automation can distinguish an empty source response from a healthy no-op. Non-empty snapshots now also publish `latest_posting_at`; if the newest posting timestamp is older than 30 days, stdout is marked with `stale_result: true`, includes a freshness warning, and exits `3` so automation can detect stale but non-empty public board snapshots.
+This writes a deterministic JSON array of internship candidates gathered from
+the supplied public board tokens, normalizes tracking parameters out of URLs,
+and deduplicates repeated postings across the configured sources.
+
+Stdout JSON includes:
+
+- `source_runs`: per-token results showing which configured boards returned
+  candidates, returned zero, errored, looked stale by posting timestamp, or
+  succeeded without timestamps (`freshness_unknown: true`).
+- `freshness_summary`: aggregate counts for `healthy_runs`, `stale_runs`,
+  `freshness_unknown_runs`, and `error_runs`.
+- `freshness_buckets`: exact `{source, token}` entries in each health bucket
+  (`healthy`, `stale`, `freshness_unknown`, `error`).
+- `source_health_status`: one top-level status of `healthy`, `partial_error`,
+  or `stale_or_unknown` so callers do not need to re-derive precedence rules.
+
+Failure signaling is fail-closed:
+
+- missing timestamps on any successful configured source set top-level
+  `freshness_unknown: true`, `stale_result: true`, and an aggregate warning;
+- at least one `--greenhouse` or `--lever` token is required or the CLI exits
+  `2` with a machine-readable configuration error and no artifact;
+- if one token fails, successful candidates are still written, stdout reports a
+  `failures` array, and the CLI exits `1`;
+- if all configured tokens succeed but yield zero internship candidates, the
+  empty artifact is still written, stdout is marked `stale_result: true`, and
+  the CLI exits `3`;
+- if the newest posting timestamp in a non-empty snapshot is older than 30
+  days, stdout is marked `stale_result: true`, includes a freshness warning,
+  and exits `3`.
 
 ## Browser/CDP health check
 

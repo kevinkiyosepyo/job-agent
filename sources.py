@@ -143,6 +143,16 @@ def _freshness_buckets(source_runs: list[dict[str, Any]]) -> dict[str, list[dict
     return buckets
 
 
+def _source_health_status(*, failures: list[dict[str, Any]], source_runs: list[dict[str, Any]], candidate_count: int) -> str:
+    if failures:
+        return "partial_error"
+    if candidate_count == 0:
+        return "stale_or_unknown"
+    if any(run.get("stale_result") or run.get("freshness_unknown") for run in source_runs):
+        return "stale_or_unknown"
+    return "healthy"
+
+
 def _load_json(url: str, *, opener: OpenUrl, timeout: float = DEFAULT_TIMEOUT, attempts: int = DEFAULT_ATTEMPTS) -> Any:
     last_error: Exception | None = None
     for _ in range(max(1, attempts)):
@@ -217,6 +227,7 @@ def main(argv: list[str] | None = None) -> int:
                     "lever_tokens": args.lever,
                     "candidates": 0,
                     "failures": [],
+                    "source_health_status": "partial_error",
                     "freshness_summary": _freshness_summary([]),
                     "freshness_buckets": _freshness_buckets([]),
                     "output": str(output_path),
@@ -282,6 +293,7 @@ def main(argv: list[str] | None = None) -> int:
         "candidates": len(unique_jobs),
         "failures": failures,
         "source_runs": source_runs,
+        "source_health_status": _source_health_status(failures=failures, source_runs=source_runs, candidate_count=len(unique_jobs)),
         "freshness_summary": _freshness_summary(source_runs),
         "freshness_buckets": _freshness_buckets(source_runs),
         "output": str(output_path),
