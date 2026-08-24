@@ -318,6 +318,65 @@ def test_main_fails_closed_when_healthy_source_report_omits_source_runs(tmp_path
 
 
 
+@pytest.mark.parametrize("missing_key", ["freshness_summary", "freshness_buckets"])
+def test_main_fails_closed_when_healthy_source_report_omits_required_freshness_artifact(
+    tmp_path, monkeypatch, missing_key
+):
+    profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
+    source_report_path = tmp_path / "sources-report.json"
+    report = {
+        "source_health_status": "healthy",
+        "failures": [],
+        "source_runs": [
+            {
+                "source": "greenhouse",
+                "token": "fresh-co",
+                "status": "ok",
+                "candidates": 1,
+            }
+        ],
+        "freshness_summary": {
+            "total_runs": 1,
+            "healthy_runs": 1,
+            "stale_runs": 0,
+            "freshness_unknown_runs": 0,
+            "error_runs": 0,
+        },
+        "freshness_buckets": {
+            "healthy": [{"source": "greenhouse", "token": "fresh-co"}],
+            "stale": [],
+            "freshness_unknown": [],
+            "error": [],
+        },
+    }
+    report.pop(missing_key)
+    source_report_path.write_text(json.dumps(report))
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+
+    with pytest.raises(SystemExit, match="Invalid source report: invalid_schema"):
+        orchestrator.main(
+            [
+                str(candidates_path),
+                "--profile",
+                str(profile_path),
+                "--output",
+                str(tmp_path / "orchestrator-report.json"),
+                "--queue-db",
+                str(tmp_path / "queue.sqlite3"),
+                "--audit-log",
+                str(tmp_path / "audit.jsonl"),
+                "--source-report",
+                str(source_report_path),
+            ]
+        )
+
+    assert not (tmp_path / "orchestrator-report.json").exists()
+    assert not (tmp_path / "audit.jsonl").exists()
+    assert not (tmp_path / "queue.sqlite3").exists()
+
+
+
 def test_main_fails_closed_with_stable_reason_when_source_report_path_is_missing(tmp_path, monkeypatch):
     profile_path, candidates_path = _write_valid_profile_and_candidates(tmp_path)
     source_report_path = tmp_path / "missing-sources-report.json"
@@ -395,6 +454,19 @@ def test_main_fails_closed_when_healthy_source_report_contains_failures(tmp_path
                         "candidates": 1,
                     }
                 ],
+                "freshness_summary": {
+                    "total_runs": 1,
+                    "healthy_runs": 1,
+                    "stale_runs": 0,
+                    "freshness_unknown_runs": 0,
+                    "error_runs": 0,
+                },
+                "freshness_buckets": {
+                    "healthy": [{"source": "greenhouse", "token": "green-co"}],
+                    "stale": [],
+                    "freshness_unknown": [],
+                    "error": [],
+                },
             }
         )
     )
@@ -442,6 +514,19 @@ def test_main_fails_closed_when_healthy_source_report_contains_non_ok_source_run
                         "warning": "Newest posting timestamp is older than 30 days",
                     }
                 ],
+                "freshness_summary": {
+                    "total_runs": 1,
+                    "healthy_runs": 0,
+                    "stale_runs": 1,
+                    "freshness_unknown_runs": 0,
+                    "error_runs": 0,
+                },
+                "freshness_buckets": {
+                    "healthy": [],
+                    "stale": [{"source": "greenhouse", "token": "stale-co"}],
+                    "freshness_unknown": [],
+                    "error": [],
+                },
             }
         )
     )
@@ -494,6 +579,12 @@ def test_main_fails_closed_when_healthy_source_report_has_contradictory_freshnes
                     "freshness_unknown_runs": 0,
                     "error_runs": 0,
                 },
+                "freshness_buckets": {
+                    "healthy": [{"source": "greenhouse", "token": "fresh-co"}],
+                    "stale": [],
+                    "freshness_unknown": [],
+                    "error": [],
+                },
             }
         )
     )
@@ -543,6 +634,13 @@ def test_main_fails_closed_when_healthy_source_report_has_contradictory_freshnes
                     "stale": [{"source": "greenhouse", "token": "fresh-co"}],
                     "freshness_unknown": [],
                     "error": [],
+                },
+                "freshness_summary": {
+                    "total_runs": 1,
+                    "healthy_runs": 1,
+                    "stale_runs": 0,
+                    "freshness_unknown_runs": 0,
+                    "error_runs": 0,
                 },
             }
         )

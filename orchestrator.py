@@ -177,6 +177,10 @@ def load_source_report(source_report_path: Path | None) -> dict | None:
         raise SystemExit("Invalid source report: invalid_source_health_status")
     if status == "healthy" and not isinstance(report.get("source_runs"), list):
         raise SystemExit("Invalid source report: invalid_schema")
+    if status == "healthy" and not isinstance(report.get("freshness_summary"), dict):
+        raise SystemExit("Invalid source report: invalid_schema")
+    if status == "healthy" and not isinstance(report.get("freshness_buckets"), dict):
+        raise SystemExit("Invalid source report: invalid_schema")
     if status == "healthy" and (
         report.get("failures")
         or _has_non_ok_source_runs(report)
