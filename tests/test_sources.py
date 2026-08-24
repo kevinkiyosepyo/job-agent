@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -332,6 +333,63 @@ def test_main_signals_zero_candidates_when_sources_return_no_internships(tmp_pat
         "output": str(output),
         "warning": "Configured source tokens returned zero internship candidates",
         "stale_result": True,
+    }
+
+
+
+def test_main_signals_stale_non_empty_results_when_newest_posting_is_old(tmp_path, monkeypatch, capsys):
+    output = tmp_path / "candidates.json"
+
+    def fake_greenhouse(token: str, *, opener=sources._default_open, attempts=sources.DEFAULT_ATTEMPTS):
+        assert token == "green-co"
+        return [
+            {
+                "company": "Green Co",
+                "role": "Software Engineer Intern",
+                "url": "https://job-boards.greenhouse.io/green/jobs/1",
+                "location": "Remote",
+                "source": "Greenhouse public API",
+                "updated_at": "2026-06-01T00:00:00Z",
+            }
+        ]
+
+    monkeypatch.setattr(sources, "fetch_greenhouse_jobs", fake_greenhouse)
+    monkeypatch.setattr(sources, "fetch_lever_jobs", lambda *args, **kwargs: [])
+    monkeypatch.setattr(sources, "_utcnow", lambda: datetime(2026, 8, 23, tzinfo=timezone.utc), raising=False)
+
+    exit_code = sources.main([
+        "--greenhouse", "green-co",
+        "--output", str(output),
+    ])
+
+    assert exit_code == 3
+    assert json.loads(output.read_text()) == [
+        {
+            "company": "Green Co",
+            "role": "Software Engineer Intern",
+            "url": "https://job-boards.greenhouse.io/green/jobs/1",
+            "location": "Remote",
+            "source": "Greenhouse public API",
+            "updated_at": "2026-06-01T00:00:00Z",
+        }
+    ]
+    assert json.loads(capsys.readouterr().out) == {
+        "greenhouse_tokens": ["green-co"],
+        "lever_tokens": [],
+        "candidates": 1,
+        "failures": [],
+        "source_runs": [
+            {
+                "source": "greenhouse",
+                "token": "green-co",
+                "status": "ok",
+                "candidates": 1,
+            }
+        ],
+        "output": str(output),
+        "warning": "Newest posting timestamp is older than 30 days",
+        "stale_result": True,
+        "latest_posting_at": "2026-06-01T00:00:00Z",
     }
 
 

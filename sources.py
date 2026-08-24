@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Protocol
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -12,6 +13,7 @@ from urllib.request import urlopen
 
 DEFAULT_TIMEOUT = 15.0
 DEFAULT_ATTEMPTS = 3
+STALE_POSTING_DAYS = 30
 
 
 class ResponseLike(Protocol):
@@ -51,6 +53,36 @@ def _dedupe_jobs(jobs: list[dict]) -> list[dict]:
         seen.add(normalized_url)
         unique.append({**job, "url": normalized_url})
     return unique
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_timestamp(value: Any) -> datetime | None:
+    if isinstance(value, str):
+        candidate = value.strip()
+        if not candidate:
+            return None
+        try:
+            return datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
+    return None
+
+
+def _latest_posting_at(jobs: list[dict]) -> str | None:
+    timestamps = [
+        parsed
+        for job in jobs
+        for parsed in (_parse_timestamp(job.get("updated_at")), _parse_timestamp(job.get("created_at")))
+        if parsed is not None
+    ]
+    if not timestamps:
+        return None
+    return max(timestamps).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _load_json(url: str, *, opener: OpenUrl, timeout: float = DEFAULT_TIMEOUT, attempts: int = DEFAULT_ATTEMPTS) -> Any:
@@ -156,6 +188,7 @@ def main(argv: list[str] | None = None) -> int:
 
     unique_jobs = _dedupe_jobs(jobs)
     output_path.write_text(json.dumps(unique_jobs, indent=2) + "\n")
+    latest_posting_at = _latest_posting_at(unique_jobs)
 
     result = {
         "greenhouse_tokens": args.greenhouse,
@@ -165,14 +198,22 @@ def main(argv: list[str] | None = None) -> int:
         "source_runs": source_runs,
         "output": str(output_path),
     }
+    if latest_posting_at is not None:
+        result["latest_posting_at"] = latest_posting_at
     if not failures and not unique_jobs:
         result["warning"] = "Configured source tokens returned zero internship candidates"
         result["stale_result"] = True
+    elif not failures and latest_posting_at is not None:
+        latest_posting_dt = _parse_timestamp(latest_posting_at)
+        assert latest_posting_dt is not None
+        if latest_posting_dt <= _utcnow() - timedelta(days=STALE_POSTING_DAYS):
+            result["warning"] = f"Newest posting timestamp is older than {STALE_POSTING_DAYS} days"
+            result["stale_result"] = True
 
     print(json.dumps(result))
     if failures:
         return 1
-    if not unique_jobs:
+    if result.get("stale_result"):
         return 3
     return 0
 
