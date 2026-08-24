@@ -217,8 +217,22 @@ def _expected_latest_posting_at(report: dict) -> str | None:
     return latest_timestamp[1]
 
 
+def _has_missing_source_run_latest_posting_at(report: dict) -> bool:
+    source_runs = report.get("source_runs")
+    if not isinstance(source_runs, list):
+        return False
+    for run in source_runs:
+        if not isinstance(run, dict):
+            continue
+        if "latest_posting_at" not in run:
+            return True
+    return False
+
+
 def _has_inconsistent_top_level_source_health_flags(report: dict) -> bool:
     if report.get("stale_result") or report.get("freshness_unknown"):
+        return True
+    if _has_missing_source_run_latest_posting_at(report):
         return True
     if "latest_posting_at" in report:
         expected_latest_posting_at = _expected_latest_posting_at(report)
