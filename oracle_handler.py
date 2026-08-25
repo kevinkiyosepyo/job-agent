@@ -27,6 +27,10 @@ class _OracleHTMLParser(HTMLParser):
         self._location_depth = 0
         self._current_issue_target: str | None = None
         self._current_issue_text: list[str] | None = None
+        self._posting_location_depth = 0
+        self._apply_button_depth = 0
+        self._apply_button_text: list[str] | None = None
+        self.entrypoint: dict[str, str] = {}
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr_map = dict(attrs)
@@ -40,16 +44,22 @@ class _OracleHTMLParser(HTMLParser):
             self._current_issue_text = []
         if attr_map.get("class") == "job-location":
             self._location_depth += 1
+        if "postingLocationsContent" in (attr_map.get("data-bind") or ""):
+            self._posting_location_depth += 1
         if tag == "input":
             field_id = attr_map.get("id") or ""
-            self.fields.append(
-                {
-                    "label": self.label_by_id.get(field_id, ""),
-                    "name": attr_map.get("name") or field_id,
-                    "type": attr_map.get("type") or "text",
-                    "required": "required" in attr_map,
-                }
-            )
+            label = self.label_by_id.get(field_id, "")
+            input_type = attr_map.get("type") or "text"
+            uploaded = attr_map.get("data-uploaded-filename")
+            if label or uploaded:
+                self.fields.append(
+                    {
+                        "label": label,
+                        "name": attr_map.get("name") or field_id,
+                        "type": input_type,
+                        "required": "required" in attr_map,
+                    }
+                )
             uploaded = attr_map.get("data-uploaded-filename")
             if uploaded:
                 self.uploaded_names.append(uploaded)
@@ -65,6 +75,9 @@ class _OracleHTMLParser(HTMLParser):
             self.fields.append(self._current_combo)
         if tag == "li" and self._current_combo is not None:
             self._combo_option_depth += 1
+        if tag == "button" and "apply-now-button" in (attr_map.get("class") or ""):
+            self._apply_button_depth += 1
+            self._apply_button_text = []
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "h1":
@@ -80,7 +93,7 @@ class _OracleHTMLParser(HTMLParser):
             self.current_label_text = None
         if tag == "a" and self._current_issue_text is not None and self._current_issue_target is not None:
             message = " ".join("".join(self._current_issue_text).split())
-            if message:
+            if message and self._current_issue_target != "main" and not message.lower().startswith("skip to main content"):
                 self.issues.append({"message": message, "target": self._current_issue_target})
             self._current_issue_target = None
             self._current_issue_text = None
@@ -92,6 +105,14 @@ class _OracleHTMLParser(HTMLParser):
             self._current_combo = None
         if tag == "div" and self._location_depth:
             self._location_depth -= 1
+        if tag == "span" and self._posting_location_depth:
+            self._posting_location_depth -= 1
+        if tag == "button" and self._apply_button_depth:
+            self._apply_button_depth -= 1
+            label = " ".join("".join(self._apply_button_text or []).split())
+            if label:
+                self.entrypoint["apply_label"] = label
+            self._apply_button_text = None
 
     def handle_data(self, data: str) -> None:
         text = data.strip()
@@ -105,8 +126,12 @@ class _OracleHTMLParser(HTMLParser):
             self._current_issue_text.append(text)
         if self._location_depth and not self.location:
             self.location = text
+        if self._posting_location_depth and not self.location:
+            self.location = text
         if self._current_combo is not None and self._combo_option_depth:
             self._current_combo["options"].append(text)
+        if self._apply_button_text is not None and self._apply_button_depth:
+            self._apply_button_text.append(text)
         if text.lower().endswith((".pdf", ".doc", ".docx")):
             self.uploaded_names.append(text)
 
@@ -129,12 +154,15 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "confirmation"
     except ValueError:
         pass
+    if page_type == "application" and not parser.fields and parser.entrypoint.get("apply_label"):
+        page_type = "listing"
     return {
         "page_type": page_type,
         "page_url": page_url,
         "role": parser.role,
         "location": parser.location,
         "fields": parser.fields,
+        "entrypoint": parser.entrypoint,
         "uploaded_resume_verified": uploaded_resume_verified,
         "country_valid": country_field is not None and country_field.get("value") == "United States",
         "salary_selected": salary_field.get("value") if salary_field else None,

@@ -68,3 +68,42 @@ def test_run_preflight_manifest_inspects_supported_fixture_pages():
     ]
     assert report["results"][2]["uploaded_resume_verified"] is True
     assert report["results"][3]["country_valid"] is True
+
+
+def test_inspect_workday_live_entrypoint_fixture_detects_rendered_apply_surface():
+    target = {
+        "platform": "workday",
+        "page_url": "https://tencent.wd1.myworkdayjobs.com/en-US/Tencent_Careers/job/Software-Engineering-Intern_R107162-1",
+        "html_path": str(ROOT / "fixtures" / "workday_live_entrypoint.html"),
+    }
+
+    result = ats_preflight.inspect_target(target)
+
+    assert result["platform"] == "workday"
+    assert result["page_type"] == "listing"
+    assert result["role"] == "Software Engineering Intern"
+    assert result["location"] == "United Kingdom-London"
+    assert result["entrypoint"] == {
+        "apply_label": "Apply",
+        "sign_in_label": "Sign In",
+        "requisition_id": "R107162",
+    }
+    assert result["fields"] == []
+
+
+def test_inspect_oracle_live_entrypoint_fixture_detects_apply_button_without_false_form_fields():
+    target = {
+        "platform": "oracle",
+        "page_url": "https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/jobsearch/job/334348",
+        "html_path": str(ROOT / "fixtures" / "oracle_live_entrypoint.html"),
+    }
+
+    result = ats_preflight.inspect_target(target)
+
+    assert result["platform"] == "oracle"
+    assert result["page_type"] == "listing"
+    assert result["role"] == "OH Product Manager Intern - OVIP"
+    assert result["location"] == "Kansas City, MO, United States"
+    assert result["entrypoint"] == {"apply_label": "Apply Now"}
+    assert result["fields"] == []
+    assert result["issues"] == []
