@@ -42,6 +42,41 @@ def test_reconcile_reports_verified_sheet_submission_drift_without_mutating_queu
     assert queue.list_jobs()[0].state == "prepared"
 
 
+def test_reconcile_reports_terminal_queue_failure_against_stale_sheet_row(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    job = queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://jobs.example.com/123",
+        ats_platform="Greenhouse",
+    )
+    leased = queue.lease_next(now="2026-08-25T00:00:00+00:00", lease_seconds=60)
+    assert leased is not None
+    queue.finish_lease(
+        job.id,
+        outcome="failed",
+        now="2026-08-25T00:00:01+00:00",
+        error="Unsupported ATS",
+    )
+    sheet_rows = [{
+        "Company Name": "Example",
+        "Application Status": "Discovered",
+        "Role": "Software Engineer Intern",
+        "Link to Job Req": "https://jobs.example.com/123?utm_source=sheet",
+    }]
+
+    report = queue_sheet_reconciliation.reconcile(queue, sheet_rows)
+
+    assert report["drifts"] == [{
+        "job_id": job.id,
+        "queue_state": "failed",
+        "sheet_status": "Discovered",
+        "reason": "queue_state_is_newer_terminal",
+    }]
+    assert report["mutations"] == []
+    assert queue.list_jobs()[0].state == "failed"
+
+
 def test_duplicate_normalizes_tracking_parameters_and_trailing_slash():
     rows = [{
         "Company Name": "Example",
