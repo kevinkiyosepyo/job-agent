@@ -2,6 +2,7 @@
 """Lease-aware preparation worker with durable recovery journal."""
 from __future__ import annotations
 
+import argparse
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -102,3 +103,38 @@ def prepare_next_job(
         now=now,
         plan_dir=plan_dir,
     )
+
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--queue-db", required=True)
+    parser.add_argument("--journal", required=True)
+    parser.add_argument("--html-path", required=True)
+    parser.add_argument("--now", required=True)
+    parser.add_argument("--lease-seconds", type=int, default=300)
+    parser.add_argument("--plan-dir", required=True)
+    parser.add_argument("--expected-resume-basename")
+    args = parser.parse_args(argv)
+
+    html_path = Path(args.html_path)
+    queue = ApplicationQueue(Path(args.queue_db))
+    journal = ExecutionJournal(Path(args.journal))
+    result = prepare_next_job(
+        queue=queue,
+        journal=journal,
+        html_loader=lambda leased_job: html_path.read_text(),
+        expected_resume_basename=args.expected_resume_basename,
+        now=args.now,
+        lease_seconds=args.lease_seconds,
+        plan_dir=Path(args.plan_dir),
+    )
+    if result is None:
+        print(json.dumps({"status": "no_job_available"}))
+        return 0
+    print(json.dumps({"status": "prepared", "result": result}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

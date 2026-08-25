@@ -143,3 +143,61 @@ def test_resume_or_prepare_leased_job_recovers_after_plan_was_already_written(tm
 
     steps = [entry["step"] for entry in journal.read_all()]
     assert steps == ["prepared_plan_written", "lease_finished"]
+
+
+def test_main_leases_once_writes_machine_readable_result_and_stays_idempotent(tmp_path, capsys):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/example/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    journal_path = tmp_path / "journal.jsonl"
+    plan_dir = tmp_path / "plans"
+
+    first_exit_code = queue_worker.main([
+        "--queue-db",
+        str(tmp_path / "queue.db"),
+        "--journal",
+        str(journal_path),
+        "--html-path",
+        str(ROOT / "fixtures" / "greenhouse.html"),
+        "--expected-resume-basename",
+        "Kevin_Pyo_Resume.pdf",
+        "--now",
+        "2026-08-25T07:35:00+00:00",
+        "--lease-seconds",
+        "300",
+        "--plan-dir",
+        str(plan_dir),
+    ])
+    first_payload = json.loads(capsys.readouterr().out)
+
+    second_exit_code = queue_worker.main([
+        "--queue-db",
+        str(tmp_path / "queue.db"),
+        "--journal",
+        str(journal_path),
+        "--html-path",
+        str(ROOT / "fixtures" / "greenhouse.html"),
+        "--expected-resume-basename",
+        "Kevin_Pyo_Resume.pdf",
+        "--now",
+        "2026-08-25T07:36:00+00:00",
+        "--lease-seconds",
+        "300",
+        "--plan-dir",
+        str(plan_dir),
+    ])
+    second_payload = json.loads(capsys.readouterr().out)
+
+    assert first_exit_code == 0
+    assert first_payload["status"] == "prepared"
+    assert first_payload["result"]["plan_path"] == str(plan_dir / "job-1-attempt-1.json")
+    assert Path(first_payload["result"]["plan_path"]).exists()
+    assert first_payload["result"]["queue_job"]["state"] == "prepared"
+
+    assert second_exit_code == 0
+    assert second_payload == {"status": "no_job_available"}
+    assert len(execution_journal.ExecutionJournal(journal_path).read_all()) == 3
