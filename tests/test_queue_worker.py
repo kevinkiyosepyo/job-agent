@@ -302,6 +302,34 @@ def test_main_terminally_fails_unsupported_ats_without_requeueing(tmp_path, monk
     ]
 
 
+def test_main_terminally_closes_withdrawn_posting_before_preparation(tmp_path, capsys):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/example/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    closed_page = tmp_path / "withdrawn.html"
+    closed_page.write_text("<html><body>This job is no longer available.</body></html>")
+
+    exit_code = queue_worker.main([
+        "--queue-db", str(tmp_path / "queue.db"),
+        "--journal", str(tmp_path / "journal.jsonl"),
+        "--html-path", str(closed_page),
+        "--now", "2026-08-25T07:35:00+00:00",
+        "--plan-dir", str(tmp_path / "plans"),
+    ])
+    payload = json.loads(capsys.readouterr().out)
+
+    [job] = queue.list_jobs()
+    assert exit_code == 2
+    assert payload["status"] == "posting_closed"
+    assert payload["retryable"] is False
+    assert job.state == "failed"
+    assert job.last_error == "Posting closed: This job is no longer available."
+
+
 def test_main_terminally_fails_corrupted_preparation_fixture(tmp_path, monkeypatch, capsys):
     queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
     queue.enqueue(

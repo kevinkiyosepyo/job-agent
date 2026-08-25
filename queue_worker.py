@@ -17,10 +17,18 @@ def _plan_path(*, plan_dir: Path, leased_job: QueueJob) -> Path:
     return Path(plan_dir) / f"job-{leased_job.id}-attempt-{leased_job.attempt_count}.json"
 
 
+def _closed_posting_error(html_text: str) -> str | None:
+    for phrase in ("This job is no longer available.", "This position has been filled."):
+        if phrase.casefold() in html_text.casefold():
+            return f"Posting closed: {phrase}"
+    return None
+
+
 def _is_retryable_prepare_error(error: ValueError) -> bool:
     return not str(error).startswith((
         "Unsupported ATS for URL:",
         "Corrupted fixture:",
+        "Posting closed:",
     ))
 
 
@@ -46,6 +54,9 @@ def resume_or_prepare_leased_job(
         plan_path = Path(latest_entry.get("payload", {}).get("plan_path", ""))
         recovered = True
     else:
+        closed_error = _closed_posting_error(html_text)
+        if closed_error:
+            raise ValueError(closed_error)
         plan_path = _plan_path(plan_dir=plan_dir, leased_job=leased_job)
         payload = prepare_job.prepare_saved_html(
             html_text=html_text,
@@ -174,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
             payload={"state": finished.state, "error": str(exc)},
         )
         print(json.dumps({
-            "status": "prepare_blocked",
+            "status": "posting_closed" if str(exc).startswith("Posting closed:") else "prepare_blocked",
             "error": str(exc),
             "job_id": leased_job.id,
             "retryable": retryable,
