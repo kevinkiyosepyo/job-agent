@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -133,12 +134,18 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
     parser = _NjoynHTMLParser()
     parser.feed(html_text)
     confirmation_text = None
+    confirmation_reference_id = None
     page_type = "application"
     try:
         confirmation_text = validate_confirmation_evidence(
             confirmation_url=page_url,
             confirmation_text=html_text,
         )
+        reference_match = re.search(
+            r"\bReference:\s*([A-Za-z0-9-]+)", confirmation_text
+        )
+        if reference_match:
+            confirmation_reference_id = reference_match.group(1)
         page_type = "confirmation"
     except ValueError:
         pass
@@ -222,6 +229,7 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         **({"referral_selection": referral_selection} if page_type == "referral" else {}),
         "manual_gate": manual_gate,
         "confirmation_text": confirmation_text,
+        "confirmation_reference_id": confirmation_reference_id,
         "safe_to_prepare": False,
     }
 

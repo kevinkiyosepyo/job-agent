@@ -31,6 +31,7 @@ def test_inspect_html_classifies_njoyn_listing_and_exposes_apply_entrypoint():
         "parser_mismatches": [],
         "manual_gate": None,
         "confirmation_text": None,
+        "confirmation_reference_id": None,
         "safe_to_prepare": False,
     }
 
@@ -220,4 +221,18 @@ def test_inspect_html_inventories_njoyn_questionnaire_and_fails_closed_on_requir
         "type": "unknown_required_questions",
         "detail": "Required questionnaire answers must be resolved before preparation",
     }
+    assert result["safe_to_prepare"] is False
+
+
+def test_inspect_html_extracts_verified_njoyn_confirmation_reference_without_submit_inference():
+    fixture_text = (ROOT / "fixtures" / "njoyn_confirmation.html").read_text()
+
+    result = njoyn_handler.inspect_html(
+        fixture_text,
+        page_url="https://cgi.njoyn.com/corp/xweb/xweb.asp?confirmation=fixture",
+    )
+
+    assert result["page_type"] == "confirmation"
+    assert result["confirmation_reference_id"] == "CGI-FIXTURE-001"
+    assert result["manual_gate"] is None
     assert result["safe_to_prepare"] is False
