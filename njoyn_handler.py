@@ -158,6 +158,8 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "parsed_profile"
     if page_type == "application" and parser.surface == "referral":
         page_type = "referral"
+    if page_type == "application" and parser.surface == "questionnaire":
+        page_type = "questionnaire"
     uploaded_resume_verified = None
     if expected_resume_basename is not None:
         uploaded_resume_verified = expected_resume_basename in parser.uploaded_names
@@ -199,6 +201,11 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         manual_gate = {
             "type": "referral_selection",
             "detail": "Social Media and Instagram must be selected as real options",
+        }
+    if page_type == "questionnaire":
+        manual_gate = {
+            "type": "unknown_required_questions",
+            "detail": "Required questionnaire answers must be resolved before preparation",
         }
     return {
         "page_type": page_type,

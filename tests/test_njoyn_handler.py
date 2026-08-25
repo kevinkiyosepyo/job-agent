@@ -200,3 +200,24 @@ def test_inspect_html_requires_real_two_step_njoyn_referral_selection_state():
         "detail": "Social Media and Instagram must be selected as real options",
     }
     assert result["safe_to_prepare"] is False
+
+
+def test_inspect_html_inventories_njoyn_questionnaire_and_fails_closed_on_required_questions():
+    fixture_text = (ROOT / "fixtures" / "njoyn_questionnaire.html").read_text()
+
+    result = njoyn_handler.inspect_html(
+        fixture_text,
+        page_url="https://cgi.njoyn.com/corp/xweb/xweb.asp?questionnaire=fixture",
+    )
+
+    assert result["page_type"] == "questionnaire"
+    assert result["surface"] == "questionnaire"
+    assert result["fields"] == [
+        {"name": "age", "type": "select", "label": "Application questionnaire"},
+        {"name": "compensation", "type": "text", "label": "Desired hourly compensation"},
+    ]
+    assert result["manual_gate"] == {
+        "type": "unknown_required_questions",
+        "detail": "Required questionnaire answers must be resolved before preparation",
+    }
+    assert result["safe_to_prepare"] is False
