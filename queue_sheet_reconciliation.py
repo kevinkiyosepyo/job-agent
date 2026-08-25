@@ -7,7 +7,7 @@ import app_queue
 import tracker
 
 _VERIFIED_SHEET_STATUSES = {"Submitted - Pending Response"}
-_TERMINAL_SHEET_STATUSES = {"Rejected"}
+_TERMINAL_SHEET_STATUSES = {"Rejected", "Withdrawn"}
 _TERMINAL_QUEUE_STATES = {"failed", "applied"}
 _STALE_SHEET_STATUSES = {"Discovered"}
 

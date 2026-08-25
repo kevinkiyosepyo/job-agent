@@ -104,6 +104,33 @@ def test_reconcile_reports_terminal_sheet_rejection_against_nonterminal_queue_jo
     assert queue.list_jobs()[0].state == "discovered"
 
 
+def test_reconcile_reports_terminal_sheet_withdrawal_against_nonterminal_queue_job(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    job = queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://jobs.example.com/123",
+        ats_platform="Greenhouse",
+    )
+    sheet_rows = [{
+        "Company Name": "Example",
+        "Application Status": "Withdrawn",
+        "Role": "Software Engineer Intern",
+        "Link to Job Req": "https://jobs.example.com/123",
+    }]
+
+    report = queue_sheet_reconciliation.reconcile(queue, sheet_rows)
+
+    assert report["drifts"] == [{
+        "job_id": job.id,
+        "queue_state": "discovered",
+        "sheet_status": "Withdrawn",
+        "reason": "sheet_state_is_newer_terminal",
+    }]
+    assert report["mutations"] == []
+    assert queue.list_jobs()[0].state == "discovered"
+
+
 def test_duplicate_normalizes_tracking_parameters_and_trailing_slash():
     rows = [{
         "Company Name": "Example",
