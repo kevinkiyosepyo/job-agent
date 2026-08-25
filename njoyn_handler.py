@@ -21,6 +21,7 @@ class _NjoynHTMLParser(HTMLParser):
         self.entrypoint: dict[str, str] = {}
         self.fields: list[dict[str, str]] = []
         self.uploaded_names: list[str] = []
+        self.parser_mismatches: list[str] = []
         self._apply_link_text: list[str] | None = None
         self._label_text: list[str] | None = None
         self._label_field: dict[str, str] | None = None
@@ -31,6 +32,9 @@ class _NjoynHTMLParser(HTMLParser):
         uploaded_name = attr_map.get("data-uploaded-file")
         if uploaded_name:
             self.uploaded_names.append(uploaded_name)
+        parser_mismatch = attr_map.get("data-parser-mismatch")
+        if parser_mismatch:
+            self.parser_mismatches.append(parser_mismatch)
         if tag == "main":
             self.surface = attr_map.get("data-surface") or self.surface
         if tag == "h1":
@@ -131,6 +135,8 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "disability"
     if page_type == "application" and parser.surface == "resume-upload":
         page_type = "resume_upload"
+    if page_type == "application" and parser.surface == "parsed-profile":
+        page_type = "parsed_profile"
     uploaded_resume_verified = None
     if expected_resume_basename is not None:
         uploaded_resume_verified = expected_resume_basename in parser.uploaded_names
@@ -155,6 +161,11 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
             "type": "disability_disclosure",
             "detail": "Voluntary disability disclosure must be explicitly handled",
         }
+    if page_type == "parsed_profile" and parser.parser_mismatches:
+        manual_gate = {
+            "type": "parser_correction",
+            "detail": "Parsed profile contains explicit mismatches that require correction",
+        }
     return {
         "page_type": page_type,
         "surface": parser.surface,
@@ -165,7 +176,8 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         "fields": parser.fields,
         "entrypoint": parser.entrypoint,
         "uploaded_resume_verified": uploaded_resume_verified,
-        "parser_correction_required": False,
+        "parser_correction_required": bool(parser.parser_mismatches),
+        "parser_mismatches": parser.parser_mismatches,
         "manual_gate": manual_gate,
         "confirmation_text": confirmation_text,
         "safe_to_prepare": False,

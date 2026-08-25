@@ -28,6 +28,7 @@ def test_inspect_html_classifies_njoyn_listing_and_exposes_apply_entrypoint():
         "entrypoint": {"apply_label": "Apply now", "apply_url": "/apply/fixture"},
         "uploaded_resume_verified": None,
         "parser_correction_required": False,
+        "parser_mismatches": [],
         "manual_gate": None,
         "confirmation_text": None,
         "safe_to_prepare": False,
@@ -147,4 +148,30 @@ def test_inspect_html_inventories_njoyn_resume_upload_and_verifies_attached_file
     ]
     assert result["uploaded_resume_verified"] is True
     assert result["manual_gate"] is None
+    assert result["safe_to_prepare"] is False
+
+
+def test_inspect_html_reports_explicit_njoyn_parsed_profile_mismatches_for_correction():
+    fixture_text = """<!doctype html><main data-surface=\"parsed-profile\">
+      <h1>Parsed profile</h1>
+      <p data-parser-mismatch=\"school\">Correct this imported school value.</p>
+      <label>School <input name=\"school\" value=\"Incorrect University\"></label>
+    </main>"""
+
+    result = njoyn_handler.inspect_html(
+        fixture_text,
+        page_url="https://cgi.njoyn.com/corp/xweb/xweb.asp?parsed=fixture",
+    )
+
+    assert result["page_type"] == "parsed_profile"
+    assert result["surface"] == "parsed-profile"
+    assert result["fields"] == [
+        {"name": "school", "type": "text", "label": "School"},
+    ]
+    assert result["parser_correction_required"] is True
+    assert result["parser_mismatches"] == ["school"]
+    assert result["manual_gate"] == {
+        "type": "parser_correction",
+        "detail": "Parsed profile contains explicit mismatches that require correction",
+    }
     assert result["safe_to_prepare"] is False
