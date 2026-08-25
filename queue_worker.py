@@ -113,6 +113,12 @@ def resume_or_prepare_leased_job(
         plan_path = Path(latest_entry.get("payload", {}).get("plan_path", ""))
         if not plan_path.is_file():
             raise ValueError(f"Invalid recovered plan artifact: {plan_path}")
+        try:
+            recovered_payload = json.loads(plan_path.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"Invalid recovered plan artifact: {plan_path}") from exc
+        if not isinstance(recovered_payload, dict):
+            raise ValueError(f"Invalid recovered plan artifact: {plan_path}")
         recovered = True
     else:
         closed_error = _closed_posting_error(html_text)

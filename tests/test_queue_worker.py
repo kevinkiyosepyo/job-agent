@@ -218,6 +218,48 @@ def test_resume_or_prepare_leased_job_refuses_missing_recovered_plan_artifact(tm
     assert [entry["step"] for entry in journal.read_all()] == ["prepared_plan_written"]
 
 
+def test_resume_or_prepare_leased_job_refuses_malformed_recovered_plan_artifact(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/example/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    leased = queue.lease_next(now="2026-08-25T08:05:00+00:00", lease_seconds=300)
+    assert leased is not None
+
+    journal = execution_journal.ExecutionJournal(tmp_path / "journal.jsonl")
+    plan_path = tmp_path / "plans" / "job-1-attempt-1.json"
+    plan_path.parent.mkdir()
+    plan_path.write_text("{not valid json")
+    journal.append(
+        job_id=leased.id,
+        attempt_count=leased.attempt_count,
+        step="prepared_plan_written",
+        payload={"plan_path": str(plan_path)},
+    )
+
+    try:
+        queue_worker.resume_or_prepare_leased_job(
+            queue=queue,
+            leased_job=leased,
+            journal=journal,
+            html_text="<html>must not reparse a malformed recovered artifact</html>",
+            expected_resume_basename="Kevin_Pyo_Resume.pdf",
+            now="2026-08-25T08:06:00+00:00",
+            plan_dir=tmp_path / "plans",
+        )
+    except ValueError as exc:
+        assert str(exc) == f"Invalid recovered plan artifact: {plan_path}"
+    else:
+        raise AssertionError("malformed recovered plan artifact must block lease completion")
+
+    [job] = queue.list_jobs()
+    assert job.state == "leased"
+    assert [entry["step"] for entry in journal.read_all()] == ["prepared_plan_written"]
+
+
 def test_main_leases_once_writes_machine_readable_result_and_stays_idempotent(tmp_path, capsys):
     queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
     queue.enqueue(
