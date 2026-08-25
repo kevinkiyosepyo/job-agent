@@ -70,6 +70,19 @@ def test_main_fails_closed_for_greenhouse_manual_gate_and_emits_json(capsys, tmp
     assert payload["manual_gate"]["type"] == "email_verification"
 
 
+def test_inspect_html_fails_closed_when_greenhouse_asks_to_confirm_email_address():
+    result = greenhouse_handler.inspect_html(
+        "<h1>Software Engineer Intern</h1><p>Confirm your email address to continue.</p>",
+        page_url="https://job-boards.greenhouse.io/example/jobs/123",
+    )
+
+    assert result["safe_to_prepare"] is False
+    assert result["manual_gate"] == {
+        "type": "email_verification",
+        "detail": "Email verification detected",
+    }
+
+
 def test_inspect_html_fails_closed_on_greenhouse_assessment_gate():
     result = greenhouse_handler.inspect_html(
         "<h1>Software Engineer Intern</h1><p>Complete the required assessment to continue.</p>",
