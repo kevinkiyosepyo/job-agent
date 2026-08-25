@@ -30,7 +30,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `fixture_e2e.py` — non-submitting vertical fixture flows for supported ATSs, including CGI/Njoyn resume attachment verification, parsed-profile review evidence, and sanitized confirmation artifacts. Explicit parsed-profile mismatches emit field-only parser-repair evidence and remain blocked until every required correction is recorded; unrelated recorded correction IDs are explicitly rejected rather than counting toward completion. The flows never submit, write a tracker row, or send a notification.
 - `ats_registry.py` / `prepare_job.py` — shared non-submitting dispatcher for Greenhouse, Workday, Lever, Oracle, and CGI/Njoyn saved surfaces. Every payload explicitly carries `submission_enabled: false`; manual-gated and listing surfaces remain fail-closed. `prepare_job.py --tenant-metadata <path>` loads a matching learned tenant record only after hostname/platform validation; it carries only a runtime-only session reference and authenticated-state metadata into the plan, allowing a repeat flow to reuse an already authenticated session without serializing credentials or scheduling account creation.
 - `tenant_metadata.py` — loads versioned learned-tenant records only after matching the page hostname, ATS platform, and tenant identity; it returns a secret-free runtime-only session reference or fails closed.
-- `production_readiness.py` — read-only final audit of persisted idempotent dry-run and non-submitting Greenhouse, Workday, Lever, and Oracle fixture evidence.
+- `production_readiness.py` — read-only final audit of persisted idempotent dry-run and non-submitting Greenhouse, Workday, Lever, and Oracle fixture evidence, plus optional learned CGI/Njoyn speed evidence. The optional evidence requires preparation in under five minutes and fully verified submission in under ten minutes while preserving parser-repair, Review, confirmation, tracker-read-back, Discord-read-back, and disabled-submission invariants.
 
 ## Test
 
@@ -49,10 +49,10 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 ## Production-readiness audit
 
 ```bash
-python production_readiness.py --dry-run-report runtime/production-run/report.json --fixture-flows runtime/fixture-flows.json
+python production_readiness.py --dry-run-report runtime/production-run/report.json --fixture-flows runtime/fixture-flows.json --learned-ats-benchmark runtime/njoyn-benchmark.json
 ```
 
-The audit is read-only and returns `ready_for_human_gated_production` only when persisted evidence proves idempotent, non-submitting dry-run behavior and all four supported ATS fixture flows remained non-submitting. It explicitly preserves human-only gates: CAPTCHA, email/identity verification, assessments, unknown required questions, and explicit submission authorization.
+The audit is read-only and returns `ready_for_human_gated_production` only when persisted evidence proves idempotent, non-submitting dry-run behavior and all four supported ATS fixture flows remained non-submitting. When `--learned-ats-benchmark` is supplied, it additionally requires CGI/Njoyn preparation below 300 seconds and fully verified submission below 600 seconds, while requiring disabled submission/external side effects plus parser-repair, Review, confirmation, tracker-read-back, and Discord-read-back safety evidence. It explicitly preserves human-only gates: CAPTCHA, email/identity verification, assessments, unknown required questions, and explicit submission authorization.
 
 ## Queue-bound Discord controls
 
