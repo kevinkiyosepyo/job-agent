@@ -15,7 +15,8 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `tracker.py` — read the live Google Sheet, append rows with mandatory API read-back verification, and run a self-cleaning integration check.
 - `notifier.py` — send deterministic Discord alerts.
 - `tests/` — behavior and safety tests.
-- `fixtures/` — harmless Greenhouse and Workday test pages.
+- `fixtures/` — harmless Greenhouse, Workday, and Lever test pages.
+- `lever_handler.py` — fixture-driven Lever application inspector with field inventory, upload read-back verification, manual-gate detection, confirmation validation, and a machine-readable CLI.
 
 ## Test
 
