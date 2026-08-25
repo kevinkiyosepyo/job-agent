@@ -9,6 +9,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `orchestrator.py` — dry-run CLI that scans verified candidates, routes them, stages supported jobs into the local queue, and writes an audit-backed report.
 - `setup_diagnostics.py` — offline readiness checks for profile, resume, Google Sheets OAuth, and optional browser/CDP access.
 - `browser_health.py` — probe a local Chrome DevTools endpoint, classify recoverable CDP failures, and emit machine-readable health JSON.
+- `browser_actions.py` — deterministic browser-action contracts that require exact post-action read-back evidence before an action is considered verified.
 - `sources.py` — bounded-retry adapters plus a token-driven CLI for public Greenhouse and Lever job APIs that normalize active internship candidates into a deterministic JSON artifact.
 - `app_queue.py` — persist discovered jobs in SQLite with idempotent URL-based enqueue and explicit state transitions.
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
