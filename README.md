@@ -14,6 +14,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
 - `tracker.py` — read the live Google Sheet, append rows with mandatory API read-back verification, and run a self-cleaning integration check.
 - `notifier.py` — send deterministic Discord alerts.
+- `discord_controls.py` — enforce job-ID-bound approve/reject/retry/skip actions against the local SQLite queue with a machine-readable CLI.
 - `tests/` — behavior and safety tests.
 - `fixtures/` — harmless Greenhouse, Workday, and Lever test pages.
 - `lever_handler.py` — fixture-driven Lever application inspector with field inventory, upload read-back verification, manual-gate detection, confirmation validation, and a machine-readable CLI.
@@ -31,6 +32,19 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 ```
 
 `orchestrator.py` runs scanner + pipeline in `dry_run` mode, persists supported jobs into the local SQLite queue as `discovered`, and appends a redacted audit event. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
+
+## Queue-bound Discord controls
+
+```bash
+python discord_controls.py job:42:approve --queue-db runtime/production-run/app_queue.sqlite3
+```
+
+`discord_controls.py` accepts only job-ID-bound control IDs (`job:<id>:<action>`) and fails if the referenced queue job is missing or currently in the wrong state for that action. Supported actions are:
+
+- `approve` / `reject` for `pending_approval` jobs;
+- `retry` / `skip` for `pending_question` and `pending_captcha` jobs.
+
+On success it emits machine-readable JSON describing the applied action, the resolved status (`approved`, `rejected`, `retried`, or `skipped`), and the updated queue record.
 
 When `--source-report` is supplied, `orchestrator.py` consumes the JSON sidecar written by `sources.py --report` and fails closed before any queue, audit, or output side effects unless `source_health_status` is exactly `healthy`. Malformed sidecars are rejected with stable reasons: `Invalid source report: unreadable`, `Invalid source report: invalid_json`, `Invalid source report: invalid_schema`, `Invalid source report: missing_source_health_status`, `Invalid source report: invalid_source_health_status`, or `Invalid source report: inconsistent_source_health` when the payload claims `healthy` while still reporting failures, sets aggregate stale/freshness-unknown flags, claims aggregate freshness metadata on an empty `source_runs` list, omits any required aggregate evidence (`source_runs`, `freshness_summary`, or `freshness_buckets`), contains malformed top-level `failures` entries (missing/blank `source`, `token`, or `error`), contains malformed top-level aggregate freshness metadata (`stale_result` / `freshness_unknown` must be booleans when present, `warning` must be a string when present, and `latest_posting_at` must be a parseable ISO-8601 timestamp string when present), contains malformed healthy `source_runs` entries (missing/blank `source` or `token`, non-`ok` status, negative/non-integer candidate counts, non-string warning fields, or non-parseable `latest_posting_at` timestamps), contains malformed `freshness_summary` entries (missing, negative, or non-integer aggregate counts), reports any non-OK `source_runs` entry (for example stale, freshness-unknown, or errored boards), hides a missing per-source `latest_posting_at` inside an otherwise `healthy` payload, provides a contradictory top-level `latest_posting_at` that disagrees with the newest healthy `source_runs[*].latest_posting_at` evidence, a contradictory `freshness_summary` count object, or contradictory `freshness_buckets` token membership.
 
