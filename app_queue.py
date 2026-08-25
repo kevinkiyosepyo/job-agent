@@ -164,10 +164,20 @@ class ApplicationQueue:
         assert updated is not None
         return QueueJob(*updated)
 
-    def lease_next(self, *, now: str | datetime, lease_seconds: int) -> QueueJob | None:
+    def lease_next(
+        self,
+        *,
+        now: str | datetime,
+        lease_seconds: int,
+        excluded_platforms: tuple[str, ...] = (),
+    ) -> QueueJob | None:
         lease_started_at = _parse_timestamp(now)
         lease_expires_at = _isoformat(lease_started_at + timedelta(seconds=max(1, lease_seconds)))
         now_iso = _isoformat(lease_started_at)
+        excluded = tuple(platform.casefold() for platform in excluded_platforms)
+        exclusions = ""
+        if excluded:
+            exclusions = " AND lower(ats_platform) NOT IN (" + ", ".join("?" for _ in excluded) + ")"
         with self._connect() as conn:
             row = conn.execute(
                 """
@@ -179,10 +189,11 @@ class ApplicationQueue:
                         OR (state = 'leased' AND lease_expires_at IS NOT NULL AND lease_expires_at <= ?)
                       )
                   AND (available_at IS NULL OR available_at <= ?)
+                """ + exclusions + """
                 ORDER BY id
                 LIMIT 1
                 """,
-                (now_iso, now_iso),
+                (now_iso, now_iso, *excluded),
             ).fetchone()
             if row is None:
                 return None

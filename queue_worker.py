@@ -4,13 +4,53 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import prepare_job
 from app_queue import ApplicationQueue, QueueJob
 from execution_journal import ExecutionJournal
+
+
+class ATSCircuitBreaker:
+    """Persistent per-ATS cooldowns that prevent one failed ATS from stalling work."""
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(self.path) as conn:
+            conn.execute(
+                """CREATE TABLE IF NOT EXISTS ats_circuits (
+                    platform TEXT PRIMARY KEY,
+                    open_until TEXT NOT NULL
+                )"""
+            )
+
+    def record_failure(self, *, platform: str, now: str, cooldown_seconds: int) -> None:
+        opened_at = datetime.fromisoformat(now)
+        if opened_at.tzinfo is None:
+            opened_at = opened_at.replace(tzinfo=UTC)
+        open_until = (opened_at.timestamp() + max(1, cooldown_seconds))
+        until = datetime.fromtimestamp(open_until, tz=opened_at.tzinfo).isoformat()
+        with sqlite3.connect(self.path) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO ats_circuits (platform, open_until) VALUES (?, ?)",
+                (platform.casefold(), until),
+            )
+
+    def open_platforms(self, *, now: str) -> tuple[str, ...]:
+        current = datetime.fromisoformat(now)
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=UTC)
+        with sqlite3.connect(self.path) as conn:
+            rows = conn.execute("SELECT platform, open_until FROM ats_circuits").fetchall()
+        return tuple(
+            platform for platform, open_until in rows
+            if datetime.fromisoformat(open_until) > current
+        )
 
 
 def _plan_path(*, plan_dir: Path, leased_job: QueueJob) -> Path:
@@ -102,8 +142,14 @@ def prepare_next_job(
     now: str,
     lease_seconds: int,
     plan_dir: Path,
+    circuit_breaker: ATSCircuitBreaker | None = None,
 ) -> dict[str, Any] | None:
-    leased_job = queue.lease_next(now=now, lease_seconds=lease_seconds)
+    excluded_platforms = () if circuit_breaker is None else circuit_breaker.open_platforms(now=now)
+    leased_job = queue.lease_next(
+        now=now,
+        lease_seconds=lease_seconds,
+        excluded_platforms=excluded_platforms,
+    )
     if leased_job is None:
         return None
 

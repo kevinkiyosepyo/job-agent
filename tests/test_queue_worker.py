@@ -13,6 +13,39 @@ import prepare_job
 import queue_worker
 
 
+def test_prepare_next_job_skips_platform_with_open_circuit_and_leases_other_ats(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Broken Greenhouse",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/broken/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    queue.enqueue(
+        company="Healthy Lever",
+        role="Software Engineer Intern",
+        url="https://jobs.lever.co/healthy/123",
+        ats_platform="Lever",
+    )
+    circuits = queue_worker.ATSCircuitBreaker(tmp_path / "circuits.db")
+    circuits.record_failure(platform="Greenhouse", now="2026-08-25T08:00:00+00:00", cooldown_seconds=600)
+
+    result = queue_worker.prepare_next_job(
+        queue=queue,
+        journal=execution_journal.ExecutionJournal(tmp_path / "journal.jsonl"),
+        html_loader=lambda leased_job: (ROOT / "fixtures" / "lever_application.html").read_text(),
+        expected_resume_basename="Kevin_Pyo_Resume.pdf",
+        now="2026-08-25T08:01:00+00:00",
+        lease_seconds=300,
+        plan_dir=tmp_path / "plans",
+        circuit_breaker=circuits,
+    )
+
+    assert result is not None
+    assert result["queue_job"]["ats_platform"] == "Lever"
+    assert [job.state for job in queue.list_jobs()] == ["discovered", "prepared"]
+
+
 def test_prepare_next_job_leases_discovered_job_writes_plan_and_finishes_prepared(tmp_path):
     queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
     queued_job = queue.enqueue(
