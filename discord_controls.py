@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import UTC, datetime
 from dataclasses import asdict
 from typing import Iterable
 
@@ -51,6 +52,22 @@ def build_control_id(action: str, job_id: int) -> str:
     return f"job:{job_id}:{normalized}"
 
 
+def issue_control_token(
+    queue: app_queue.ApplicationQueue,
+    *,
+    control_id: str,
+    actor_id: str,
+    expires_at: str | datetime,
+) -> str:
+    """Create a durable, actor- and control-bound Discord command token."""
+    _parse_control_id(control_id)
+    return queue.issue_discord_control_token(
+        control_id=control_id,
+        actor_id=actor_id,
+        expires_at=expires_at,
+    )
+
+
 def _parse_control_id(control_id: str) -> tuple[str, int]:
     try:
         prefix, raw_job_id, action = control_id.split(":", 2)
@@ -61,6 +78,18 @@ def _parse_control_id(control_id: str) -> tuple[str, int]:
     return action, int(raw_job_id)
 
 
+def _default_now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _audit_denial(audit_logger: AuditLogger | None, *, actor_id: str | None, control_id: str, reason: str) -> None:
+    if audit_logger is not None:
+        audit_logger.log(
+            "discord_queue_control_denied",
+            {"actor_id": actor_id, "control_id": control_id, "reason": reason},
+        )
+
+
 def handle_control(
     queue: app_queue.ApplicationQueue,
     *,
@@ -68,19 +97,25 @@ def handle_control(
     actor_id: str | None = None,
     allowed_actor_ids: Iterable[str] | None = None,
     audit_logger: AuditLogger | None = None,
+    token: str | None = None,
+    now: str | datetime | None = None,
 ) -> dict:
     """Apply a job-bound control, optionally enforcing the Discord actor allowlist."""
     if allowed_actor_ids is not None and actor_id not in {str(value) for value in allowed_actor_ids}:
-        if audit_logger is not None:
-            audit_logger.log(
-                "discord_queue_control_denied",
-                {
-                    "actor_id": actor_id,
-                    "control_id": control_id,
-                    "reason": "unauthorized_actor",
-                },
-            )
+        _audit_denial(audit_logger, actor_id=actor_id, control_id=control_id, reason="unauthorized_actor")
         raise PermissionError("Discord actor is not authorized for queue controls")
+    if token is not None:
+        try:
+            queue.consume_discord_control_token(
+                token=token,
+                control_id=control_id,
+                actor_id=str(actor_id),
+                now=now or _default_now(),
+            )
+        except PermissionError as exc:
+            reason = "token_replayed" if "replayed" in str(exc) else "invalid_or_expired_token"
+            _audit_denial(audit_logger, actor_id=actor_id, control_id=control_id, reason=reason)
+            raise
     action, job_id = _parse_control_id(control_id)
     job = next((candidate for candidate in queue.list_jobs() if candidate.id == job_id), None)
     if job is None:

@@ -262,3 +262,50 @@ def test_handle_control_denies_unauthorized_actor_without_transition_and_audits_
         "control_id": f"job:{job.id}:approve",
         "reason": "unauthorized_actor",
     }
+
+
+def test_handle_control_accepts_single_use_token_once_and_rejects_replay(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    job = queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://jobs.example.com/123",
+        ats_platform="Greenhouse",
+    )
+    queue.lease_next(now="2026-08-25T10:00:00+00:00", lease_seconds=300)
+    queue.finish_lease(
+        job.id,
+        outcome="pending_approval",
+        now="2026-08-25T10:01:00+00:00",
+        error="awaiting Discord approval",
+    )
+    audit_path = tmp_path / "audit.jsonl"
+    token = discord_controls.issue_control_token(
+        queue,
+        control_id=discord_controls.build_control_id("approve", job.id),
+        actor_id="628145910",
+        expires_at="2026-08-25T11:00:00+00:00",
+    )
+
+    result = discord_controls.handle_control(
+        queue,
+        control_id=discord_controls.build_control_id("approve", job.id),
+        actor_id="628145910",
+        token=token,
+        now="2026-08-25T10:02:00+00:00",
+        audit_logger=AuditLogger(audit_path),
+    )
+
+    assert result["status"] == "approved"
+    with pytest.raises(PermissionError, match="replayed"):
+        discord_controls.handle_control(
+            queue,
+            control_id=discord_controls.build_control_id("approve", job.id),
+            actor_id="628145910",
+            token=token,
+            now="2026-08-25T10:03:00+00:00",
+            audit_logger=AuditLogger(audit_path),
+        )
+    assert queue.list_jobs()[0].state == "discovered"
+    events = [json.loads(line)["event"] for line in audit_path.read_text().splitlines()]
+    assert events == ["discord_queue_control_applied", "discord_queue_control_denied"]

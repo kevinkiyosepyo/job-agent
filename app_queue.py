@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -115,6 +116,17 @@ class ApplicationQueue:
             ):
                 if name not in columns:
                     conn.execute(ddl)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS discord_control_tokens (
+                    token TEXT PRIMARY KEY,
+                    control_id TEXT NOT NULL,
+                    actor_id TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    used_at TEXT
+                )
+                """
+            )
 
     def enqueue(self, *, company: str, role: str, url: str, ats_platform: str) -> QueueJob:
         normalized_url = normalize_url(url)
@@ -260,3 +272,54 @@ class ApplicationQueue:
                 """
             ).fetchall()
         return [QueueJob(*row) for row in rows]
+
+    def issue_discord_control_token(
+        self,
+        *,
+        control_id: str,
+        actor_id: str,
+        expires_at: str | datetime,
+    ) -> str:
+        token = secrets.token_urlsafe(24)
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO discord_control_tokens (token, control_id, actor_id, expires_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (token, control_id, str(actor_id), _isoformat(_parse_timestamp(expires_at))),
+            )
+        return token
+
+    def consume_discord_control_token(
+        self,
+        *,
+        token: str,
+        control_id: str,
+        actor_id: str,
+        now: str | datetime,
+    ) -> None:
+        now_iso = _isoformat(_parse_timestamp(now))
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT control_id, actor_id, expires_at, used_at
+                FROM discord_control_tokens WHERE token = ?
+                """,
+                (token,),
+            ).fetchone()
+            if row is None or row[0] != control_id or row[1] != str(actor_id):
+                raise PermissionError("Discord control token is invalid")
+            if row[3] is not None:
+                raise PermissionError("Discord control token was replayed")
+            if _parse_timestamp(row[2]) <= _parse_timestamp(now_iso):
+                raise PermissionError("Discord control token has expired")
+            updated = conn.execute(
+                """
+                UPDATE discord_control_tokens SET used_at = ?
+                WHERE token = ? AND used_at IS NULL
+                """,
+                (now_iso, token),
+            )
+            if updated.rowcount != 1:
+                raise PermissionError("Discord control token was replayed")
