@@ -52,3 +52,19 @@ def test_inspect_html_fails_closed_on_greenhouse_email_verification_gate():
         "type": "email_verification",
         "detail": "Email verification detected",
     }
+
+
+def test_main_fails_closed_for_greenhouse_manual_gate_and_emits_json(capsys, tmp_path):
+    fixture = tmp_path / "email-verification.html"
+    fixture.write_text("<h1>Software Engineer Intern</h1><p>Please verify your email to continue.</p>")
+
+    exit_code = greenhouse_handler.main([
+        str(fixture),
+        "--page-url",
+        "https://job-boards.greenhouse.io/example/jobs/123",
+    ])
+
+    payload = __import__("json").loads(capsys.readouterr().out)
+    assert exit_code == 2
+    assert payload["safe_to_prepare"] is False
+    assert payload["manual_gate"]["type"] == "email_verification"

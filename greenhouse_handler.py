@@ -108,6 +108,7 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         "fields": parser.fields,
         "uploaded_resume_verified": uploaded_resume_verified,
         "manual_gate": manual_gate,
+        "safe_to_prepare": page_type == "application" and manual_gate is None and uploaded_resume_verified is not False,
         "confirmation_text": confirmation_text,
     }
 
@@ -125,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         expected_resume_basename=args.expected_resume_basename,
     )
     print(json.dumps(payload))
-    return 0
+    return 2 if not payload["safe_to_prepare"] and payload["page_type"] == "application" else 0
 
 
 if __name__ == "__main__":
