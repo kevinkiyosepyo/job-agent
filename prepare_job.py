@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from ats_registry import resolve_handler
+from resume_preflight import preflight_profile_resume
 
 
 def prepare_saved_html(
@@ -34,15 +35,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("html_path")
     parser.add_argument("--page-url", required=True)
     parser.add_argument("--expected-resume-basename")
+    parser.add_argument("--profile")
     parser.add_argument("--output")
     args = parser.parse_args(argv)
 
     try:
+        resume_evidence = preflight_profile_resume(args.profile) if args.profile else None
+        expected_resume_basename = (
+            resume_evidence["basename"] if resume_evidence else args.expected_resume_basename
+        )
         payload = prepare_saved_html(
             html_text=Path(args.html_path).read_text(),
             page_url=args.page_url,
-            expected_resume_basename=args.expected_resume_basename,
+            expected_resume_basename=expected_resume_basename,
         )
+        if resume_evidence:
+            payload["resume_preflight"] = resume_evidence
+            payload["resume_verified"] = True
     except ValueError as exc:
         print(json.dumps({
             "error": str(exc),

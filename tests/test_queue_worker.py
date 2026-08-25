@@ -236,6 +236,35 @@ def test_main_leases_once_writes_machine_readable_result_and_stays_idempotent(tm
     assert len(execution_journal.ExecutionJournal(journal_path).read_all()) == 3
 
 
+def test_main_uses_profile_resume_preflight_in_persisted_plan(tmp_path, capsys):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Example", role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/example/jobs/123", ats_platform="Greenhouse",
+    )
+    resume = tmp_path / "Kevin_Pyo_Resume.pdf"
+    resume.write_bytes(b"%PDF-1.7\nresume")
+    profile = tmp_path / "profile.json"
+    profile.write_text(json.dumps({"resume": {
+        "primary": str(resume), "required_application_filename": resume.name,
+        "do_not_use_for_applications": [],
+    }}))
+
+    exit_code = queue_worker.main([
+        "--queue-db", str(tmp_path / "queue.db"), "--journal", str(tmp_path / "journal.jsonl"),
+        "--html-path", str(ROOT / "fixtures" / "greenhouse.html"),
+        "--profile", str(profile), "--now", "2026-08-25T07:35:00+00:00",
+        "--plan-dir", str(tmp_path / "plans"),
+    ])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    plan = json.loads(Path(payload["result"]["plan_path"]).read_text())
+    assert plan["resume_preflight"]["basename"] == "Kevin_Pyo_Resume.pdf"
+    assert plan["resume_preflight"]["verified"] is True
+    assert plan["resume_verified"] is True
+
+
 def test_main_fails_closed_and_requeues_retryable_prepare_blocker(tmp_path, monkeypatch, capsys):
     queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
     queue.enqueue(

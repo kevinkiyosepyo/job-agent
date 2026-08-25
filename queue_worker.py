@@ -13,6 +13,7 @@ from typing import Any
 import prepare_job
 from app_queue import ApplicationQueue, QueueJob
 from execution_journal import ExecutionJournal
+from resume_preflight import preflight_profile_resume
 
 
 class ATSCircuitBreaker:
@@ -98,6 +99,7 @@ def resume_or_prepare_leased_job(
     expected_resume_basename: str | None,
     now: str,
     plan_dir: Path,
+    resume_evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if leased_job.state != "leased":
         raise ValueError(f"Job {leased_job.id} is not currently leased")
@@ -120,6 +122,9 @@ def resume_or_prepare_leased_job(
             page_url=leased_job.url,
             expected_resume_basename=expected_resume_basename,
         )
+        if resume_evidence:
+            payload["resume_preflight"] = resume_evidence
+            payload["resume_verified"] = True
         plan_path.write_text(json.dumps(payload, indent=2) + "\n")
         journal.append(
             job_id=leased_job.id,
@@ -196,10 +201,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--lease-seconds", type=int, default=300)
     parser.add_argument("--plan-dir", required=True)
     parser.add_argument("--expected-resume-basename")
+    parser.add_argument("--profile")
     parser.add_argument("--circuit-db")
     parser.add_argument("--circuit-cooldown-seconds", type=int, default=300)
     parser.add_argument("--ats-retry-budget", type=int, default=3)
     args = parser.parse_args(argv)
+
+    try:
+        resume_evidence = preflight_profile_resume(args.profile) if args.profile else None
+    except ValueError as exc:
+        print(json.dumps({
+            "status": "prepare_blocked",
+            "error": str(exc),
+            "retryable": False,
+            "submission_enabled": False,
+        }))
+        return 2
+    expected_resume_basename = (
+        resume_evidence["basename"] if resume_evidence else args.expected_resume_basename
+    )
 
     html_path = Path(args.html_path)
     queue = ApplicationQueue(Path(args.queue_db))
@@ -228,9 +248,10 @@ def main(argv: list[str] | None = None) -> int:
             leased_job=leased_job,
             journal=journal,
             html_text=html_path.read_text(),
-            expected_resume_basename=args.expected_resume_basename,
+            expected_resume_basename=expected_resume_basename,
             now=args.now,
             plan_dir=Path(args.plan_dir),
+            resume_evidence=resume_evidence,
         )
     except ValueError as exc:
         retryable = _is_retryable_prepare_error(exc)

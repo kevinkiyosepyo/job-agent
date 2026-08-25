@@ -60,6 +60,37 @@ def test_prepare_saved_html_dispatches_to_supported_ats_handlers():
         assert result["page_url"] == scenario["page_url"]
 
 
+def test_main_uses_profile_resume_preflight_and_embeds_safe_evidence(tmp_path, capsys):
+    resume = tmp_path / "Kevin_Pyo_Resume.pdf"
+    resume.write_bytes(b"%PDF-1.7\nresume")
+    profile = tmp_path / "profile.json"
+    profile.write_text(json.dumps({
+        "resume": {
+            "primary": str(resume),
+            "required_application_filename": "Kevin_Pyo_Resume.pdf",
+            "do_not_use_for_applications": [],
+        }
+    }))
+
+    exit_code = prepare_job.main([
+        str(ROOT / "fixtures" / "greenhouse.html"),
+        "--page-url", "https://job-boards.greenhouse.io/example/jobs/123",
+        "--profile", str(profile),
+    ])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["resume_preflight"] == {
+        "basename": "Kevin_Pyo_Resume.pdf",
+        "content_type": "application/pdf",
+        "path": str(resume),
+        "sha256": __import__("hashlib").sha256(resume.read_bytes()).hexdigest(),
+        "size_bytes": len(resume.read_bytes()),
+        "verified": True,
+    }
+    assert payload["resume_verified"] is True
+
+
 def test_main_fails_closed_with_machine_readable_error_for_unsupported_ats(tmp_path, capsys):
     output_path = tmp_path / "prepare-job.json"
 
