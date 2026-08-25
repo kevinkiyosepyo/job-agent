@@ -46,6 +46,7 @@ def validate_confirmation_evidence(*, confirmation_url: str, confirmation_text: 
     lowered = evidence.casefold()
     success_markers = (
         "application received",
+        "application has been received",
         "application submitted",
         "thank you for applying",
         "submission confirmed",

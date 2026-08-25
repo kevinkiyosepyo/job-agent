@@ -64,3 +64,8 @@ def run_fixture_flow(
         "plan": plan,
         "evidence_artifact": artifact,
     }
+
+
+def run_workday_fixture_flow(**kwargs: Any) -> dict[str, Any]:
+    """Run the shared non-submitting E2E contract against a Workday fixture."""
+    return run_fixture_flow(**kwargs)
