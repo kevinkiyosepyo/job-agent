@@ -25,6 +25,8 @@ class _GreenhouseHTMLParser(HTMLParser):
         self.fields: list[dict] = []
         self.uploaded_names: list[str] = []
         self.text_chunks: list[str] = []
+        self.entrypoint: dict[str, str] = {}
+        self._apply_link_text: list[str] | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr_map = dict(attrs)
@@ -35,6 +37,11 @@ class _GreenhouseHTMLParser(HTMLParser):
             self.current_label_for = attr_map.get("for")
             self.current_field = None
             self.current_label_closed = False
+        if tag == "a" and (
+            "apply" in (attr_map.get("class") or "").casefold()
+            or (attr_map.get("href") or "").startswith("#app")
+        ):
+            self._apply_link_text = []
         if tag in {"input", "select", "textarea"}:
             if self.current_label_text is not None:
                 self.current_label_closed = True
@@ -65,6 +72,11 @@ class _GreenhouseHTMLParser(HTMLParser):
             self.current_label_text = None
             self.current_label_for = None
             self.current_field = None
+        if tag == "a" and self._apply_link_text is not None:
+            label = " ".join(self._apply_link_text)
+            if label:
+                self.entrypoint["apply_label"] = label
+            self._apply_link_text = None
 
     def handle_data(self, data: str) -> None:
         text = data.strip()
@@ -75,6 +87,8 @@ class _GreenhouseHTMLParser(HTMLParser):
             self.role = text
         if self.current_label_text is not None and not self.current_label_closed:
             self.current_label_text.append(text)
+        if self._apply_link_text is not None:
+            self._apply_link_text.append(text)
         if not self.company and "—" in text:
             company, _, location = text.partition("—")
             self.company = company.strip()
@@ -118,6 +132,8 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "confirmation"
     except ValueError:
         pass
+    if page_type == "application" and not parser.fields and parser.entrypoint.get("apply_label"):
+        page_type = "listing"
     return {
         "page_type": page_type,
         "page_url": page_url,
@@ -125,6 +141,7 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         "role": parser.role,
         "location": parser.location,
         "fields": parser.fields,
+        "entrypoint": parser.entrypoint,
         "uploaded_resume_verified": uploaded_resume_verified,
         "manual_gate": manual_gate,
         "safe_to_prepare": page_type == "application" and manual_gate is None and uploaded_resume_verified is not False,

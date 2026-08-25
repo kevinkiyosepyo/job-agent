@@ -42,6 +42,19 @@ def test_inspect_application_fixture_inventories_fields_and_verifies_uploaded_re
     }
 
 
+def test_inspect_html_classifies_greenhouse_listing_with_apply_entrypoint():
+    result = greenhouse_handler.inspect_html(
+        "<h1>Software Engineer Intern</h1>"
+        "<p>Fixture Company — United States</p>"
+        "<a href='#app' class='button'>Apply for this job</a>",
+        page_url="https://job-boards.greenhouse.io/example/jobs/123",
+    )
+
+    assert result["page_type"] == "listing"
+    assert result["entrypoint"] == {"apply_label": "Apply for this job"}
+    assert result["safe_to_prepare"] is False
+
+
 def test_inspect_html_binds_a_for_label_to_its_separate_greenhouse_control():
     result = greenhouse_handler.inspect_html(
         "<h1>Software Engineer Intern</h1>"
