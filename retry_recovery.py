@@ -25,7 +25,12 @@ def execute_once_with_inspected_recovery(
                 "recovery_inspections": 1,
                 "confirmation": inspection.get("confirmation"),
             }
-        raise
+        return {
+            "status": "blocked",
+            "blocker": inspection.get("reason", "recovery inspection did not confirm completion"),
+            "normal_attempts": 1,
+            "recovery_inspections": 1,
+        }
     return {
         "status": "completed",
         "normal_attempts": 1,
