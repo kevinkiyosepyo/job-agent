@@ -23,6 +23,13 @@ class InMemoryPage:
     def read_value(self, selector: str) -> str:
         return self.values[selector]
 
+    def select_option(self, selector: str, value: str) -> None:
+        self.operations.append(("select_option", selector, value))
+        self.values[selector] = value
+
+    def read_selected_option(self, selector: str) -> str:
+        return self.values[selector]
+
 
 def test_replace_text_returns_exact_post_action_read_back_evidence():
     page = InMemoryPage()
@@ -35,5 +42,20 @@ def test_replace_text_returns_exact_post_action_read_back_evidence():
         "selector": "#first-name",
         "expected": "Kevin",
         "actual": "Kevin",
+        "verified": True,
+    }
+
+
+def test_native_select_returns_selected_option_read_back_evidence():
+    page = InMemoryPage()
+
+    evidence = browser_actions.native_select(page, "#country", "United States")
+
+    assert page.operations == [("select_option", "#country", "United States")]
+    assert evidence == {
+        "action": "native_select",
+        "selector": "#country",
+        "expected": "United States",
+        "actual": "United States",
         "verified": True,
     }
