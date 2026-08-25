@@ -45,6 +45,16 @@ class InMemoryPage:
     def read_uploaded_filename(self, selector: str) -> str:
         return self.values[selector]
 
+    def scroll_into_view(self, selector: str) -> None:
+        self.operations.append(("scroll_into_view", selector, ""))
+
+    def click(self, selector: str) -> None:
+        self.operations.append(("click", selector, ""))
+        self.values[selector] = "clicked"
+
+    def read_post_click_state(self, selector: str) -> str:
+        return self.values[selector]
+
 
 def test_replace_text_returns_exact_post_action_read_back_evidence():
     page = InMemoryPage()
@@ -104,5 +114,23 @@ def test_cdp_upload_returns_attached_file_read_back_evidence():
         "selector": "#resume-upload",
         "expected": "Resume.pdf",
         "actual": "Resume.pdf",
+        "verified": True,
+    }
+
+
+def test_scroll_and_click_returns_post_click_state_read_back_evidence():
+    page = InMemoryPage()
+
+    evidence = browser_actions.scroll_and_click(page, "#continue", "clicked")
+
+    assert page.operations == [
+        ("scroll_into_view", "#continue", ""),
+        ("click", "#continue", ""),
+    ]
+    assert evidence == {
+        "action": "scroll_and_click",
+        "selector": "#continue",
+        "expected": "clicked",
+        "actual": "clicked",
         "verified": True,
     }

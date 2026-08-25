@@ -29,6 +29,14 @@ class CDPUploadPage(Protocol):
     def read_uploaded_filename(self, selector: str) -> str: ...
 
 
+class ScrollClickPage(Protocol):
+    def scroll_into_view(self, selector: str) -> None: ...
+
+    def click(self, selector: str) -> None: ...
+
+    def read_post_click_state(self, selector: str) -> str: ...
+
+
 def replace_text(page: TextPage, selector: str, value: str) -> dict[str, object]:
     """Replace a field's text and return evidence from an exact read-back."""
     page.replace_text(selector, value)
@@ -79,4 +87,20 @@ def cdp_upload(page: CDPUploadPage, selector: str, path: str) -> dict[str, objec
         "expected": expected,
         "actual": actual,
         "verified": actual == expected,
+    }
+
+
+def scroll_and_click(
+    page: ScrollClickPage, selector: str, expected_state: str
+) -> dict[str, object]:
+    """Scroll to a control, click it, and return post-click read-back evidence."""
+    page.scroll_into_view(selector)
+    page.click(selector)
+    actual = page.read_post_click_state(selector)
+    return {
+        "action": "scroll_and_click",
+        "selector": selector,
+        "expected": expected_state,
+        "actual": actual,
+        "verified": actual == expected_state,
     }
