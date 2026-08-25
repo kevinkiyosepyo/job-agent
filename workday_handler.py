@@ -138,6 +138,8 @@ def _manual_gates(text_chunks: list[str]) -> list[dict[str, str]]:
         gates.append({"type": "email_verification", "detail": "Email verification required"})
     if "assessment" in text or "take-home" in text or "takehome" in text:
         gates.append({"type": "assessment", "detail": "Assessment detected"})
+    if "identity verification" in text or "verify your identity" in text:
+        gates.append({"type": "identity_verification", "detail": "Identity verification required"})
     return gates
 
 

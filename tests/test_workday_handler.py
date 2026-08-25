@@ -113,6 +113,18 @@ def test_inspect_manual_gate_fixture_reports_every_human_gate():
     assert result["save_draft_available"] is True
 
 
+def test_inspect_html_fails_closed_on_identity_verification_requirement():
+    result = workday_handler.inspect_html(
+        "<h1>Software Engineering Intern</h1><p>Verify your identity to continue.</p>",
+        page_url="https://example.wd1.myworkdayjobs.com/en-US/careers/job/1",
+    )
+
+    assert result["manual_gates"] == [
+        {"type": "identity_verification", "detail": "Identity verification required"}
+    ]
+    assert result["safe_to_prepare"] is False
+
+
 def test_inspect_confirmation_fixture_requires_success_and_extracts_reference_id():
     fixture_text = (ROOT / "fixtures" / "workday_confirmation.html").read_text()
 
