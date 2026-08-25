@@ -62,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.output:
         Path(args.output).write_text(json.dumps(payload, indent=2) + "\n")
     print(json.dumps(payload))
-    return 0
+    return 0 if payload.get("safe_to_prepare", True) else 2
 
 
 if __name__ == "__main__":

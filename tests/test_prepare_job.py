@@ -110,3 +110,23 @@ def test_main_fails_closed_with_machine_readable_error_for_unsupported_ats(tmp_p
         "submission_enabled": False,
     }
     assert not output_path.exists()
+
+
+def test_main_fails_closed_for_supported_ats_manual_gate(tmp_path, capsys):
+    fixture = tmp_path / "manual-gate.html"
+    fixture.write_text("<h1>Software Engineer Intern</h1><p>Please verify your email to continue.</p>")
+
+    exit_code = prepare_job.main([
+        str(fixture),
+        "--page-url",
+        "https://job-boards.greenhouse.io/example/jobs/123",
+    ])
+
+    assert exit_code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["submission_enabled"] is False
+    assert payload["safe_to_prepare"] is False
+    assert payload["manual_gate"] == {
+        "type": "email_verification",
+        "detail": "Email verification detected",
+    }
