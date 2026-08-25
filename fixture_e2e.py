@@ -102,8 +102,11 @@ def run_njoyn_fixture_flow(
     unresolved_corrections = [
         field for field in required_corrections if field not in recorded_corrections
     ]
+    rejected_corrections = [
+        field for field in recorded_corrections if field not in required_corrections
+    ]
     result["parser_review"] = parser_review
-    result["parser_repair_evidence"] = {
+    repair_evidence = {
         "status": (
             "not_required"
             if not required_corrections
@@ -116,4 +119,7 @@ def run_njoyn_fixture_flow(
         "unresolved_corrections": unresolved_corrections,
         "safe_to_continue": not unresolved_corrections,
     }
+    if rejected_corrections:
+        repair_evidence["rejected_corrections"] = rejected_corrections
+    result["parser_repair_evidence"] = repair_evidence
     return result
