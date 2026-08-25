@@ -22,6 +22,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `greenhouse_handler.py` — fixture-driven Greenhouse application inspector with field inventory, resume read-back, manual-gate plumbing, and confirmation validation.
 - `workday_handler.py` — executable Workday listing/application inspector with wizard inventory, resume read-back, parsed-resume mismatch detection, save-draft awareness, multi-gate fail-closed output, and confirmation-reference extraction.
 - `oracle_handler.py` — Oracle Recruiting inspector with combobox validation, issue navigation, resume read-back, and confirmation validation.
+- `production_readiness.py` — read-only final audit of persisted idempotent dry-run and non-submitting Greenhouse, Workday, Lever, and Oracle fixture evidence.
 
 ## Test
 
@@ -36,6 +37,14 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 ```
 
 `orchestrator.py` runs scanner + pipeline in `dry_run` mode, persists supported jobs into the local SQLite queue as `discovered`, and appends a redacted audit event. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
+
+## Production-readiness audit
+
+```bash
+python production_readiness.py --dry-run-report runtime/production-run/report.json --fixture-flows runtime/fixture-flows.json
+```
+
+The audit is read-only and returns `ready_for_human_gated_production` only when persisted evidence proves idempotent, non-submitting dry-run behavior and all four supported ATS fixture flows remained non-submitting. It explicitly preserves human-only gates: CAPTCHA, email/identity verification, assessments, unknown required questions, and explicit submission authorization.
 
 ## Queue-bound Discord controls
 

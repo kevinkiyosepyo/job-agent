@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+import production_readiness
+
+
+def test_audit_requires_all_supported_fixture_flows_and_reports_human_only_gates():
+    report = production_readiness.build_audit(
+        dry_run_verification={
+            "idempotent_queueing": True,
+            "unsupported_roles_not_queued": True,
+            "submission_enabled": False,
+            "external_side_effects_blocked": True,
+        },
+        fixture_flows={
+            platform: {"submission_enabled": False, "plan": {"platform": platform}}
+            for platform in ("greenhouse", "workday", "lever", "oracle")
+        },
+    )
+
+    assert report["status"] == "ready_for_human_gated_production"
+    assert report["dry_run_verified"] is True
+    assert report["fixture_flows_verified"] == ["greenhouse", "lever", "oracle", "workday"]
+    assert report["human_only_gates"] == [
+        "CAPTCHA",
+        "email_or_identity_verification",
+        "assessments",
+        "unknown_required_questions",
+        "explicit_submission_authorization",
+    ]
+
+
+def test_main_reads_persisted_non_submitting_evidence_and_emits_audit(tmp_path, capsys):
+    dry_run_path = tmp_path / "dry-run.json"
+    flows_path = tmp_path / "fixture-flows.json"
+    dry_run_path.write_text(
+        json.dumps(
+            {
+                "verification": {
+                    "idempotent_queueing": True,
+                    "unsupported_roles_not_queued": True,
+                    "submission_enabled": False,
+                    "external_side_effects_blocked": True,
+                }
+            }
+        )
+    )
+    flows_path.write_text(
+        json.dumps(
+            {
+                platform: {"submission_enabled": False, "plan": {"platform": platform}}
+                for platform in ("greenhouse", "workday", "lever", "oracle")
+            }
+        )
+    )
+
+    exit_code = production_readiness.main(
+        ["--dry-run-report", str(dry_run_path), "--fixture-flows", str(flows_path)]
+    )
+
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "ready_for_human_gated_production"
