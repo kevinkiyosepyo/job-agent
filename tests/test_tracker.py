@@ -9,7 +9,37 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+import app_queue
 import tracker
+import queue_sheet_reconciliation
+
+
+def test_reconcile_reports_verified_sheet_submission_drift_without_mutating_queue(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    job = queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://jobs.example.com/123",
+        ats_platform="Greenhouse",
+    )
+    queue.transition(job.id, "prepared")
+    sheet_rows = [{
+        "Company Name": "Example",
+        "Application Status": "Submitted - Pending Response",
+        "Role": "Software Engineer Intern",
+        "Link to Job Req": "https://jobs.example.com/123",
+    }]
+
+    report = queue_sheet_reconciliation.reconcile(queue, sheet_rows)
+
+    assert report["drifts"] == [{
+        "job_id": job.id,
+        "queue_state": "prepared",
+        "sheet_status": "Submitted - Pending Response",
+        "reason": "sheet_state_is_newer_verified",
+    }]
+    assert report["mutations"] == []
+    assert queue.list_jobs()[0].state == "prepared"
 
 
 def test_duplicate_normalizes_tracking_parameters_and_trailing_slash():
