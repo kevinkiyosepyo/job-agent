@@ -120,18 +120,59 @@ def main(argv: list[str] | None = None) -> int:
     html_path = Path(args.html_path)
     queue = ApplicationQueue(Path(args.queue_db))
     journal = ExecutionJournal(Path(args.journal))
-    result = prepare_next_job(
-        queue=queue,
-        journal=journal,
-        html_loader=lambda leased_job: html_path.read_text(),
-        expected_resume_basename=args.expected_resume_basename,
-        now=args.now,
-        lease_seconds=args.lease_seconds,
-        plan_dir=Path(args.plan_dir),
-    )
-    if result is None:
+    leased_job = queue.lease_next(now=args.now, lease_seconds=args.lease_seconds)
+    if leased_job is None:
         print(json.dumps({"status": "no_job_available"}))
         return 0
+
+    journal.append(
+        job_id=leased_job.id,
+        attempt_count=leased_job.attempt_count,
+        step="lease_claimed",
+        payload={
+            "state": leased_job.state,
+            "lease_expires_at": leased_job.lease_expires_at,
+        },
+    )
+
+    try:
+        result = resume_or_prepare_leased_job(
+            queue=queue,
+            leased_job=leased_job,
+            journal=journal,
+            html_text=html_path.read_text(),
+            expected_resume_basename=args.expected_resume_basename,
+            now=args.now,
+            plan_dir=Path(args.plan_dir),
+        )
+    except ValueError as exc:
+        journal.append(
+            job_id=leased_job.id,
+            attempt_count=leased_job.attempt_count,
+            step="prepare_blocked",
+            payload={"error": str(exc)},
+        )
+        finished = queue.finish_lease(
+            leased_job.id,
+            outcome="retry",
+            now=args.now,
+            retry_seconds=0,
+            error=str(exc),
+        )
+        journal.append(
+            job_id=leased_job.id,
+            attempt_count=leased_job.attempt_count,
+            step="lease_finished",
+            payload={"state": finished.state, "error": str(exc)},
+        )
+        print(json.dumps({
+            "status": "prepare_blocked",
+            "error": str(exc),
+            "job_id": leased_job.id,
+            "submission_enabled": False,
+        }))
+        return 2
+
     print(json.dumps({"status": "prepared", "result": result}))
     return 0
 

@@ -201,3 +201,62 @@ def test_main_leases_once_writes_machine_readable_result_and_stays_idempotent(tm
     assert second_exit_code == 0
     assert second_payload == {"status": "no_job_available"}
     assert len(execution_journal.ExecutionJournal(journal_path).read_all()) == 3
+
+
+def test_main_fails_closed_and_requeues_job_when_prepare_is_blocked(tmp_path, monkeypatch, capsys):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://example.com/custom/apply",
+        ats_platform="Custom",
+    )
+    journal_path = tmp_path / "journal.jsonl"
+    plan_dir = tmp_path / "plans"
+
+    def fail_prepare(**kwargs):
+        raise ValueError("Unsupported ATS for URL: https://example.com/custom/apply")
+
+    monkeypatch.setattr(queue_worker.prepare_job, "prepare_saved_html", fail_prepare)
+
+    exit_code = queue_worker.main([
+        "--queue-db",
+        str(tmp_path / "queue.db"),
+        "--journal",
+        str(journal_path),
+        "--html-path",
+        str(ROOT / "fixtures" / "greenhouse.html"),
+        "--now",
+        "2026-08-25T07:35:00+00:00",
+        "--lease-seconds",
+        "300",
+        "--plan-dir",
+        str(plan_dir),
+    ])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 2
+    assert payload == {
+        "status": "prepare_blocked",
+        "error": "Unsupported ATS for URL: https://example.com/custom/apply",
+        "job_id": 1,
+        "submission_enabled": False,
+    }
+
+    [job] = queue.list_jobs()
+    assert job.state == "discovered"
+    assert job.attempt_count == 1
+    assert job.last_error == "Unsupported ATS for URL: https://example.com/custom/apply"
+    assert job.lease_expires_at is None
+
+    entries = execution_journal.ExecutionJournal(journal_path).read_all()
+    assert [entry["step"] for entry in entries] == [
+        "lease_claimed",
+        "prepare_blocked",
+        "lease_finished",
+    ]
+    assert entries[1]["payload"] == {
+        "error": "Unsupported ATS for URL: https://example.com/custom/apply"
+    }
+    assert entries[2]["payload"]["state"] == "discovered"
+    assert not list(plan_dir.glob("*.json"))
