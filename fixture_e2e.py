@@ -8,6 +8,7 @@ from typing import Any
 from answer_coverage import build_coverage_matrix
 from app_queue import ApplicationQueue
 from execution_journal import ExecutionJournal
+from njoyn_handler import inspect_html as inspect_njoyn_html
 from queue_worker import resume_or_prepare_leased_job
 from submission_artifacts import build_submission_artifact
 
@@ -79,3 +80,15 @@ def run_lever_fixture_flow(**kwargs: Any) -> dict[str, Any]:
 def run_oracle_fixture_flow(**kwargs: Any) -> dict[str, Any]:
     """Run the shared non-submitting E2E contract against an Oracle fixture."""
     return run_fixture_flow(**kwargs)
+
+
+def run_njoyn_fixture_flow(
+    *, parser_fixture_path: Path, **kwargs: Any
+) -> dict[str, Any]:
+    """Run CGI/Njoyn preparation with resume and parser-review evidence."""
+    result = run_fixture_flow(**kwargs)
+    result["parser_review"] = inspect_njoyn_html(
+        Path(parser_fixture_path).read_text(),
+        page_url=kwargs["candidate"]["url"],
+    )
+    return result

@@ -129,3 +129,31 @@ def test_run_oracle_fixture_flow_prepares_non_submitting_plan_and_evidence(tmp_p
     assert result["plan"]["uploaded_resume_verified"] is True
     assert result["plan"]["country_valid"] is True
     assert result["evidence_artifact"]["reconciliation"]["consistent"] is True
+
+
+def test_run_njoyn_fixture_flow_prepares_resume_plan_and_parser_review_evidence(tmp_path):
+    result = fixture_e2e.run_njoyn_fixture_flow(
+        fixture_path=ROOT / "fixtures" / "njoyn_resume_upload.html",
+        parser_fixture_path=ROOT / "fixtures" / "njoyn_parsed_profile.html",
+        candidate={
+            "company": "CGI Fixture Company",
+            "role": "Software Developer Intern",
+            "url": "https://cgi.njoyn.com/CL3/xweb/xweb.asp?CLID=1&page=jobdetails&jobid=123",
+            "ats_platform": "njoyn",
+        },
+        profile={"education": {"graduation_season": "Spring 2028"}},
+        questions=[{"label": "What is your expected graduation season?", "required": True}],
+        expected_resume_basename="Resume.pdf",
+        queue_db_path=tmp_path / "queue.db",
+        plan_dir=tmp_path / "plans",
+        confirmation_url="https://cgi.njoyn.com/CL3/xweb/xweb.asp?confirmation=1",
+        confirmation_text="Your application has been received. Reference: CGI-FIXTURE-001.",
+    )
+
+    assert result["submission_enabled"] is False
+    assert result["queue_job"]["state"] == "prepared"
+    assert result["plan"]["platform"] == "njoyn"
+    assert result["plan"]["uploaded_resume_verified"] is True
+    assert result["parser_review"]["page_type"] == "parsed_profile"
+    assert result["parser_review"]["parser_correction_required"] is False
+    assert result["evidence_artifact"]["reconciliation"]["consistent"] is True
