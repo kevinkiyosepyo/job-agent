@@ -10,7 +10,7 @@ import re
 import subprocess
 import sys
 import urllib.request
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -55,6 +55,27 @@ def fetch_rows() -> list[dict[str, str]]:
     LOCAL_CACHE.parent.mkdir(parents=True, exist_ok=True)
     LOCAL_CACHE.write_text(text, encoding="utf-8")
     return list(csv.DictReader(io.StringIO(text)))
+
+
+def fetch_rows_via_api() -> list[dict[str, str]]:
+    """Read tracker rows through authenticated Sheets API for write verification."""
+    ensure_write_oauth()
+    cmd = [
+        sys.executable, str(GAPI), "sheets", "get", SHEET_ID,
+        f"'{SHEET_NAME}'!A1:H1000",
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    if proc.returncode:
+        raise RuntimeError(proc.stderr.strip() or proc.stdout.strip())
+    values = json.loads(proc.stdout)
+    if not values:
+        return []
+    headers = [(str(value) if value is not None else "") for value in values[0]]
+    rows: list[dict[str, str]] = []
+    for source_row in values[1:]:
+        padded = list(source_row) + [""] * max(0, len(headers) - len(source_row))
+        rows.append({header: str(value) if value is not None else "" for header, value in zip(headers, padded)})
+    return rows
 
 
 def nonempty(rows: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -134,9 +155,28 @@ def append_verified(values: list[str]) -> dict:
     """Append and require the exact row to appear in a fresh read."""
     api_result = append_via_api(values)
     expected = dict(zip(HEADERS, values))
-    for row in fetch_rows():
-        if all((row.get(header) or "") == (expected.get(header) or "") for header in HEADERS):
-            return {"verified": True, "api_result": api_result, "row": row}
+
+    def equivalent(header: str, actual: str, wanted: str) -> bool:
+        if header != "Date Submitted" or not actual or not wanted:
+            return actual == wanted
+        parsed: list[date] = []
+        for value in (actual, wanted):
+            for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
+                try:
+                    parsed.append(datetime.strptime(value, fmt).date())
+                    break
+                except ValueError:
+                    continue
+        return len(parsed) == 2 and parsed[0] == parsed[1]
+
+    for row in fetch_rows_via_api():
+        if all(equivalent(header, row.get(header) or "", expected.get(header) or "") for header in HEADERS):
+            return {
+                "verified": True,
+                "api_result": api_result,
+                "readback_source": "google_sheets_api",
+                "row": row,
+            }
     raise RuntimeError("Google Sheets append returned success but read-back verification failed")
 
 

@@ -30,7 +30,7 @@ def test_duplicate_normalizes_tracking_parameters_and_trailing_slash():
 def test_append_verified_reloads_tracker_and_requires_exact_row(monkeypatch):
     values = ["Example", "Discovered", "Software Engineer Intern", "", "", "https://example.com/job/1", "N/A", "test"]
     monkeypatch.setattr(tracker, "append_via_api", lambda row: {"updates": {"updatedRows": 1}})
-    monkeypatch.setattr(tracker, "fetch_rows", lambda: [dict(zip(tracker.HEADERS, values))])
+    monkeypatch.setattr(tracker, "fetch_rows_via_api", lambda: [dict(zip(tracker.HEADERS, values))])
 
     result = tracker.append_verified(values)
 
@@ -38,9 +38,23 @@ def test_append_verified_reloads_tracker_and_requires_exact_row(monkeypatch):
     assert result["row"]["Company Name"] == "Example"
 
 
+def test_append_verified_uses_authenticated_api_when_public_csv_is_stale(monkeypatch):
+    values = ["Medtronic", "Submitted - Pending Response", "Software Engineering Intern", "", "2026-08-25", "https://example.com/job/1", "N/A", "verified"]
+    formatted_row = dict(zip(tracker.HEADERS, [*values[:4], "8/25/2026", *values[5:]]))
+    monkeypatch.setattr(tracker, "append_via_api", lambda row: {"updatedCells": 8})
+    monkeypatch.setattr(tracker, "fetch_rows", lambda: [])
+    monkeypatch.setattr(tracker, "fetch_rows_via_api", lambda: [formatted_row])
+
+    result = tracker.append_verified(values)
+
+    assert result["verified"] is True
+    assert result["readback_source"] == "google_sheets_api"
+    assert result["row"]["Company Name"] == "Medtronic"
+
+
 def test_append_verified_fails_if_readback_does_not_contain_row(monkeypatch):
     monkeypatch.setattr(tracker, "append_via_api", lambda row: {"updates": {"updatedRows": 1}})
-    monkeypatch.setattr(tracker, "fetch_rows", lambda: [])
+    monkeypatch.setattr(tracker, "fetch_rows_via_api", lambda: [])
 
     with pytest.raises(RuntimeError, match="read-back verification"):
         tracker.append_verified(["Example", "Discovered", "Role", "", "", "https://example.com/1", "N/A", ""])
