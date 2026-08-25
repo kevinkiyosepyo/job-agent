@@ -14,6 +14,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
 - `tracker.py` — read the live Google Sheet, append rows with mandatory API read-back verification, and run a self-cleaning integration check.
 - `notifier.py` — send deterministic Discord alerts.
+- `submission_artifacts.py` — build sanitized submission-evidence artifacts that reconcile verified tracker rows with Discord applied notifications.
 - `discord_controls.py` — enforce job-ID-bound approve/reject/retry/skip actions against the local SQLite queue with a machine-readable CLI.
 - `tests/` — behavior and safety tests.
 - `fixtures/` — harmless Greenhouse, Workday, and Lever test pages.
