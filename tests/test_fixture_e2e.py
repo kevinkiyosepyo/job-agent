@@ -157,3 +157,33 @@ def test_run_njoyn_fixture_flow_prepares_resume_plan_and_parser_review_evidence(
     assert result["parser_review"]["page_type"] == "parsed_profile"
     assert result["parser_review"]["parser_correction_required"] is False
     assert result["evidence_artifact"]["reconciliation"]["consistent"] is True
+
+
+def test_run_njoyn_fixture_flow_blocks_parser_mismatch_until_correction_is_recorded(tmp_path):
+    result = fixture_e2e.run_njoyn_fixture_flow(
+        fixture_path=ROOT / "fixtures" / "njoyn_resume_upload.html",
+        parser_fixture_path=ROOT / "fixtures" / "njoyn_parsed_profile_mismatch.html",
+        candidate={
+            "company": "CGI Fixture Company",
+            "role": "Software Developer Intern",
+            "url": "https://cgi.njoyn.com/CL3/xweb/xweb.asp?CLID=1&page=jobdetails&jobid=123",
+            "ats_platform": "njoyn",
+        },
+        profile={"education": {"graduation_season": "Spring 2028"}},
+        questions=[{"label": "What is your expected graduation season?", "required": True}],
+        expected_resume_basename="Resume.pdf",
+        queue_db_path=tmp_path / "queue.db",
+        plan_dir=tmp_path / "plans",
+        confirmation_url="https://cgi.njoyn.com/CL3/xweb/xweb.asp?confirmation=1",
+        confirmation_text="Your application has been received. Reference: CGI-FIXTURE-001.",
+    )
+
+    assert result["parser_review"]["parser_correction_required"] is True
+    assert result["parser_repair_evidence"] == {
+        "status": "blocked",
+        "required_corrections": ["school"],
+        "resolved_corrections": [],
+        "unresolved_corrections": ["school"],
+        "safe_to_continue": False,
+    }
+    assert result["submission_enabled"] is False

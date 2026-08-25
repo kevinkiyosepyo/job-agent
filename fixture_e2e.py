@@ -87,8 +87,17 @@ def run_njoyn_fixture_flow(
 ) -> dict[str, Any]:
     """Run CGI/Njoyn preparation with resume and parser-review evidence."""
     result = run_fixture_flow(**kwargs)
-    result["parser_review"] = inspect_njoyn_html(
+    parser_review = inspect_njoyn_html(
         Path(parser_fixture_path).read_text(),
         page_url=kwargs["candidate"]["url"],
     )
+    required_corrections = parser_review["parser_mismatches"]
+    result["parser_review"] = parser_review
+    result["parser_repair_evidence"] = {
+        "status": "blocked" if required_corrections else "not_required",
+        "required_corrections": required_corrections,
+        "resolved_corrections": [],
+        "unresolved_corrections": required_corrections,
+        "safe_to_continue": not required_corrections,
+    }
     return result
