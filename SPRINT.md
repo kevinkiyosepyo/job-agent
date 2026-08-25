@@ -12,18 +12,23 @@ Ends: approximately 2026-08-23 15:34 PDT
 - Greenhouse and Workday fixture workflows verified without submission.
 - Daily production job is enabled for 08:00 PDT.
 
-## Next build queue
+## Post-backlog build queue
 
-1. Fix year-only 2027 timeline eligibility so active roles without an explicit season are accepted; add the American Express regression.
-2. Build a structured question-answer engine that uses profile facts, the Kevin Bible Google Doc, source precedence, company-specific answers, and fail-closed unknowns.
-3. Build an executable Lever handler with field inventory, file upload, read-back verification, manual-gate detection, confirmation validation, and fixtures.
-4. Build an Oracle Recruiting handler with real combobox option selection, country validation, salary dropdown handling, issue navigation, and fixtures.
-5. Extend the SQLite queue worker with leases, attempt counts, retry backoff, pending-question/CAPTCHA/approval states, terminal failures, and stale-lease recovery.
-6. Wire deterministic source collection → health report → scanner → orchestrator → queue into one production-safe command.
-7. Add Discord job-ID-bound approval/reject/retry/skip controls without changing the postponed token-rotation policy.
-8. Add real non-submitting preflight tests against live Greenhouse, Workday, Lever, and Oracle forms.
-9. Add sanitized submission-evidence artifacts and tracker/Discord reconciliation.
-10. Run a production-shaped dry run proving idempotency, no duplicate queueing, no unsupported submissions, and no external side effects.
+1. Build an executable Greenhouse handler behind a shared ATS interface, matching the verified Lever/Oracle safety contract.
+2. Build an executable Workday handler behind the same interface with wizard-step, resume-parse, and save-draft semantics.
+3. Add an ATS handler registry and a single `prepare-job` command that dispatches Greenhouse, Workday, Lever, and Oracle while remaining non-submitting by default.
+4. Integrate prepared ATS plans with the leased queue worker and a durable execution journal so crash recovery resumes the correct step.
+5. Add a versioned source registry for approved Greenhouse/Lever boards and deterministic registry-driven collection.
+6. Add Kevin Bible Google Doc synchronization into a local ignored cache with source timestamps, resume-precedence conflict reporting, and no raw PII in logs.
+7. Add an answer-coverage preflight matrix that reports known, company-specific, optional-skip, and human-required questions before opening a form.
+8. Wire Discord job-ID approval commands to real queue transitions with authorization, expiry, replay protection, and audit events.
+9. Add bidirectional queue/Google-Sheet state reconciliation that detects drift without overwriting newer verified states.
+10. Add stale/closed posting detection and terminal queue closure before form preparation.
+11. Add per-ATS rate limits, retry budgets, and circuit breakers so a failing tenant cannot stall the entire worker.
+12. Add a machine-readable operational health report covering sources, browser, OAuth, queue leases, tracker drift, and notification delivery.
+13. Add resume selection and filename/content preflight so the chosen resume is confirmed before each preparation.
+14. Run non-submitting end-to-end fixtures for every handler through source → queue → answer engine → ATS plan → evidence artifact.
+15. Run a final production-readiness audit and idempotent dry run; document any remaining human-only gates instead of weakening safeguards.
 
 Profile confirmations applied 2026-08-24: permanent Fairfax address/current San Diego, application license state CA, outside-business answer No, exact Qualcomm/HDSI/MyEMSPath/Handshake dates with day 1 policy, and Kevin Bible source precedence. HNRC exact start month remains unknown and must fail closed if a form requires it.
 
