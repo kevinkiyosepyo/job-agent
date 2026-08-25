@@ -19,7 +19,10 @@ class _NjoynHTMLParser(HTMLParser):
         self.company = ""
         self.location = ""
         self.entrypoint: dict[str, str] = {}
+        self.fields: list[dict[str, str]] = []
         self._apply_link_text: list[str] | None = None
+        self._label_text: list[str] | None = None
+        self._button_text: list[str] | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr_map = dict(attrs)
@@ -27,6 +30,19 @@ class _NjoynHTMLParser(HTMLParser):
             self.surface = attr_map.get("data-surface") or self.surface
         if tag == "h1":
             self.in_h1 = True
+        if tag == "label":
+            self._label_text = []
+        if tag == "input":
+            label = " ".join("".join(self._label_text or []).split())
+            self.fields.append(
+                {
+                    "name": attr_map.get("name") or "",
+                    "type": attr_map.get("type") or "text",
+                    "label": label,
+                }
+            )
+        if tag == "button":
+            self._button_text = []
         href = attr_map.get("href") or ""
         if tag == "a" and "apply" in " ".join(
             (href, attr_map.get("class") or "")
@@ -38,6 +54,13 @@ class _NjoynHTMLParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag == "h1":
             self.in_h1 = False
+        if tag == "label":
+            self._label_text = None
+        if tag == "button" and self._button_text is not None:
+            label = " ".join("".join(self._button_text).split())
+            if label.casefold() == "create a profile":
+                self.entrypoint["create_profile_label"] = label
+            self._button_text = None
         if tag == "a" and self._apply_link_text is not None:
             label = " ".join("".join(self._apply_link_text).split())
             if label:
@@ -52,6 +75,10 @@ class _NjoynHTMLParser(HTMLParser):
             self.role = text
         if self._apply_link_text is not None:
             self._apply_link_text.append(text)
+        if self._label_text is not None:
+            self._label_text.append(text)
+        if self._button_text is not None:
+            self._button_text.append(text)
         if not self.company and "·" in text:
             company, _, location = text.partition("·")
             self.company = company.strip()
@@ -74,6 +101,14 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         pass
     if page_type == "application" and parser.surface == "listing" and parser.entrypoint:
         page_type = "listing"
+    if page_type == "application" and parser.surface == "account":
+        page_type = "account"
+    manual_gate = None
+    if page_type == "account":
+        manual_gate = {
+            "type": "account_sign_in",
+            "detail": "Sign in or create a profile required",
+        }
     return {
         "page_type": page_type,
         "surface": parser.surface,
@@ -81,11 +116,11 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         "role": parser.role,
         "company": parser.company,
         "location": parser.location,
-        "fields": [],
+        "fields": parser.fields,
         "entrypoint": parser.entrypoint,
         "uploaded_resume_verified": None,
         "parser_correction_required": False,
-        "manual_gate": None,
+        "manual_gate": manual_gate,
         "confirmation_text": confirmation_text,
         "safe_to_prepare": False,
     }
