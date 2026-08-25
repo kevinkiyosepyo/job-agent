@@ -70,3 +70,32 @@ def test_run_workday_fixture_flow_prepares_non_submitting_wizard_plan_and_eviden
     assert result["plan"]["safe_to_prepare"] is True
     assert result["plan"]["uploaded_resume_verified"] is True
     assert result["evidence_artifact"]["reconciliation"]["consistent"] is True
+
+
+def test_run_lever_fixture_flow_prepares_non_submitting_plan_and_evidence(tmp_path):
+    profile = {"education": {"graduation_season": "Spring 2028"}}
+
+    result = fixture_e2e.run_lever_fixture_flow(
+        fixture_path=ROOT / "fixtures" / "lever_application.html",
+        candidate={
+            "company": "Lever Fixture Company",
+            "role": "Data Scientist Intern",
+            "url": "https://jobs.lever.co/fixture/123",
+            "ats_platform": "Lever",
+        },
+        profile=profile,
+        questions=[{"label": "What is your expected graduation season?", "required": True}],
+        expected_resume_basename="Kevin_Pyo_Resume.pdf",
+        queue_db_path=tmp_path / "queue.db",
+        plan_dir=tmp_path / "plans",
+        confirmation_url="https://jobs.lever.co/fixture/123/confirmation",
+        confirmation_text="Thanks for applying. We've received your application.",
+    )
+
+    assert result["submission_enabled"] is False
+    assert result["queue_job"]["state"] == "prepared"
+    assert result["queue_job"]["ats_platform"] == "Lever"
+    assert result["answer_coverage"]["known"][0]["source"] == "profile"
+    assert result["plan"]["platform"] == "lever"
+    assert result["plan"]["uploaded_resume_verified"] is True
+    assert result["evidence_artifact"]["reconciliation"]["consistent"] is True

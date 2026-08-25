@@ -69,3 +69,8 @@ def run_fixture_flow(
 def run_workday_fixture_flow(**kwargs: Any) -> dict[str, Any]:
     """Run the shared non-submitting E2E contract against a Workday fixture."""
     return run_fixture_flow(**kwargs)
+
+
+def run_lever_fixture_flow(**kwargs: Any) -> dict[str, Any]:
+    """Run the shared non-submitting E2E contract against a Lever fixture."""
+    return run_fixture_flow(**kwargs)
