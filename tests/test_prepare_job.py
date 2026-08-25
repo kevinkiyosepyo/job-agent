@@ -131,6 +131,38 @@ def test_load_tenant_metadata_returns_matching_authenticated_njoyn_tenant_only(t
     }
 
 
+def test_main_loads_validated_tenant_metadata_without_serializing_secrets(tmp_path, capsys):
+    metadata_path = tmp_path / "learned-tenants.json"
+    metadata_path.write_text(json.dumps({
+        "version": 1,
+        "tenants": [{
+            "tenant": "cgi",
+            "platform": "njoyn",
+            "hostname": "cgi.njoyn.com",
+            "authenticated": True,
+            "session_reference": "runtime-only:njoyn-cgi",
+        }],
+    }))
+
+    exit_code = prepare_job.main([
+        str(ROOT / "fixtures" / "njoyn_listing.html"),
+        "--page-url", "https://cgi.njoyn.com/corp/xweb/xweb.asp?job=fixture",
+        "--tenant-metadata", str(metadata_path),
+    ])
+
+    assert exit_code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["submission_enabled"] is False
+    assert payload["tenant_session"] == {
+        "tenant": "cgi",
+        "authenticated": True,
+        "reuse_authenticated_session": True,
+        "account_creation_required": False,
+        "session_reference": "runtime-only:njoyn-cgi",
+    }
+    assert "secret" not in json.dumps(payload).casefold()
+
+
 def test_main_uses_profile_resume_preflight_and_embeds_safe_evidence(tmp_path, capsys):
     resume = tmp_path / "Kevin_Pyo_Resume.pdf"
     resume.write_bytes(b"%PDF-1.7\nresume")

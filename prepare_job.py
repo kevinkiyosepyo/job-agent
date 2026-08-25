@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ats_registry import resolve_handler
 from resume_preflight import preflight_profile_resume
+from tenant_metadata import load_for_page
 
 
 def prepare_saved_html(
@@ -47,6 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--page-url", required=True)
     parser.add_argument("--expected-resume-basename")
     parser.add_argument("--profile")
+    parser.add_argument("--tenant-metadata")
     parser.add_argument("--output")
     args = parser.parse_args(argv)
 
@@ -55,10 +57,22 @@ def main(argv: list[str] | None = None) -> int:
         expected_resume_basename = (
             resume_evidence["basename"] if resume_evidence else args.expected_resume_basename
         )
+        html_text = Path(args.html_path).read_text()
+        handler = resolve_handler(page_url=args.page_url, html_text=html_text)
+        tenant = (
+            load_for_page(
+                Path(args.tenant_metadata),
+                page_url=args.page_url,
+                platform=handler.platform,
+            )
+            if args.tenant_metadata
+            else None
+        )
         payload = prepare_saved_html(
-            html_text=Path(args.html_path).read_text(),
+            html_text=html_text,
             page_url=args.page_url,
             expected_resume_basename=expected_resume_basename,
+            tenant_metadata=tenant,
         )
         if resume_evidence:
             payload["resume_preflight"] = resume_evidence
