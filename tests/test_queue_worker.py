@@ -13,6 +13,86 @@ import prepare_job
 import queue_worker
 
 
+def test_prepare_next_job_leases_discovered_job_writes_plan_and_finishes_prepared(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queued_job = queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/example/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    journal = execution_journal.ExecutionJournal(tmp_path / "journal.jsonl")
+    plan_dir = tmp_path / "plans"
+
+    result = queue_worker.prepare_next_job(
+        queue=queue,
+        journal=journal,
+        html_loader=lambda leased_job: (ROOT / "fixtures" / "greenhouse.html").read_text(),
+        expected_resume_basename="Kevin_Pyo_Resume.pdf",
+        now="2026-08-25T07:35:00+00:00",
+        lease_seconds=300,
+        plan_dir=plan_dir,
+    )
+
+    expected_plan = prepare_job.prepare_saved_html(
+        html_text=(ROOT / "fixtures" / "greenhouse.html").read_text(),
+        page_url=queued_job.url,
+        expected_resume_basename="Kevin_Pyo_Resume.pdf",
+    )
+
+    assert result is not None
+    assert result["recovered"] is False
+    assert result["plan_path"] == str(plan_dir / "job-1-attempt-1.json")
+    assert json.loads(Path(result["plan_path"]).read_text()) == expected_plan
+    assert result["queue_job"]["state"] == "prepared"
+    assert result["queue_job"]["attempt_count"] == 1
+
+    entries = journal.read_all()
+    assert [entry["step"] for entry in entries] == [
+        "lease_claimed",
+        "prepared_plan_written",
+        "lease_finished",
+    ]
+    assert entries[0]["payload"]["lease_expires_at"] == "2026-08-25T07:40:00+00:00"
+
+
+def test_prepare_next_job_retry_uses_attempt_specific_plan_path(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/example/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    first_lease = queue.lease_next(now="2026-08-25T07:35:00+00:00", lease_seconds=300)
+    assert first_lease is not None
+    queue.finish_lease(
+        first_lease.id,
+        outcome="retry",
+        now="2026-08-25T07:36:00+00:00",
+        retry_seconds=60,
+        error="temporary browser outage",
+    )
+
+    journal = execution_journal.ExecutionJournal(tmp_path / "journal.jsonl")
+    plan_dir = tmp_path / "plans"
+
+    result = queue_worker.prepare_next_job(
+        queue=queue,
+        journal=journal,
+        html_loader=lambda leased_job: (ROOT / "fixtures" / "greenhouse.html").read_text(),
+        expected_resume_basename="Kevin_Pyo_Resume.pdf",
+        now="2026-08-25T07:37:30+00:00",
+        lease_seconds=300,
+        plan_dir=plan_dir,
+    )
+
+    assert result is not None
+    assert result["plan_path"] == str(plan_dir / "job-1-attempt-2.json")
+    assert result["queue_job"]["attempt_count"] == 2
+    assert Path(result["plan_path"]).exists()
+
+
 def test_resume_or_prepare_leased_job_recovers_after_plan_was_already_written(tmp_path, monkeypatch):
     queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
     job = queue.enqueue(

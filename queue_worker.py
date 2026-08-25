@@ -68,3 +68,37 @@ def resume_or_prepare_leased_job(
         "plan_path": str(plan_path),
         "queue_job": asdict(finished),
     }
+
+
+def prepare_next_job(
+    *,
+    queue: ApplicationQueue,
+    journal: ExecutionJournal,
+    html_loader,
+    expected_resume_basename: str | None,
+    now: str,
+    lease_seconds: int,
+    plan_dir: Path,
+) -> dict[str, Any] | None:
+    leased_job = queue.lease_next(now=now, lease_seconds=lease_seconds)
+    if leased_job is None:
+        return None
+
+    journal.append(
+        job_id=leased_job.id,
+        attempt_count=leased_job.attempt_count,
+        step="lease_claimed",
+        payload={
+            "state": leased_job.state,
+            "lease_expires_at": leased_job.lease_expires_at,
+        },
+    )
+    return resume_or_prepare_leased_job(
+        queue=queue,
+        leased_job=leased_job,
+        journal=journal,
+        html_text=html_loader(leased_job),
+        expected_resume_basename=expected_resume_basename,
+        now=now,
+        plan_dir=plan_dir,
+    )
