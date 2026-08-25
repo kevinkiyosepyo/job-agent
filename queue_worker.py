@@ -18,7 +18,11 @@ def _plan_path(*, plan_dir: Path, leased_job: QueueJob) -> Path:
 
 
 def _closed_posting_error(html_text: str) -> str | None:
-    for phrase in ("This job is no longer available.", "This position has been filled."):
+    for phrase in (
+        "This job is no longer available.",
+        "This position has been filled.",
+        "This job is no longer accepting applications.",
+    ):
         if phrase.casefold() in html_text.casefold():
             return f"Posting closed: {phrase}"
     return None
