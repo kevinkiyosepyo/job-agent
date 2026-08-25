@@ -42,6 +42,22 @@ def test_inspect_application_fixture_inventories_fields_and_verifies_uploaded_re
     }
 
 
+def test_inspect_html_binds_a_for_label_to_its_separate_greenhouse_control():
+    result = greenhouse_handler.inspect_html(
+        "<h1>Software Engineer Intern</h1>"
+        "<label for='work_auth'>Work authorization</label>"
+        "<select id='work_auth' name='work_auth' required><option>Yes</option></select>",
+        page_url="https://job-boards.greenhouse.io/example/jobs/123",
+    )
+
+    assert result["fields"] == [{
+        "label": "Work authorization",
+        "name": "work_auth",
+        "type": "select",
+        "required": True,
+    }]
+
+
 def test_inspect_html_fails_closed_on_greenhouse_email_verification_gate():
     result = greenhouse_handler.inspect_html(
         "<h1>Software Engineer Intern</h1><p>Please verify your email to continue.</p>",

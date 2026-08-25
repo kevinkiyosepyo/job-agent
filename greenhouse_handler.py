@@ -16,7 +16,9 @@ class _GreenhouseHTMLParser(HTMLParser):
         self.in_h1 = False
         self.current_field: dict | None = None
         self.current_label_text: list[str] | None = None
+        self.current_label_for: str | None = None
         self.current_label_closed = False
+        self.label_by_id: dict[str, str] = {}
         self.role = ""
         self.company = ""
         self.location = ""
@@ -30,13 +32,15 @@ class _GreenhouseHTMLParser(HTMLParser):
             self.in_h1 = True
         if tag == "label":
             self.current_label_text = []
+            self.current_label_for = attr_map.get("for")
             self.current_field = None
             self.current_label_closed = False
-        if tag in {"input", "select", "textarea"} and self.current_label_text is not None:
-            self.current_label_closed = True
+        if tag in {"input", "select", "textarea"}:
+            if self.current_label_text is not None:
+                self.current_label_closed = True
             field_type = attr_map.get("type") or ("textarea" if tag == "textarea" else tag)
             self.current_field = {
-                "label": "",
+                "label": self.label_by_id.get(attr_map.get("id") or "", ""),
                 "name": attr_map.get("name") or attr_map.get("id") or "",
                 "type": field_type,
                 "required": "required" in attr_map,
@@ -51,9 +55,15 @@ class _GreenhouseHTMLParser(HTMLParser):
             self.in_h1 = False
         if tag == "label" and self.current_label_text is not None:
             label = " ".join("".join(self.current_label_text).replace("*", " ").split())
+            if self.current_label_for:
+                self.label_by_id[self.current_label_for] = label
+                for field in self.fields:
+                    if field["name"] == self.current_label_for:
+                        field["label"] = label
             if self.current_field is not None:
                 self.current_field["label"] = label
             self.current_label_text = None
+            self.current_label_for = None
             self.current_field = None
 
     def handle_data(self, data: str) -> None:
