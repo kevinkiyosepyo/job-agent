@@ -10,6 +10,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `setup_diagnostics.py` — offline readiness checks for profile, resume, Google Sheets OAuth, and optional browser/CDP access.
 - `browser_health.py` — probe a local Chrome DevTools endpoint, classify recoverable CDP failures, and emit machine-readable health JSON.
 - `browser_actions.py` — deterministic browser-action contracts for text replacement, native-option selection, radio/checkbox state changes, CDP file attachment, scroll-and-click, and one-shot submit/confirmation; each requires exact post-action read-back evidence before an action is considered verified.
+- `credential_adapter.py` — secret-free runtime Keychain-reference contract for approved ATS account flows. It checks only an approved item’s service/account metadata through `security find-generic-password` without `-w`; returned plans contain availability metadata and a `runtime_only` reference, never a password or other secret.
 - `sources.py` — bounded-retry adapters plus a token-driven CLI for public Greenhouse and Lever job APIs that normalize active internship candidates into a deterministic JSON artifact.
 - `app_queue.py` — persist discovered jobs in SQLite with idempotent URL-based enqueue and explicit state transitions.
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
