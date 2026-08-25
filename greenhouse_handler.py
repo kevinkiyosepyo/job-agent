@@ -79,6 +79,7 @@ def _detect_manual_gate(text_chunks: list[str]) -> dict | None:
         return {"type": "captcha", "detail": "CAPTCHA detected"}
     if (
         "verify your email" in lowered
+        or "verify email address" in lowered
         or "email verification" in lowered
         or "confirm your email address" in lowered
     ):

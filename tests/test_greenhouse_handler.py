@@ -83,6 +83,19 @@ def test_inspect_html_fails_closed_when_greenhouse_asks_to_confirm_email_address
     }
 
 
+def test_inspect_html_fails_closed_when_greenhouse_asks_to_verify_email_address():
+    result = greenhouse_handler.inspect_html(
+        "<h1>Software Engineer Intern</h1><p>Verify email address before you continue.</p>",
+        page_url="https://job-boards.greenhouse.io/example/jobs/123",
+    )
+
+    assert result["safe_to_prepare"] is False
+    assert result["manual_gate"] == {
+        "type": "email_verification",
+        "detail": "Email verification detected",
+    }
+
+
 def test_inspect_html_fails_closed_on_greenhouse_assessment_gate():
     result = greenhouse_handler.inspect_html(
         "<h1>Software Engineer Intern</h1><p>Complete the required assessment to continue.</p>",
