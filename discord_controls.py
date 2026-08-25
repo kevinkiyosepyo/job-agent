@@ -71,6 +71,15 @@ def handle_control(
 ) -> dict:
     """Apply a job-bound control, optionally enforcing the Discord actor allowlist."""
     if allowed_actor_ids is not None and actor_id not in {str(value) for value in allowed_actor_ids}:
+        if audit_logger is not None:
+            audit_logger.log(
+                "discord_queue_control_denied",
+                {
+                    "actor_id": actor_id,
+                    "control_id": control_id,
+                    "reason": "unauthorized_actor",
+                },
+            )
         raise PermissionError("Discord actor is not authorized for queue controls")
     action, job_id = _parse_control_id(control_id)
     job = next((candidate for candidate in queue.list_jobs() if candidate.id == job_id), None)

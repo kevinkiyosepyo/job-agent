@@ -226,3 +226,39 @@ def test_handle_control_authorizes_actor_and_writes_audit_event(tmp_path):
         "job_id": job.id,
         "status": "approved",
     }
+
+
+def test_handle_control_denies_unauthorized_actor_without_transition_and_audits_denial(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    job = queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://jobs.example.com/123",
+        ats_platform="Greenhouse",
+    )
+    queue.lease_next(now="2026-08-25T10:00:00+00:00", lease_seconds=300)
+    queue.finish_lease(
+        job.id,
+        outcome="pending_approval",
+        now="2026-08-25T10:01:00+00:00",
+        error="awaiting Discord approval",
+    )
+    audit_path = tmp_path / "audit.jsonl"
+
+    with pytest.raises(PermissionError, match="not authorized"):
+        discord_controls.handle_control(
+            queue,
+            control_id=discord_controls.build_control_id("approve", job.id),
+            actor_id="untrusted-user",
+            allowed_actor_ids={"628145910"},
+            audit_logger=AuditLogger(audit_path),
+        )
+
+    assert queue.list_jobs()[0].state == "pending_approval"
+    [entry] = [json.loads(line) for line in audit_path.read_text().splitlines()]
+    assert entry["event"] == "discord_queue_control_denied"
+    assert entry["payload"] == {
+        "actor_id": "untrusted-user",
+        "control_id": f"job:{job.id}:approve",
+        "reason": "unauthorized_actor",
+    }
