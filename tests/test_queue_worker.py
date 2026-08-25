@@ -203,19 +203,19 @@ def test_main_leases_once_writes_machine_readable_result_and_stays_idempotent(tm
     assert len(execution_journal.ExecutionJournal(journal_path).read_all()) == 3
 
 
-def test_main_fails_closed_and_requeues_job_when_prepare_is_blocked(tmp_path, monkeypatch, capsys):
+def test_main_fails_closed_and_requeues_retryable_prepare_blocker(tmp_path, monkeypatch, capsys):
     queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
     queue.enqueue(
         company="Example",
         role="Software Engineer Intern",
-        url="https://example.com/custom/apply",
-        ats_platform="Custom",
+        url="https://job-boards.greenhouse.io/example/jobs/123",
+        ats_platform="Greenhouse",
     )
     journal_path = tmp_path / "journal.jsonl"
     plan_dir = tmp_path / "plans"
 
     def fail_prepare(**kwargs):
-        raise ValueError("Unsupported ATS for URL: https://example.com/custom/apply")
+        raise ValueError("Browser capture unavailable")
 
     monkeypatch.setattr(queue_worker.prepare_job, "prepare_saved_html", fail_prepare)
 
@@ -238,15 +238,16 @@ def test_main_fails_closed_and_requeues_job_when_prepare_is_blocked(tmp_path, mo
     assert exit_code == 2
     assert payload == {
         "status": "prepare_blocked",
-        "error": "Unsupported ATS for URL: https://example.com/custom/apply",
+        "error": "Browser capture unavailable",
         "job_id": 1,
+        "retryable": True,
         "submission_enabled": False,
     }
 
     [job] = queue.list_jobs()
     assert job.state == "discovered"
     assert job.attempt_count == 1
-    assert job.last_error == "Unsupported ATS for URL: https://example.com/custom/apply"
+    assert job.last_error == "Browser capture unavailable"
     assert job.lease_expires_at is None
 
     entries = execution_journal.ExecutionJournal(journal_path).read_all()
@@ -256,7 +257,77 @@ def test_main_fails_closed_and_requeues_job_when_prepare_is_blocked(tmp_path, mo
         "lease_finished",
     ]
     assert entries[1]["payload"] == {
-        "error": "Unsupported ATS for URL: https://example.com/custom/apply"
+        "error": "Browser capture unavailable",
+        "retryable": True,
     }
     assert entries[2]["payload"]["state"] == "discovered"
     assert not list(plan_dir.glob("*.json"))
+
+
+def test_main_terminally_fails_unsupported_ats_without_requeueing(tmp_path, monkeypatch, capsys):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://example.com/custom/apply",
+        ats_platform="Custom",
+    )
+    journal_path = tmp_path / "journal.jsonl"
+
+    monkeypatch.setattr(
+        queue_worker.prepare_job,
+        "prepare_saved_html",
+        lambda **kwargs: (_ for _ in ()).throw(
+            ValueError("Unsupported ATS for URL: https://example.com/custom/apply")
+        ),
+    )
+
+    exit_code = queue_worker.main([
+        "--queue-db", str(tmp_path / "queue.db"),
+        "--journal", str(journal_path),
+        "--html-path", str(ROOT / "fixtures" / "greenhouse.html"),
+        "--now", "2026-08-25T07:35:00+00:00",
+        "--plan-dir", str(tmp_path / "plans"),
+    ])
+    payload = json.loads(capsys.readouterr().out)
+
+    [job] = queue.list_jobs()
+    assert exit_code == 2
+    assert payload["status"] == "prepare_blocked"
+    assert payload["retryable"] is False
+    assert job.state == "failed"
+    assert job.available_at is None
+    assert [entry["step"] for entry in execution_journal.ExecutionJournal(journal_path).read_all()] == [
+        "lease_claimed", "prepare_blocked", "lease_finished"
+    ]
+
+
+def test_main_terminally_fails_corrupted_preparation_fixture(tmp_path, monkeypatch, capsys):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/example/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    monkeypatch.setattr(
+        queue_worker.prepare_job,
+        "prepare_saved_html",
+        lambda **kwargs: (_ for _ in ()).throw(
+            ValueError("Corrupted fixture: malformed HTML snapshot")
+        ),
+    )
+
+    exit_code = queue_worker.main([
+        "--queue-db", str(tmp_path / "queue.db"),
+        "--journal", str(tmp_path / "journal.jsonl"),
+        "--html-path", str(ROOT / "fixtures" / "greenhouse.html"),
+        "--now", "2026-08-25T07:35:00+00:00",
+        "--plan-dir", str(tmp_path / "plans"),
+    ])
+    payload = json.loads(capsys.readouterr().out)
+
+    [job] = queue.list_jobs()
+    assert exit_code == 2
+    assert payload["retryable"] is False
+    assert job.state == "failed"

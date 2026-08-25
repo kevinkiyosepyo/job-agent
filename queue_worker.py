@@ -17,6 +17,13 @@ def _plan_path(*, plan_dir: Path, leased_job: QueueJob) -> Path:
     return Path(plan_dir) / f"job-{leased_job.id}-attempt-{leased_job.attempt_count}.json"
 
 
+def _is_retryable_prepare_error(error: ValueError) -> bool:
+    return not str(error).startswith((
+        "Unsupported ATS for URL:",
+        "Corrupted fixture:",
+    ))
+
+
 def resume_or_prepare_leased_job(
     *,
     queue: ApplicationQueue,
@@ -146,15 +153,16 @@ def main(argv: list[str] | None = None) -> int:
             plan_dir=Path(args.plan_dir),
         )
     except ValueError as exc:
+        retryable = _is_retryable_prepare_error(exc)
         journal.append(
             job_id=leased_job.id,
             attempt_count=leased_job.attempt_count,
             step="prepare_blocked",
-            payload={"error": str(exc)},
+            payload={"error": str(exc), "retryable": retryable},
         )
         finished = queue.finish_lease(
             leased_job.id,
-            outcome="retry",
+            outcome="retry" if retryable else "failed",
             now=args.now,
             retry_seconds=0,
             error=str(exc),
@@ -169,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
             "status": "prepare_blocked",
             "error": str(exc),
             "job_id": leased_job.id,
+            "retryable": retryable,
             "submission_enabled": False,
         }))
         return 2
