@@ -20,6 +20,7 @@ class _NjoynHTMLParser(HTMLParser):
         self.location = ""
         self.entrypoint: dict[str, str] = {}
         self.fields: list[dict[str, str]] = []
+        self.uploaded_names: list[str] = []
         self._apply_link_text: list[str] | None = None
         self._label_text: list[str] | None = None
         self._label_field: dict[str, str] | None = None
@@ -27,6 +28,9 @@ class _NjoynHTMLParser(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr_map = dict(attrs)
+        uploaded_name = attr_map.get("data-uploaded-file")
+        if uploaded_name:
+            self.uploaded_names.append(uploaded_name)
         if tag == "main":
             self.surface = attr_map.get("data-surface") or self.surface
         if tag == "h1":
@@ -125,6 +129,11 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "disclosures"
     if page_type == "application" and parser.surface == "disability":
         page_type = "disability"
+    if page_type == "application" and parser.surface == "resume-upload":
+        page_type = "resume_upload"
+    uploaded_resume_verified = None
+    if expected_resume_basename is not None:
+        uploaded_resume_verified = expected_resume_basename in parser.uploaded_names
     manual_gate = None
     if page_type == "account":
         manual_gate = {
@@ -155,7 +164,7 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         "location": parser.location,
         "fields": parser.fields,
         "entrypoint": parser.entrypoint,
-        "uploaded_resume_verified": None,
+        "uploaded_resume_verified": uploaded_resume_verified,
         "parser_correction_required": False,
         "manual_gate": manual_gate,
         "confirmation_text": confirmation_text,

@@ -128,3 +128,23 @@ def test_inspect_html_inventories_njoyn_disability_surface_and_fails_closed():
         "detail": "Voluntary disability disclosure must be explicitly handled",
     }
     assert result["safe_to_prepare"] is False
+
+
+def test_inspect_html_inventories_njoyn_resume_upload_and_verifies_attached_filename():
+    fixture_text = (ROOT / "fixtures" / "njoyn_resume_upload.html").read_text()
+
+    result = njoyn_handler.inspect_html(
+        fixture_text,
+        page_url="https://cgi.njoyn.com/corp/xweb/xweb.asp?resume=fixture",
+        expected_resume_basename="Resume.pdf",
+    )
+
+    assert result["page_type"] == "resume_upload"
+    assert result["surface"] == "resume-upload"
+    assert result["role"] == "Resume upload"
+    assert result["fields"] == [
+        {"name": "resume", "type": "file", "label": "Resume"},
+    ]
+    assert result["uploaded_resume_verified"] is True
+    assert result["manual_gate"] is None
+    assert result["safe_to_prepare"] is False
