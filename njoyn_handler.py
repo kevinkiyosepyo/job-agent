@@ -44,6 +44,14 @@ class _NjoynHTMLParser(HTMLParser):
             self.fields.append(field)
             if self._label_text is not None:
                 self._label_field = field
+        if tag == "select":
+            self.fields.append(
+                {
+                    "name": attr_map.get("name") or "",
+                    "type": "select",
+                    "label": self.role,
+                }
+            )
         if tag == "button":
             self._button_text = []
         href = attr_map.get("href") or ""
@@ -115,6 +123,8 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "privacy"
     if page_type == "application" and parser.surface == "disclosures":
         page_type = "disclosures"
+    if page_type == "application" and parser.surface == "disability":
+        page_type = "disability"
     manual_gate = None
     if page_type == "account":
         manual_gate = {
@@ -130,6 +140,11 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         manual_gate = {
             "type": "employment_disclosures",
             "detail": "Required employment disclosures must be answered",
+        }
+    if page_type == "disability":
+        manual_gate = {
+            "type": "disability_disclosure",
+            "detail": "Voluntary disability disclosure must be explicitly handled",
         }
     return {
         "page_type": page_type,

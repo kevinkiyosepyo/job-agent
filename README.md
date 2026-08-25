@@ -23,7 +23,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `greenhouse_handler.py` — fixture-driven Greenhouse application inspector with field inventory, resume read-back, manual-gate plumbing, and confirmation validation.
 - `workday_handler.py` — executable Workday listing/application inspector with wizard inventory, resume read-back, parsed-resume mismatch detection, save-draft awareness, multi-gate fail-closed output, and confirmation-reference extraction.
 - `oracle_handler.py` — Oracle Recruiting inspector with combobox validation, issue navigation, resume read-back, and confirmation validation.
-- `njoyn_handler.py` — non-mutating CGI/Njoyn surface inspector; inventories listing identity/Apply entrypoints, account email/password controls, privacy-notice acknowledgement controls, and employment-disclosure radios, while treating account sign-in/profile creation, privacy notices, and required employment disclosures as fail-closed manual gates until a supported application surface is recognized.
+- `njoyn_handler.py` — non-mutating CGI/Njoyn surface inspector; inventories listing identity/Apply entrypoints, account email/password controls, privacy-notice acknowledgement controls, employment-disclosure radios, and voluntary-disability selects, while treating account sign-in/profile creation, privacy notices, required employment disclosures, and voluntary disability disclosures as fail-closed manual gates until a supported application surface is recognized.
 - `production_readiness.py` — read-only final audit of persisted idempotent dry-run and non-submitting Greenhouse, Workday, Lever, and Oracle fixture evidence.
 
 ## Test

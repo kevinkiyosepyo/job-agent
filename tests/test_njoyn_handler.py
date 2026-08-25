@@ -103,3 +103,28 @@ def test_inspect_html_inventories_njoyn_disclosures_and_fails_closed():
         "detail": "Required employment disclosures must be answered",
     }
     assert result["safe_to_prepare"] is False
+
+
+def test_inspect_html_inventories_njoyn_disability_surface_and_fails_closed():
+    fixture_text = (ROOT / "fixtures" / "njoyn_disability.html").read_text()
+
+    result = njoyn_handler.inspect_html(
+        fixture_text,
+        page_url="https://cgi.njoyn.com/corp/xweb/xweb.asp?disability=fixture",
+    )
+
+    assert result["page_type"] == "disability"
+    assert result["surface"] == "disability"
+    assert result["role"] == "Voluntary Self-Identification of Disability"
+    assert result["fields"] == [
+        {
+            "name": "disability",
+            "type": "select",
+            "label": "Voluntary Self-Identification of Disability",
+        }
+    ]
+    assert result["manual_gate"] == {
+        "type": "disability_disclosure",
+        "detail": "Voluntary disability disclosure must be explicitly handled",
+    }
+    assert result["safe_to_prepare"] is False
