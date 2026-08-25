@@ -227,7 +227,12 @@ def main(argv: list[str] | None = None) -> int:
     circuit_breaker = (
         ATSCircuitBreaker(Path(args.circuit_db)) if args.circuit_db else None
     )
-    leased_job = queue.lease_next(now=args.now, lease_seconds=args.lease_seconds)
+    excluded_platforms = () if circuit_breaker is None else circuit_breaker.open_platforms(now=args.now)
+    leased_job = queue.lease_next(
+        now=args.now,
+        lease_seconds=args.lease_seconds,
+        excluded_platforms=excluded_platforms,
+    )
     if leased_job is None:
         print(json.dumps({"status": "no_job_available"}))
         return 0

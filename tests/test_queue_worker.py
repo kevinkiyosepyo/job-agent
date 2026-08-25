@@ -326,6 +326,43 @@ def test_main_fails_closed_and_requeues_retryable_prepare_blocker(tmp_path, monk
     assert not list(plan_dir.glob("*.json"))
 
 
+def test_main_skips_open_circuit_platform_and_prepares_another_ats_job(tmp_path, capsys):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Broken Greenhouse",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/broken/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    queue.enqueue(
+        company="Healthy Lever",
+        role="Software Engineer Intern",
+        url="https://jobs.lever.co/healthy/123",
+        ats_platform="Lever",
+    )
+    circuit_db = tmp_path / "circuits.db"
+    queue_worker.ATSCircuitBreaker(circuit_db).record_failure(
+        platform="Greenhouse",
+        now="2026-08-25T08:00:00+00:00",
+        cooldown_seconds=600,
+    )
+
+    exit_code = queue_worker.main([
+        "--queue-db", str(tmp_path / "queue.db"),
+        "--journal", str(tmp_path / "journal.jsonl"),
+        "--html-path", str(ROOT / "fixtures" / "lever_application.html"),
+        "--now", "2026-08-25T08:01:00+00:00",
+        "--plan-dir", str(tmp_path / "plans"),
+        "--circuit-db", str(circuit_db),
+    ])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["status"] == "prepared"
+    assert payload["result"]["queue_job"]["ats_platform"] == "Lever"
+    assert [job.state for job in queue.list_jobs()] == ["discovered", "prepared"]
+
+
 def test_main_terminally_fails_unsupported_ats_without_requeueing(tmp_path, monkeypatch, capsys):
     queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
     queue.enqueue(
