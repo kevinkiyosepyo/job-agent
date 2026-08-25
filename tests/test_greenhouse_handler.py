@@ -94,3 +94,16 @@ def test_inspect_html_fails_closed_on_greenhouse_identity_verification_gate():
         "type": "identity_verification",
         "detail": "Identity verification detected",
     }
+
+
+def test_inspect_html_fails_closed_when_greenhouse_asks_to_verify_identity():
+    result = greenhouse_handler.inspect_html(
+        "<h1>Software Engineer Intern</h1><p>Please verify your identity to continue.</p>",
+        page_url="https://job-boards.greenhouse.io/example/jobs/123",
+    )
+
+    assert result["safe_to_prepare"] is False
+    assert result["manual_gate"] == {
+        "type": "identity_verification",
+        "detail": "Identity verification detected",
+    }
