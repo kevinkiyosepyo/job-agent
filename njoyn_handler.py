@@ -113,6 +113,8 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "account"
     if page_type == "application" and parser.surface == "privacy":
         page_type = "privacy"
+    if page_type == "application" and parser.surface == "disclosures":
+        page_type = "disclosures"
     manual_gate = None
     if page_type == "account":
         manual_gate = {
@@ -123,6 +125,11 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         manual_gate = {
             "type": "privacy_notice",
             "detail": "Privacy notice acknowledgement required",
+        }
+    if page_type == "disclosures":
+        manual_gate = {
+            "type": "employment_disclosures",
+            "detail": "Required employment disclosures must be answered",
         }
     return {
         "page_type": page_type,

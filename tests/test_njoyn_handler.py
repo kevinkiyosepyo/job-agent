@@ -79,3 +79,27 @@ def test_inspect_html_inventories_njoyn_privacy_surface_and_fails_closed():
         "detail": "Privacy notice acknowledgement required",
     }
     assert result["safe_to_prepare"] is False
+
+
+def test_inspect_html_inventories_njoyn_disclosures_and_fails_closed():
+    fixture_text = (ROOT / "fixtures" / "njoyn_disclosures.html").read_text()
+
+    result = njoyn_handler.inspect_html(
+        fixture_text,
+        page_url="https://cgi.njoyn.com/corp/xweb/xweb.asp?disclosures=fixture",
+    )
+
+    assert result["page_type"] == "disclosures"
+    assert result["surface"] == "disclosures"
+    assert result["role"] == "Employment disclosures"
+    assert result["fields"] == [
+        {"name": "authorized", "type": "radio", "label": "Yes"},
+        {"name": "authorized", "type": "radio", "label": "No"},
+        {"name": "sponsorship", "type": "radio", "label": "Yes"},
+        {"name": "sponsorship", "type": "radio", "label": "No"},
+    ]
+    assert result["manual_gate"] == {
+        "type": "employment_disclosures",
+        "detail": "Required employment disclosures must be answered",
+    }
+    assert result["safe_to_prepare"] is False
