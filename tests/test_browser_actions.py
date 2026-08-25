@@ -14,6 +14,7 @@ class InMemoryPage:
 
     def __init__(self) -> None:
         self.values = {"#first-name": "Old value"}
+        self.checked: dict[str, bool] = {}
         self.operations: list[tuple[str, str, str]] = []
 
     def replace_text(self, selector: str, value: str) -> None:
@@ -29,6 +30,13 @@ class InMemoryPage:
 
     def read_selected_option(self, selector: str) -> str:
         return self.values[selector]
+
+    def set_checked(self, selector: str, checked: bool) -> None:
+        self.operations.append(("set_checked", selector, str(checked)))
+        self.checked[selector] = checked
+
+    def read_checked(self, selector: str) -> bool:
+        return self.checked[selector]
 
 
 def test_replace_text_returns_exact_post_action_read_back_evidence():
@@ -57,5 +65,20 @@ def test_native_select_returns_selected_option_read_back_evidence():
         "selector": "#country",
         "expected": "United States",
         "actual": "United States",
+        "verified": True,
+    }
+
+
+def test_set_checked_returns_checked_state_read_back_evidence():
+    page = InMemoryPage()
+
+    evidence = browser_actions.set_checked(page, "#consent", True)
+
+    assert page.operations == [("set_checked", "#consent", "True")]
+    assert evidence == {
+        "action": "set_checked",
+        "selector": "#consent",
+        "expected": True,
+        "actual": True,
         "verified": True,
     }

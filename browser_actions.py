@@ -16,6 +16,12 @@ class NativeSelectPage(Protocol):
     def read_selected_option(self, selector: str) -> str: ...
 
 
+class CheckedPage(Protocol):
+    def set_checked(self, selector: str, checked: bool) -> None: ...
+
+    def read_checked(self, selector: str) -> bool: ...
+
+
 def replace_text(page: TextPage, selector: str, value: str) -> dict[str, object]:
     """Replace a field's text and return evidence from an exact read-back."""
     page.replace_text(selector, value)
@@ -39,4 +45,17 @@ def native_select(page: NativeSelectPage, selector: str, value: str) -> dict[str
         "expected": value,
         "actual": actual,
         "verified": actual == value,
+    }
+
+
+def set_checked(page: CheckedPage, selector: str, checked: bool) -> dict[str, object]:
+    """Set a radio or checkbox state and return checked-state read-back evidence."""
+    page.set_checked(selector, checked)
+    actual = page.read_checked(selector)
+    return {
+        "action": "set_checked",
+        "selector": selector,
+        "expected": checked,
+        "actual": actual,
+        "verified": actual == checked,
     }
