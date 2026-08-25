@@ -60,6 +60,25 @@ def test_prepare_saved_html_dispatches_to_supported_ats_handlers():
         assert result["page_url"] == scenario["page_url"]
 
 
+def test_prepare_saved_html_dispatches_njoyn_listing_without_enabling_submission():
+    page_url = "https://cgi.njoyn.com/corp/xweb/xweb.asp?job=fixture"
+
+    result = prepare_job.prepare_saved_html(
+        html_text=(ROOT / "fixtures" / "njoyn_listing.html").read_text(),
+        page_url=page_url,
+    )
+
+    assert result["platform"] == "njoyn"
+    assert result["page_type"] == "listing"
+    assert result["entrypoint"] == {
+        "apply_label": "Apply now",
+        "apply_url": "/apply/fixture",
+    }
+    assert result["safe_to_prepare"] is False
+    assert result["submission_enabled"] is False
+    assert result["page_url"] == page_url
+
+
 def test_main_uses_profile_resume_preflight_and_embeds_safe_evidence(tmp_path, capsys):
     resume = tmp_path / "Kevin_Pyo_Resume.pdf"
     resume.write_bytes(b"%PDF-1.7\nresume")

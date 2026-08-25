@@ -5,6 +5,7 @@ from typing import Callable
 
 import greenhouse_handler
 import lever_handler
+import njoyn_handler
 import oracle_handler
 import workday_handler
 
@@ -53,6 +54,7 @@ HANDLERS: tuple[ATSHandler, ...] = (
         workday_handler.inspect_html,
     ),
     ATSHandler("lever", _url_contains("lever.co"), lever_handler.inspect_html),
+    ATSHandler("njoyn", _url_contains("njoyn.com"), njoyn_handler.inspect_html),
     ATSHandler("oracle", _oracle_matcher, oracle_handler.inspect_html),
 )
 
