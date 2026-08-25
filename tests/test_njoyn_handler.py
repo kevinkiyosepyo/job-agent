@@ -54,3 +54,28 @@ def test_inspect_html_inventories_njoyn_account_controls_and_fails_closed():
         "detail": "Sign in or create a profile required",
     }
     assert result["safe_to_prepare"] is False
+
+
+def test_inspect_html_inventories_njoyn_privacy_surface_and_fails_closed():
+    fixture_text = (ROOT / "fixtures" / "njoyn_privacy.html").read_text()
+
+    result = njoyn_handler.inspect_html(
+        fixture_text,
+        page_url="https://cgi.njoyn.com/corp/xweb/xweb.asp?privacy=fixture",
+    )
+
+    assert result["page_type"] == "privacy"
+    assert result["surface"] == "privacy"
+    assert result["role"] == "Privacy Notice"
+    assert result["fields"] == [
+        {
+            "name": "privacy_acknowledged",
+            "type": "checkbox",
+            "label": "I acknowledge the notice",
+        }
+    ]
+    assert result["manual_gate"] == {
+        "type": "privacy_notice",
+        "detail": "Privacy notice acknowledgement required",
+    }
+    assert result["safe_to_prepare"] is False

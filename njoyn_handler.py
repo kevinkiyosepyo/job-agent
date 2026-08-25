@@ -22,6 +22,7 @@ class _NjoynHTMLParser(HTMLParser):
         self.fields: list[dict[str, str]] = []
         self._apply_link_text: list[str] | None = None
         self._label_text: list[str] | None = None
+        self._label_field: dict[str, str] | None = None
         self._button_text: list[str] | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -32,15 +33,17 @@ class _NjoynHTMLParser(HTMLParser):
             self.in_h1 = True
         if tag == "label":
             self._label_text = []
+            self._label_field = None
         if tag == "input":
             label = " ".join("".join(self._label_text or []).split())
-            self.fields.append(
-                {
-                    "name": attr_map.get("name") or "",
-                    "type": attr_map.get("type") or "text",
-                    "label": label,
-                }
-            )
+            field = {
+                "name": attr_map.get("name") or "",
+                "type": attr_map.get("type") or "text",
+                "label": label,
+            }
+            self.fields.append(field)
+            if self._label_text is not None:
+                self._label_field = field
         if tag == "button":
             self._button_text = []
         href = attr_map.get("href") or ""
@@ -55,7 +58,12 @@ class _NjoynHTMLParser(HTMLParser):
         if tag == "h1":
             self.in_h1 = False
         if tag == "label":
+            if self._label_field is not None:
+                self._label_field["label"] = " ".join(
+                    "".join(self._label_text or []).split()
+                )
             self._label_text = None
+            self._label_field = None
         if tag == "button" and self._button_text is not None:
             label = " ".join("".join(self._button_text).split())
             if label.casefold() == "create a profile":
@@ -103,11 +111,18 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "listing"
     if page_type == "application" and parser.surface == "account":
         page_type = "account"
+    if page_type == "application" and parser.surface == "privacy":
+        page_type = "privacy"
     manual_gate = None
     if page_type == "account":
         manual_gate = {
             "type": "account_sign_in",
             "detail": "Sign in or create a profile required",
+        }
+    if page_type == "privacy":
+        manual_gate = {
+            "type": "privacy_notice",
+            "detail": "Privacy notice acknowledgement required",
         }
     return {
         "page_type": page_type,
