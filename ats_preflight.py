@@ -10,6 +10,7 @@ from typing import Callable
 
 import lever_handler
 import oracle_handler
+import workday_handler
 from pipeline import validate_confirmation_evidence
 
 
@@ -193,7 +194,13 @@ def inspect_target(target: dict, *, read_text: Callable[[Path], str] | None = No
     if platform == "greenhouse":
         return inspect_greenhouse_html(html_text, page_url=page_url)
     if platform == "workday":
-        return inspect_workday_html(html_text, page_url=page_url)
+        result = workday_handler.inspect_html(
+            html_text,
+            page_url=page_url,
+            expected_resume_basename=target.get("expected_resume_basename"),
+        )
+        result["platform"] = "workday"
+        return result
     if platform == "lever":
         result = lever_handler.inspect_html(
             html_text,

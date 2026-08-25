@@ -91,6 +91,23 @@ def test_inspect_workday_live_entrypoint_fixture_detects_rendered_apply_surface(
     assert result["fields"] == []
 
 
+def test_inspect_workday_target_uses_executable_handler_safety_contract():
+    target = {
+        "platform": "workday",
+        "page_url": "https://example.wd1.myworkdayjobs.com/en-US/careers/job/1",
+        "html_path": str(ROOT / "fixtures" / "workday_parse_issues.html"),
+        "expected_resume_basename": "Kevin_Pyo_Resume.pdf",
+    }
+
+    result = ats_preflight.inspect_target(target)
+
+    assert result["platform"] == "workday"
+    assert result["uploaded_resume_verified"] is True
+    assert result["safe_to_prepare"] is False
+    assert [issue["field"] for issue in result["parse_issues"]] == ["school", "gpa"]
+    assert result["save_draft_available"] is True
+
+
 def test_inspect_oracle_live_entrypoint_fixture_detects_apply_button_without_false_form_fields():
     target = {
         "platform": "oracle",

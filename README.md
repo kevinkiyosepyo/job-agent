@@ -19,6 +19,9 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `tests/` — behavior and safety tests.
 - `fixtures/` — harmless Greenhouse, Workday, and Lever test pages.
 - `lever_handler.py` — fixture-driven Lever application inspector with field inventory, upload read-back verification, manual-gate detection, confirmation validation, and a machine-readable CLI.
+- `greenhouse_handler.py` — fixture-driven Greenhouse application inspector with field inventory, resume read-back, manual-gate plumbing, and confirmation validation.
+- `workday_handler.py` — executable Workday listing/application inspector with wizard inventory, resume read-back, parsed-resume mismatch detection, save-draft awareness, multi-gate fail-closed output, and confirmation-reference extraction.
+- `oracle_handler.py` — Oracle Recruiting inspector with combobox validation, issue navigation, resume read-back, and confirmation validation.
 
 ## Test
 
