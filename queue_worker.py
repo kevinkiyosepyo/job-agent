@@ -111,6 +111,8 @@ def resume_or_prepare_leased_job(
 
     if latest_entry and latest_entry.get("step") == "prepared_plan_written":
         plan_path = Path(latest_entry.get("payload", {}).get("plan_path", ""))
+        if not plan_path.is_file():
+            raise ValueError(f"Invalid recovered plan artifact: {plan_path}")
         recovered = True
     else:
         closed_error = _closed_posting_error(html_text)
