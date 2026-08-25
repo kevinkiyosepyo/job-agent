@@ -10,6 +10,8 @@ from typing import Any, Callable, Protocol
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import urlopen
 
+from source_registry import load_registry
+
 
 DEFAULT_TIMEOUT = 15.0
 DEFAULT_ATTEMPTS = 3
@@ -215,9 +217,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--greenhouse", action="append", default=[], help="Greenhouse board token")
     parser.add_argument("--lever", action="append", default=[], help="Lever company token")
+    parser.add_argument("--registry", help="Versioned approved-source registry JSON path")
     parser.add_argument("--output", required=True, help="Output JSON array path")
     parser.add_argument("--report", help="Optional machine-readable source health report path")
     args = parser.parse_args(argv)
+
+    if args.registry:
+        if args.greenhouse or args.lever:
+            parser.error("--registry cannot be combined with --greenhouse or --lever")
+        registry = load_registry(args.registry)
+        args.greenhouse = [entry["token"] for entry in registry["sources"] if entry["platform"] == "greenhouse"]
+        args.lever = [entry["token"] for entry in registry["sources"] if entry["platform"] == "lever"]
 
     output_path = Path(args.output)
     if not args.greenhouse and not args.lever:
