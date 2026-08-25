@@ -183,11 +183,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--lease-seconds", type=int, default=300)
     parser.add_argument("--plan-dir", required=True)
     parser.add_argument("--expected-resume-basename")
+    parser.add_argument("--circuit-db")
+    parser.add_argument("--circuit-cooldown-seconds", type=int, default=300)
     args = parser.parse_args(argv)
 
     html_path = Path(args.html_path)
     queue = ApplicationQueue(Path(args.queue_db))
     journal = ExecutionJournal(Path(args.journal))
+    circuit_breaker = (
+        ATSCircuitBreaker(Path(args.circuit_db)) if args.circuit_db else None
+    )
     leased_job = queue.lease_next(now=args.now, lease_seconds=args.lease_seconds)
     if leased_job is None:
         print(json.dumps({"status": "no_job_available"}))
@@ -215,6 +220,12 @@ def main(argv: list[str] | None = None) -> int:
         )
     except ValueError as exc:
         retryable = _is_retryable_prepare_error(exc)
+        if retryable and circuit_breaker is not None:
+            circuit_breaker.record_failure(
+                platform=leased_job.ats_platform,
+                now=args.now,
+                cooldown_seconds=args.circuit_cooldown_seconds,
+            )
         journal.append(
             job_id=leased_job.id,
             attempt_count=leased_job.attempt_count,

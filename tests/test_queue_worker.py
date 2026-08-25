@@ -420,3 +420,36 @@ def test_main_terminally_fails_corrupted_preparation_fixture(tmp_path, monkeypat
     assert exit_code == 2
     assert payload["retryable"] is False
     assert job.state == "failed"
+
+
+def test_main_records_retryable_preparation_failure_in_platform_circuit(tmp_path, monkeypatch, capsys):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/example/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    monkeypatch.setattr(
+        queue_worker.prepare_job,
+        "prepare_saved_html",
+        lambda **kwargs: (_ for _ in ()).throw(ValueError("Browser capture unavailable")),
+    )
+    circuit_path = tmp_path / "circuits.db"
+
+    exit_code = queue_worker.main([
+        "--queue-db", str(tmp_path / "queue.db"),
+        "--journal", str(tmp_path / "journal.jsonl"),
+        "--html-path", str(ROOT / "fixtures" / "greenhouse.html"),
+        "--now", "2026-08-25T07:35:00+00:00",
+        "--plan-dir", str(tmp_path / "plans"),
+        "--circuit-db", str(circuit_path),
+        "--circuit-cooldown-seconds", "600",
+    ])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 2
+    assert payload["retryable"] is True
+    assert queue_worker.ATSCircuitBreaker(circuit_path).open_platforms(
+        now="2026-08-25T07:36:00+00:00"
+    ) == ("greenhouse",)
