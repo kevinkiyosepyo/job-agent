@@ -79,6 +79,30 @@ def test_prepare_saved_html_dispatches_njoyn_listing_without_enabling_submission
     assert result["page_url"] == page_url
 
 
+def test_prepare_saved_html_reuses_authenticated_learned_tenant_session_without_account_creation():
+    page_url = "https://cgi.njoyn.com/corp/xweb/xweb.asp?job=fixture"
+
+    result = prepare_job.prepare_saved_html(
+        html_text=(ROOT / "fixtures" / "njoyn_listing.html").read_text(),
+        page_url=page_url,
+        tenant_metadata={
+            "tenant": "cgi",
+            "platform": "njoyn",
+            "authenticated": True,
+            "session_reference": "runtime-only:njoyn-cgi",
+        },
+    )
+
+    assert result["tenant_session"] == {
+        "tenant": "cgi",
+        "authenticated": True,
+        "reuse_authenticated_session": True,
+        "account_creation_required": False,
+        "session_reference": "runtime-only:njoyn-cgi",
+    }
+    assert result["submission_enabled"] is False
+
+
 def test_main_uses_profile_resume_preflight_and_embeds_safe_evidence(tmp_path, capsys):
     resume = tmp_path / "Kevin_Pyo_Resume.pdf"
     resume.write_bytes(b"%PDF-1.7\nresume")

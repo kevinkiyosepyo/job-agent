@@ -15,6 +15,7 @@ def prepare_saved_html(
     html_text: str,
     page_url: str,
     expected_resume_basename: str | None = None,
+    tenant_metadata: dict | None = None,
 ) -> dict:
     handler = resolve_handler(page_url=page_url, html_text=html_text)
     payload = handler.inspect_html(
@@ -22,12 +23,22 @@ def prepare_saved_html(
         page_url=page_url,
         expected_resume_basename=expected_resume_basename,
     )
-    return {
+    result = {
         "platform": handler.platform,
         "submission_enabled": False,
         "page_url": page_url,
         **payload,
     }
+    if tenant_metadata and tenant_metadata.get("platform") == handler.platform:
+        authenticated = tenant_metadata.get("authenticated") is True
+        result["tenant_session"] = {
+            "tenant": tenant_metadata.get("tenant"),
+            "authenticated": authenticated,
+            "reuse_authenticated_session": authenticated,
+            "account_creation_required": not authenticated,
+            "session_reference": tenant_metadata.get("session_reference"),
+        }
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
