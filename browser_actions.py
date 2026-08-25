@@ -1,6 +1,7 @@
 """Deterministic, verification-first browser action contracts."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Protocol
 
 
@@ -20,6 +21,12 @@ class CheckedPage(Protocol):
     def set_checked(self, selector: str, checked: bool) -> None: ...
 
     def read_checked(self, selector: str) -> bool: ...
+
+
+class CDPUploadPage(Protocol):
+    def cdp_upload(self, selector: str, path: str) -> None: ...
+
+    def read_uploaded_filename(self, selector: str) -> str: ...
 
 
 def replace_text(page: TextPage, selector: str, value: str) -> dict[str, object]:
@@ -58,4 +65,18 @@ def set_checked(page: CheckedPage, selector: str, checked: bool) -> dict[str, ob
         "expected": checked,
         "actual": actual,
         "verified": actual == checked,
+    }
+
+
+def cdp_upload(page: CDPUploadPage, selector: str, path: str) -> dict[str, object]:
+    """Attach one file through CDP and return filename read-back evidence."""
+    expected = Path(path).name
+    page.cdp_upload(selector, path)
+    actual = page.read_uploaded_filename(selector)
+    return {
+        "action": "cdp_upload",
+        "selector": selector,
+        "expected": expected,
+        "actual": actual,
+        "verified": actual == expected,
     }

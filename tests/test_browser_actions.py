@@ -38,6 +38,13 @@ class InMemoryPage:
     def read_checked(self, selector: str) -> bool:
         return self.checked[selector]
 
+    def cdp_upload(self, selector: str, path: str) -> None:
+        self.operations.append(("cdp_upload", selector, path))
+        self.values[selector] = Path(path).name
+
+    def read_uploaded_filename(self, selector: str) -> str:
+        return self.values[selector]
+
 
 def test_replace_text_returns_exact_post_action_read_back_evidence():
     page = InMemoryPage()
@@ -80,5 +87,22 @@ def test_set_checked_returns_checked_state_read_back_evidence():
         "selector": "#consent",
         "expected": True,
         "actual": True,
+        "verified": True,
+    }
+
+
+def test_cdp_upload_returns_attached_file_read_back_evidence():
+    page = InMemoryPage()
+
+    evidence = browser_actions.cdp_upload(
+        page, "#resume-upload", "/safe/Resume.pdf"
+    )
+
+    assert page.operations == [("cdp_upload", "#resume-upload", "/safe/Resume.pdf")]
+    assert evidence == {
+        "action": "cdp_upload",
+        "selector": "#resume-upload",
+        "expected": "Resume.pdf",
+        "actual": "Resume.pdf",
         "verified": True,
     }
