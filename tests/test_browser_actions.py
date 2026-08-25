@@ -55,6 +55,13 @@ class InMemoryPage:
     def read_post_click_state(self, selector: str) -> str:
         return self.values[selector]
 
+    def submit(self, selector: str) -> None:
+        self.operations.append(("submit", selector, ""))
+        self.values["#confirmation"] = "Application received"
+
+    def read_confirmation(self) -> str:
+        return self.values["#confirmation"]
+
 
 def test_replace_text_returns_exact_post_action_read_back_evidence():
     page = InMemoryPage()
@@ -132,5 +139,20 @@ def test_scroll_and_click_returns_post_click_state_read_back_evidence():
         "selector": "#continue",
         "expected": "clicked",
         "actual": "clicked",
+        "verified": True,
+    }
+
+
+def test_submit_and_confirm_returns_explicit_confirmation_read_back_evidence():
+    page = InMemoryPage()
+
+    evidence = browser_actions.submit_and_confirm(page, "#submit", "Application received")
+
+    assert page.operations == [("submit", "#submit", "")]
+    assert evidence == {
+        "action": "submit_and_confirm",
+        "selector": "#submit",
+        "expected": "Application received",
+        "actual": "Application received",
         "verified": True,
     }

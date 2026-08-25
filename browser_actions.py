@@ -37,6 +37,12 @@ class ScrollClickPage(Protocol):
     def read_post_click_state(self, selector: str) -> str: ...
 
 
+class SubmitConfirmPage(Protocol):
+    def submit(self, selector: str) -> None: ...
+
+    def read_confirmation(self) -> str: ...
+
+
 def replace_text(page: TextPage, selector: str, value: str) -> dict[str, object]:
     """Replace a field's text and return evidence from an exact read-back."""
     page.replace_text(selector, value)
@@ -103,4 +109,19 @@ def scroll_and_click(
         "expected": expected_state,
         "actual": actual,
         "verified": actual == expected_state,
+    }
+
+
+def submit_and_confirm(
+    page: SubmitConfirmPage, selector: str, expected_confirmation: str
+) -> dict[str, object]:
+    """Submit once and return evidence from explicit confirmation read-back."""
+    page.submit(selector)
+    actual = page.read_confirmation()
+    return {
+        "action": "submit_and_confirm",
+        "selector": selector,
+        "expected": expected_confirmation,
+        "actual": actual,
+        "verified": actual == expected_confirmation,
     }
