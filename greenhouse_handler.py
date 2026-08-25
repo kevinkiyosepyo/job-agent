@@ -79,6 +79,8 @@ def _detect_manual_gate(text_chunks: list[str]) -> dict | None:
         return {"type": "captcha", "detail": "CAPTCHA detected"}
     if "verify your email" in lowered or "email verification" in lowered:
         return {"type": "email_verification", "detail": "Email verification detected"}
+    if "assessment" in lowered:
+        return {"type": "assessment", "detail": "Assessment detected"}
     return None
 
 
