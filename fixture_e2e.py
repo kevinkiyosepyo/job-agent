@@ -83,7 +83,10 @@ def run_oracle_fixture_flow(**kwargs: Any) -> dict[str, Any]:
 
 
 def run_njoyn_fixture_flow(
-    *, parser_fixture_path: Path, **kwargs: Any
+    *,
+    parser_fixture_path: Path,
+    parser_corrections: list[str] | None = None,
+    **kwargs: Any,
 ) -> dict[str, Any]:
     """Run CGI/Njoyn preparation with resume and parser-review evidence."""
     result = run_fixture_flow(**kwargs)
@@ -92,12 +95,25 @@ def run_njoyn_fixture_flow(
         page_url=kwargs["candidate"]["url"],
     )
     required_corrections = parser_review["parser_mismatches"]
+    recorded_corrections = parser_corrections or []
+    resolved_corrections = [
+        field for field in required_corrections if field in recorded_corrections
+    ]
+    unresolved_corrections = [
+        field for field in required_corrections if field not in recorded_corrections
+    ]
     result["parser_review"] = parser_review
     result["parser_repair_evidence"] = {
-        "status": "blocked" if required_corrections else "not_required",
+        "status": (
+            "not_required"
+            if not required_corrections
+            else "resolved"
+            if not unresolved_corrections
+            else "blocked"
+        ),
         "required_corrections": required_corrections,
-        "resolved_corrections": [],
-        "unresolved_corrections": required_corrections,
-        "safe_to_continue": not required_corrections,
+        "resolved_corrections": resolved_corrections,
+        "unresolved_corrections": unresolved_corrections,
+        "safe_to_continue": not unresolved_corrections,
     }
     return result
