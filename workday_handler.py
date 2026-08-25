@@ -17,6 +17,8 @@ class _WorkdayHTMLParser(HTMLParser):
         super().__init__()
         self.in_h1 = False
         self.in_h2 = False
+        self.in_title = False
+        self.document_title = ""
         self.role = ""
         self.steps: list[str] = []
         self.fields: list[dict] = []
@@ -26,6 +28,7 @@ class _WorkdayHTMLParser(HTMLParser):
         self.text_chunks: list[str] = []
         self.location = ""
         self.entrypoint: dict[str, str] = {}
+        self.start_actions: dict[str, str] = {}
         self.parsed_values: list[dict[str, str]] = []
         self._automation_stack: list[dict[str, str | list[str]]] = []
 
@@ -46,6 +49,15 @@ class _WorkdayHTMLParser(HTMLParser):
             self.in_h1 = True
         if tag == "h2":
             self.in_h2 = True
+        if tag == "title":
+            self.in_title = True
+        action_names = {
+            "autofillWithResume": "autofill_with_resume",
+            "applyManually": "apply_manually",
+            "useMyLastApplication": "use_last_application",
+        }
+        if automation_id in action_names:
+            self.start_actions[action_names[automation_id]] = attr_map.get("href") or ""
         if tag == "label":
             self.current_label_text = []
             self.current_label_closed = False
@@ -87,6 +99,8 @@ class _WorkdayHTMLParser(HTMLParser):
             self.in_h1 = False
         if tag == "h2":
             self.in_h2 = False
+        if tag == "title":
+            self.in_title = False
         if tag == "label" and self.current_label_text is not None:
             label = " ".join("".join(self.current_label_text).replace("*", " ").split())
             if label and self.fields:
@@ -101,6 +115,8 @@ class _WorkdayHTMLParser(HTMLParser):
         self.text_chunks.append(text)
         if self.in_h1 and not self.role:
             self.role = text
+        if self.in_title and not self.document_title:
+            self.document_title = text
         if self.in_h2:
             self.steps.append(text)
         if self.current_label_text is not None and not self.current_label_closed:
@@ -140,6 +156,11 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         pass
     if page_type == "application" and not parser.fields and parser.entrypoint.get("apply_label"):
         page_type = "listing"
+    if page_type == "application" and not parser.fields and parser.start_actions:
+        page_type = "application_start"
+    role = parser.role
+    if (not role or role.casefold().startswith("start your application")) and parser.document_title:
+        role = parser.document_title
     uploaded_resume_verified = None
     if expected_resume_basename is not None:
         uploaded_resume_verified = expected_resume_basename in parser.uploaded_names
@@ -158,11 +179,12 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         "page_type": page_type,
         "page_url": page_url,
         "tenant": urlparse(page_url).netloc,
-        "role": parser.role,
+        "role": role,
         "location": parser.location,
         "steps": parser.steps,
         "fields": parser.fields,
         "entrypoint": parser.entrypoint,
+        "start_actions": parser.start_actions,
         "uploaded_resume_verified": uploaded_resume_verified,
         "manual_gate": manual_gates[0] if manual_gates else None,
         "manual_gates": manual_gates,

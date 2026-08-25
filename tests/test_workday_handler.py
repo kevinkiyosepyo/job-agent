@@ -142,3 +142,21 @@ def test_main_fails_closed_for_manual_gates_and_emits_json(capsys):
         "email_verification",
         "assessment",
     ]
+
+
+def test_inspect_start_application_fixture_exposes_safe_non_submitting_actions():
+    fixture_text = (ROOT / "fixtures" / "workday_start_application.html").read_text()
+
+    result = workday_handler.inspect_html(
+        fixture_text,
+        page_url="https://example.wd1.myworkdayjobs.com/en-US/careers/job/1/apply",
+    )
+
+    assert result["page_type"] == "application_start"
+    assert result["role"] == "Software Engineering Intern – Summer 2027"
+    assert result["start_actions"] == {
+        "autofill_with_resume": "/job/1/apply/autofillWithResume",
+        "apply_manually": "/job/1/apply/applyManually",
+        "use_last_application": "/job/1/apply/useMyLastApplication",
+    }
+    assert result["safe_to_prepare"] is False
