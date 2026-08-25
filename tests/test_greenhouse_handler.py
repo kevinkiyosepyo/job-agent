@@ -83,6 +83,19 @@ def test_inspect_html_fails_closed_on_greenhouse_assessment_gate():
     }
 
 
+def test_inspect_html_fails_closed_when_greenhouse_requires_a_skills_test():
+    result = greenhouse_handler.inspect_html(
+        "<h1>Software Engineer Intern</h1><p>Please complete the skills test to continue.</p>",
+        page_url="https://job-boards.greenhouse.io/example/jobs/123",
+    )
+
+    assert result["safe_to_prepare"] is False
+    assert result["manual_gate"] == {
+        "type": "assessment",
+        "detail": "Assessment detected",
+    }
+
+
 def test_inspect_html_fails_closed_on_greenhouse_identity_verification_gate():
     result = greenhouse_handler.inspect_html(
         "<h1>Software Engineer Intern</h1><p>Identity verification is required to continue.</p>",
