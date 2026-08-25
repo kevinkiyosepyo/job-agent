@@ -25,21 +25,34 @@ class ATSCircuitBreaker:
             conn.execute(
                 """CREATE TABLE IF NOT EXISTS ats_circuits (
                     platform TEXT PRIMARY KEY,
-                    open_until TEXT NOT NULL
+                    open_until TEXT NOT NULL,
+                    failure_count INTEGER NOT NULL DEFAULT 0
                 )"""
             )
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(ats_circuits)")}
+            if "failure_count" not in columns:
+                conn.execute(
+                    "ALTER TABLE ats_circuits ADD COLUMN failure_count INTEGER NOT NULL DEFAULT 0"
+                )
 
-    def record_failure(self, *, platform: str, now: str, cooldown_seconds: int) -> None:
+    def record_failure(self, *, platform: str, now: str, cooldown_seconds: int) -> int:
         opened_at = datetime.fromisoformat(now)
         if opened_at.tzinfo is None:
             opened_at = opened_at.replace(tzinfo=UTC)
         open_until = (opened_at.timestamp() + max(1, cooldown_seconds))
         until = datetime.fromtimestamp(open_until, tz=opened_at.tzinfo).isoformat()
         with sqlite3.connect(self.path) as conn:
+            normalized_platform = platform.casefold()
+            row = conn.execute(
+                "SELECT failure_count FROM ats_circuits WHERE platform = ?", (normalized_platform,)
+            ).fetchone()
+            failure_count = (row[0] if row else 0) + 1
             conn.execute(
-                "INSERT OR REPLACE INTO ats_circuits (platform, open_until) VALUES (?, ?)",
-                (platform.casefold(), until),
+                """INSERT OR REPLACE INTO ats_circuits (platform, open_until, failure_count)
+                   VALUES (?, ?, ?)""",
+                (normalized_platform, until, failure_count),
             )
+        return failure_count
 
     def open_platforms(self, *, now: str) -> tuple[str, ...]:
         current = datetime.fromisoformat(now)
@@ -185,6 +198,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--expected-resume-basename")
     parser.add_argument("--circuit-db")
     parser.add_argument("--circuit-cooldown-seconds", type=int, default=300)
+    parser.add_argument("--ats-retry-budget", type=int, default=3)
     args = parser.parse_args(argv)
 
     html_path = Path(args.html_path)
@@ -220,12 +234,16 @@ def main(argv: list[str] | None = None) -> int:
         )
     except ValueError as exc:
         retryable = _is_retryable_prepare_error(exc)
+        retry_budget_exhausted = False
         if retryable and circuit_breaker is not None:
-            circuit_breaker.record_failure(
+            failure_count = circuit_breaker.record_failure(
                 platform=leased_job.ats_platform,
                 now=args.now,
                 cooldown_seconds=args.circuit_cooldown_seconds,
             )
+            retry_budget_exhausted = failure_count >= max(1, args.ats_retry_budget)
+            if retry_budget_exhausted:
+                retryable = False
         journal.append(
             job_id=leased_job.id,
             attempt_count=leased_job.attempt_count,
@@ -245,13 +263,16 @@ def main(argv: list[str] | None = None) -> int:
             step="lease_finished",
             payload={"state": finished.state, "error": str(exc)},
         )
-        print(json.dumps({
+        response = {
             "status": "posting_closed" if str(exc).startswith("Posting closed:") else "prepare_blocked",
             "error": str(exc),
             "job_id": leased_job.id,
             "retryable": retryable,
             "submission_enabled": False,
-        }))
+        }
+        if retry_budget_exhausted:
+            response["retry_budget_exhausted"] = True
+        print(json.dumps(response))
         return 2
 
     print(json.dumps({"status": "prepared", "result": result}))

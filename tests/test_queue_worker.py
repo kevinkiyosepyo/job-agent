@@ -420,6 +420,47 @@ def test_main_terminally_fails_corrupted_preparation_fixture(tmp_path, monkeypat
     assert exit_code == 2
     assert payload["retryable"] is False
     assert job.state == "failed"
+    assert job.last_error == "Corrupted fixture: malformed HTML snapshot"
+
+
+def test_main_terminally_contains_platform_when_retry_budget_is_exhausted(tmp_path, monkeypatch, capsys):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    queue.enqueue(
+        company="Broken Greenhouse",
+        role="Software Engineer Intern",
+        url="https://job-boards.greenhouse.io/broken/jobs/123",
+        ats_platform="Greenhouse",
+    )
+    queue.enqueue(
+        company="Healthy Lever",
+        role="Software Engineer Intern",
+        url="https://jobs.lever.co/healthy/123",
+        ats_platform="Lever",
+    )
+    monkeypatch.setattr(
+        queue_worker.prepare_job,
+        "prepare_saved_html",
+        lambda **kwargs: (_ for _ in ()).throw(ValueError("Browser capture unavailable")),
+    )
+
+    exit_code = queue_worker.main([
+        "--queue-db", str(tmp_path / "queue.db"),
+        "--journal", str(tmp_path / "journal.jsonl"),
+        "--html-path", str(ROOT / "fixtures" / "greenhouse.html"),
+        "--now", "2026-08-25T08:00:00+00:00",
+        "--plan-dir", str(tmp_path / "plans"),
+        "--circuit-db", str(tmp_path / "circuits.db"),
+        "--ats-retry-budget", "1",
+    ])
+    payload = json.loads(capsys.readouterr().out)
+
+    jobs = queue.list_jobs()
+    assert exit_code == 2
+    assert payload["retryable"] is False
+    assert payload["retry_budget_exhausted"] is True
+    assert jobs[0].state == "failed"
+    assert jobs[0].last_error == "Browser capture unavailable"
+    assert jobs[1].state == "discovered"
 
 
 def test_main_records_retryable_preparation_failure_in_platform_circuit(tmp_path, monkeypatch, capsys):
