@@ -1,0 +1,70 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+import ats_preflight
+
+
+def test_run_preflight_manifest_inspects_supported_fixture_pages():
+    manifest = [
+        {
+            "platform": "greenhouse",
+            "page_url": "https://job-boards.greenhouse.io/example/jobs/123",
+            "html_path": str(ROOT / "fixtures" / "greenhouse.html"),
+        },
+        {
+            "platform": "workday",
+            "page_url": "https://example.wd1.myworkdayjobs.com/en-US/careers/job/123/apply",
+            "html_path": str(ROOT / "fixtures" / "workday.html"),
+        },
+        {
+            "platform": "lever",
+            "page_url": "https://jobs.lever.co/example/123/apply",
+            "html_path": str(ROOT / "fixtures" / "lever_application.html"),
+            "expected_resume_basename": "Kevin_Pyo_Resume.pdf",
+        },
+        {
+            "platform": "oracle",
+            "page_url": "https://careers.example.com/job/123/apply",
+            "html_path": str(ROOT / "fixtures" / "oracle_application.html"),
+            "expected_resume_basename": "Kevin_Pyo_Resume.pdf",
+        },
+    ]
+
+    report = ats_preflight.run_preflight_manifest(manifest)
+
+    assert report["summary"] == {
+        "target_count": 4,
+        "application_count": 4,
+        "confirmation_count": 0,
+        "manual_gate_count": 0,
+        "failure_count": 0,
+    }
+    assert [result["platform"] for result in report["results"]] == [
+        "greenhouse",
+        "workday",
+        "lever",
+        "oracle",
+    ]
+    assert report["results"][0]["role"] == "Software Engineer Intern"
+    assert report["results"][0]["required_fields"] == [
+        "First Name",
+        "Last Name",
+        "Email",
+        "Phone",
+        "Resume",
+        "Work authorization",
+        "Sponsorship",
+    ]
+    assert report["results"][1]["steps"] == [
+        "My Information",
+        "My Experience",
+        "Application Questions",
+        "Review",
+    ]
+    assert report["results"][2]["uploaded_resume_verified"] is True
+    assert report["results"][3]["country_valid"] is True
