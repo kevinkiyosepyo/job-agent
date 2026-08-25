@@ -89,3 +89,62 @@ def test_main_runs_sources_then_orchestrator_and_persists_all_artifacts(tmp_path
     orchestrator_report = json.loads((workspace / "orchestrator-report.json").read_text())
     assert orchestrator_report["mode"] == "dry_run"
     assert orchestrator_report["queue"]["count"] == 1
+
+
+def test_main_proves_idempotent_dry_run_and_keeps_unsupported_roles_out_of_queue(tmp_path, monkeypatch, capsys):
+    profile_path = _write_profile(tmp_path)
+
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", lambda company, role, url: False)
+    monkeypatch.setattr(
+        sources,
+        "fetch_greenhouse_jobs",
+        lambda token, **kwargs: [
+            {
+                "company": "Example",
+                "role": "Software Engineer Intern, Summer 2027",
+                "url": "https://job-boards.greenhouse.io/example/jobs/123?utm_source=linkedin",
+                "location": "Remote",
+                "source": "Greenhouse public API",
+                "updated_at": "2026-08-23T00:00:00Z",
+            },
+            {
+                "company": "Example",
+                "role": "Business Analyst Intern, Summer 2027",
+                "url": "https://careers.example.com/jobs/456?utm_source=linkedin",
+                "location": "Remote",
+                "source": "Greenhouse public API",
+                "updated_at": "2026-08-23T00:00:00Z",
+            },
+        ],
+    )
+
+    workspace = tmp_path / "runtime"
+    exit_code = production_run.main(
+        [
+            "--greenhouse",
+            "example",
+            "--profile",
+            str(profile_path),
+            "--workspace",
+            str(workspace),
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["verification"] == {
+        "idempotent_queueing": True,
+        "first_queue_count": 1,
+        "second_queue_count": 1,
+        "unsupported_roles_not_queued": True,
+        "submission_enabled": False,
+        "external_side_effects_blocked": True,
+    }
+
+    queue_db = workspace / "app_queue.sqlite3"
+    jobs = production_run.orchestrator.ApplicationQueue(queue_db).list_jobs()
+    assert len(jobs) == 1
+    assert jobs[0].url == "https://job-boards.greenhouse.io/example/jobs/123"
+
+    audit_lines = (workspace / "audit.jsonl").read_text().strip().splitlines()
+    assert len(audit_lines) == 2

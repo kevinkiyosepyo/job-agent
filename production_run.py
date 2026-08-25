@@ -23,6 +23,49 @@ def _run_main(main_func, argv: list[str]) -> tuple[int, dict]:
     return exit_code, payload
 
 
+def _orchestrator_argv(
+    *,
+    candidates_path: Path,
+    profile_path: Path,
+    orchestrator_report_path: Path,
+    queue_db_path: Path,
+    audit_log_path: Path,
+    source_report_path: Path,
+) -> list[str]:
+    return [
+        str(candidates_path),
+        "--profile",
+        str(profile_path),
+        "--output",
+        str(orchestrator_report_path),
+        "--queue-db",
+        str(queue_db_path),
+        "--audit-log",
+        str(audit_log_path),
+        "--source-report",
+        str(source_report_path),
+    ]
+
+
+def _build_verification(first_payload: dict, second_payload: dict) -> dict:
+    first_queue_count = first_payload.get("queue", {}).get("count")
+    second_queue_count = second_payload.get("queue", {}).get("count")
+    unsupported_count = second_payload.get("plan", {}).get("counts", {}).get("unsupported", 0)
+    supported_queue_count = (
+        second_payload.get("plan", {}).get("counts", {}).get("greenhouse", 0)
+        + second_payload.get("plan", {}).get("counts", {}).get("workday", 0)
+    )
+    submission_enabled = bool(second_payload.get("plan", {}).get("submission_enabled"))
+    return {
+        "idempotent_queueing": first_queue_count == second_queue_count,
+        "first_queue_count": first_queue_count,
+        "second_queue_count": second_queue_count,
+        "unsupported_roles_not_queued": second_queue_count == supported_queue_count and unsupported_count >= 0,
+        "submission_enabled": submission_enabled,
+        "external_side_effects_blocked": not submission_enabled,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--greenhouse", action="append", default=[], help="Greenhouse board token")
@@ -62,24 +105,20 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result))
         return source_exit_code
 
-    orchestrator_exit_code, orchestrator_payload = _run_main(
-        orchestrator.main,
-        [
-            str(candidates_path),
-            "--profile",
-            str(Path(args.profile)),
-            "--output",
-            str(orchestrator_report_path),
-            "--queue-db",
-            str(queue_db_path),
-            "--audit-log",
-            str(audit_log_path),
-            "--source-report",
-            str(source_report_path),
-        ],
+    orchestrator_argv = _orchestrator_argv(
+        candidates_path=candidates_path,
+        profile_path=Path(args.profile),
+        orchestrator_report_path=orchestrator_report_path,
+        queue_db_path=queue_db_path,
+        audit_log_path=audit_log_path,
+        source_report_path=source_report_path,
     )
+    orchestrator_exit_code, orchestrator_payload = _run_main(orchestrator.main, orchestrator_argv)
     result["orchestrator_exit_code"] = orchestrator_exit_code
     result["orchestrator"] = orchestrator_payload
+    if orchestrator_exit_code == 0:
+        _, second_orchestrator_payload = _run_main(orchestrator.main, orchestrator_argv)
+        result["verification"] = _build_verification(orchestrator_payload, second_orchestrator_payload)
     print(json.dumps(result))
     return orchestrator_exit_code
 
