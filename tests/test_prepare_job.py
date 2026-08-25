@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import prepare_job
+import tenant_metadata
 
 
 def test_prepare_saved_html_dispatches_to_supported_ats_handlers():
@@ -101,6 +102,33 @@ def test_prepare_saved_html_reuses_authenticated_learned_tenant_session_without_
         "session_reference": "runtime-only:njoyn-cgi",
     }
     assert result["submission_enabled"] is False
+
+
+def test_load_tenant_metadata_returns_matching_authenticated_njoyn_tenant_only(tmp_path):
+    metadata_path = tmp_path / "learned-tenants.json"
+    metadata_path.write_text(json.dumps({
+        "version": 1,
+        "tenants": [{
+            "tenant": "cgi",
+            "platform": "njoyn",
+            "hostname": "cgi.njoyn.com",
+            "authenticated": True,
+            "session_reference": "runtime-only:njoyn-cgi",
+        }],
+    }))
+
+    result = tenant_metadata.load_for_page(
+        metadata_path,
+        page_url="https://cgi.njoyn.com/corp/xweb/xweb.asp?job=fixture",
+        platform="njoyn",
+    )
+
+    assert result == {
+        "tenant": "cgi",
+        "platform": "njoyn",
+        "authenticated": True,
+        "session_reference": "runtime-only:njoyn-cgi",
+    }
 
 
 def test_main_uses_profile_resume_preflight_and_embeds_safe_evidence(tmp_path, capsys):
