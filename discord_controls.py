@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import asdict
+from typing import Iterable
 
 import app_queue
+from audit_log import AuditLogger
 
 
 _ACTIONS = {
@@ -59,7 +61,17 @@ def _parse_control_id(control_id: str) -> tuple[str, int]:
     return action, int(raw_job_id)
 
 
-def handle_control(queue: app_queue.ApplicationQueue, *, control_id: str) -> dict:
+def handle_control(
+    queue: app_queue.ApplicationQueue,
+    *,
+    control_id: str,
+    actor_id: str | None = None,
+    allowed_actor_ids: Iterable[str] | None = None,
+    audit_logger: AuditLogger | None = None,
+) -> dict:
+    """Apply a job-bound control, optionally enforcing the Discord actor allowlist."""
+    if allowed_actor_ids is not None and actor_id not in {str(value) for value in allowed_actor_ids}:
+        raise PermissionError("Discord actor is not authorized for queue controls")
     action, job_id = _parse_control_id(control_id)
     job = next((candidate for candidate in queue.list_jobs() if candidate.id == job_id), None)
     if job is None:
@@ -68,12 +80,24 @@ def handle_control(queue: app_queue.ApplicationQueue, *, control_id: str) -> dic
     if job.state not in spec["allowed_states"]:
         raise ValueError(f"Control {action} is not valid for state {job.state}")
     updated = queue.transition(job_id, spec["target_state"])
-    return {
+    result = {
         "control_id": control_id,
         "action": action,
         "status": spec["status"],
         "job": asdict(updated),
     }
+    if audit_logger is not None:
+        audit_logger.log(
+            "discord_queue_control_applied",
+            {
+                "action": action,
+                "actor_id": actor_id,
+                "control_id": control_id,
+                "job_id": job_id,
+                "status": spec["status"],
+            },
+        )
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:

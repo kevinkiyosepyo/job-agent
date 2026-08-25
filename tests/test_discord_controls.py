@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import app_queue
+from audit_log import AuditLogger
 import discord_controls
 
 
@@ -188,3 +189,40 @@ def test_main_emits_machine_readable_json_for_control_action(tmp_path, capsys):
     assert payload["status"] == "approved"
     assert payload["job"]["id"] == job.id
     assert payload["job"]["state"] == "discovered"
+
+
+def test_handle_control_authorizes_actor_and_writes_audit_event(tmp_path):
+    queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
+    job = queue.enqueue(
+        company="Example",
+        role="Software Engineer Intern",
+        url="https://jobs.example.com/123",
+        ats_platform="Greenhouse",
+    )
+    queue.lease_next(now="2026-08-25T10:00:00+00:00", lease_seconds=300)
+    queue.finish_lease(
+        job.id,
+        outcome="pending_approval",
+        now="2026-08-25T10:01:00+00:00",
+        error="awaiting Discord approval",
+    )
+    audit_path = tmp_path / "audit.jsonl"
+
+    result = discord_controls.handle_control(
+        queue,
+        control_id=discord_controls.build_control_id("approve", job.id),
+        actor_id="628145910",
+        allowed_actor_ids={"628145910"},
+        audit_logger=AuditLogger(audit_path),
+    )
+
+    [entry] = [json.loads(line) for line in audit_path.read_text().splitlines()]
+    assert result["status"] == "approved"
+    assert entry["event"] == "discord_queue_control_applied"
+    assert entry["payload"] == {
+        "action": "approve",
+        "actor_id": "628145910",
+        "control_id": f"job:{job.id}:approve",
+        "job_id": job.id,
+        "status": "approved",
+    }
