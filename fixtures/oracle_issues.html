@@ -1,0 +1,32 @@
+<html>
+  <body>
+    <h1>Software Engineer Intern</h1>
+    <div class="job-location">Canada</div>
+
+    <div class="application-issues">
+      <a href="#country">Country must be set to United States.</a>
+      <a href="#salary">Please choose a salary expectation.</a>
+    </div>
+
+    <label for="country">Country</label>
+    <div data-field-type="combobox" data-name="country" data-required="true" data-value="Canada">
+      <button id="country">Canada</button>
+      <ul>
+        <li>Canada</li>
+        <li>United States</li>
+      </ul>
+    </div>
+
+    <label for="salary">Salary Expectation</label>
+    <div data-field-type="combobox" data-name="salary" data-required="true" data-value="$20/hour">
+      <button id="salary">$20/hour</button>
+      <ul>
+        <li>$20/hour</li>
+        <li>Open to discuss</li>
+      </ul>
+    </div>
+
+    <label for="resume">Resume</label>
+    <input id="resume" name="resume" type="file" required data-uploaded-filename="Kevin_Pyo_Resume.pdf" />
+  </body>
+</html>
