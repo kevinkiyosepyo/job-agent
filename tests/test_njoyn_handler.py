@@ -175,3 +175,28 @@ def test_inspect_html_reports_explicit_njoyn_parsed_profile_mismatches_for_corre
         "detail": "Parsed profile contains explicit mismatches that require correction",
     }
     assert result["safe_to_prepare"] is False
+
+
+def test_inspect_html_requires_real_two_step_njoyn_referral_selection_state():
+    fixture_text = (ROOT / "fixtures" / "njoyn_referral.html").read_text()
+
+    result = njoyn_handler.inspect_html(
+        fixture_text,
+        page_url="https://cgi.njoyn.com/corp/xweb/xweb.asp?referral=fixture",
+    )
+
+    assert result["page_type"] == "referral"
+    assert result["fields"] == [
+        {"name": "source", "type": "select", "label": "How did you hear about us?"},
+        {"name": "source_detail", "type": "select", "label": "How did you hear about us?"},
+    ]
+    assert result["referral_selection"] == {
+        "parent": None,
+        "child": None,
+        "verified": False,
+    }
+    assert result["manual_gate"] == {
+        "type": "referral_selection",
+        "detail": "Social Media and Instagram must be selected as real options",
+    }
+    assert result["safe_to_prepare"] is False

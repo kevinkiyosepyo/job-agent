@@ -22,10 +22,14 @@ class _NjoynHTMLParser(HTMLParser):
         self.fields: list[dict[str, str]] = []
         self.uploaded_names: list[str] = []
         self.parser_mismatches: list[str] = []
+        self.selected_options: dict[str, str] = {}
         self._apply_link_text: list[str] | None = None
         self._label_text: list[str] | None = None
         self._label_field: dict[str, str] | None = None
         self._button_text: list[str] | None = None
+        self._active_select_name: str | None = None
+        self._option_text: list[str] | None = None
+        self._option_selected = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr_map = dict(attrs)
@@ -53,6 +57,7 @@ class _NjoynHTMLParser(HTMLParser):
             if self._label_text is not None:
                 self._label_field = field
         if tag == "select":
+            self._active_select_name = attr_map.get("name") or ""
             self.fields.append(
                 {
                     "name": attr_map.get("name") or "",
@@ -60,6 +65,9 @@ class _NjoynHTMLParser(HTMLParser):
                     "label": self.role,
                 }
             )
+        if tag == "option":
+            self._option_text = []
+            self._option_selected = "selected" in attr_map
         if tag == "button":
             self._button_text = []
         href = attr_map.get("href") or ""
@@ -85,6 +93,15 @@ class _NjoynHTMLParser(HTMLParser):
             if label.casefold() == "create a profile":
                 self.entrypoint["create_profile_label"] = label
             self._button_text = None
+        if tag == "option" and self._option_text is not None:
+            if self._option_selected and self._active_select_name:
+                self.selected_options[self._active_select_name] = " ".join(
+                    "".join(self._option_text).split()
+                )
+            self._option_text = None
+            self._option_selected = False
+        if tag == "select":
+            self._active_select_name = None
         if tag == "a" and self._apply_link_text is not None:
             label = " ".join("".join(self._apply_link_text).split())
             if label:
@@ -103,6 +120,8 @@ class _NjoynHTMLParser(HTMLParser):
             self._label_text.append(text)
         if self._button_text is not None:
             self._button_text.append(text)
+        if self._option_text is not None:
+            self._option_text.append(text)
         if not self.company and "·" in text:
             company, _, location = text.partition("·")
             self.company = company.strip()
@@ -137,6 +156,8 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "resume_upload"
     if page_type == "application" and parser.surface == "parsed-profile":
         page_type = "parsed_profile"
+    if page_type == "application" and parser.surface == "referral":
+        page_type = "referral"
     uploaded_resume_verified = None
     if expected_resume_basename is not None:
         uploaded_resume_verified = expected_resume_basename in parser.uploaded_names
@@ -166,6 +187,19 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
             "type": "parser_correction",
             "detail": "Parsed profile contains explicit mismatches that require correction",
         }
+    referral_selection: dict[str, str | bool | None] = {
+        "parent": parser.selected_options.get("source"),
+        "child": parser.selected_options.get("source_detail"),
+    }
+    referral_selection["verified"] = referral_selection == {
+        "parent": "Social Media",
+        "child": "Instagram",
+    }
+    if page_type == "referral" and not referral_selection["verified"]:
+        manual_gate = {
+            "type": "referral_selection",
+            "detail": "Social Media and Instagram must be selected as real options",
+        }
     return {
         "page_type": page_type,
         "surface": parser.surface,
@@ -178,6 +212,7 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         "uploaded_resume_verified": uploaded_resume_verified,
         "parser_correction_required": bool(parser.parser_mismatches),
         "parser_mismatches": parser.parser_mismatches,
+        **({"referral_selection": referral_selection} if page_type == "referral" else {}),
         "manual_gate": manual_gate,
         "confirmation_text": confirmation_text,
         "safe_to_prepare": False,
