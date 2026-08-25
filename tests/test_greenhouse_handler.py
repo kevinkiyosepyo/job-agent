@@ -40,3 +40,15 @@ def test_inspect_application_fixture_inventories_fields_and_verifies_uploaded_re
         "type": "file",
         "required": True,
     }
+
+
+def test_inspect_html_fails_closed_on_greenhouse_email_verification_gate():
+    result = greenhouse_handler.inspect_html(
+        "<h1>Software Engineer Intern</h1><p>Please verify your email to continue.</p>",
+        page_url="https://job-boards.greenhouse.io/example/jobs/123",
+    )
+
+    assert result["manual_gate"] == {
+        "type": "email_verification",
+        "detail": "Email verification detected",
+    }

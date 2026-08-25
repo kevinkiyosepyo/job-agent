@@ -77,6 +77,8 @@ def _detect_manual_gate(text_chunks: list[str]) -> dict | None:
     lowered = " ".join(text_chunks).casefold()
     if "captcha" in lowered or "hcaptcha" in lowered or "recaptcha" in lowered:
         return {"type": "captcha", "detail": "CAPTCHA detected"}
+    if "verify your email" in lowered or "email verification" in lowered:
+        return {"type": "email_verification", "detail": "Email verification detected"}
     return None
 
 
