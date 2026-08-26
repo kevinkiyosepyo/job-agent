@@ -18,6 +18,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `audit_log.py` — append structured JSONL audit events with recursive sensitive-field redaction.
 - `tracker.py` — read the live Google Sheet, append rows with mandatory API read-back verification, and run a self-cleaning integration check.
 - `notifier.py` — send deterministic Discord alerts.
+- `amazon_sync.py` — read the official Amazon 2027 monitor scripts, dedupe current hits, stage MAANGO-safe `Pending Manual Action` tracker rows, and optionally append verified tracker rows plus idempotent queue entries.
 - `submission_artifacts.py` — build sanitized submission-evidence artifacts that reconcile verified tracker rows with Discord applied notifications.
 - `discord_controls.py` — enforce job-ID-bound approve/reject/retry/skip actions against the local SQLite queue with a machine-readable CLI.
 - `tests/` — behavior and safety tests.
@@ -42,9 +43,10 @@ python -m pytest tests -q
 
 ```bash
 python orchestrator.py verified-candidates.json --output orchestrator-report.json --source-report sources-report.json
+python amazon_sync.py --output runtime/amazon-sync-report.json
 ```
 
-`orchestrator.py` runs scanner + pipeline in `dry_run` mode, persists supported jobs into the local SQLite queue as `discovered`, and appends a redacted audit event. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
+`orchestrator.py` runs scanner + pipeline in `dry_run` mode, persists supported jobs into the local SQLite queue as `discovered`, and appends a redacted audit event. `amazon_sync.py` performs a non-mutating dry run that reads the official Amazon monitor scripts, plans `Pending Manual Action` tracker rows for current Amazon hits, and writes a machine-readable report without touching the tracker or queue unless `--commit` is supplied. Real applications are handled by Hermes ATS skills and must satisfy duplicate, MAANGO, CAPTCHA, field-verification, confirmation, tracker, and notification invariants.
 
 ## Production-readiness audit
 
