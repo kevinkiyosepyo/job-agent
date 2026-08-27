@@ -11,6 +11,7 @@ This repository is a local, safety-first job-agent build. The default mode is of
 3. Optionally probe browser/CDP health if browser automation is needed.
 4. Use dry-run orchestration only unless a separate, explicit application flow is being exercised.
 5. Verify tracker integration with the self-cleaning smoke test before any tracker-facing change ships.
+6. Run the sanitized real-Chrome operator proof and independently re-audit its persisted report.
 
 ## Commands
 
@@ -66,6 +67,12 @@ Resolve controls only through `tenant_field_maps.py`. The page URL and requested
 
 Run `python -m pytest tests/test_local_cdp_operator.py -q` before operator CLI changes. The harness is test-only: it accepts only the marker-checked repository fixture, an ephemeral profile, and an installed local Chrome-for-Testing executable. CDP travels through process-local pipe descriptors because no debugging port or browser-wide desktop control is needed. The proof must preserve one freshly discovered exact target ID/URL across preparation and submission, reject an overlay before mutation, verify every field by read-back, keep OCR observation scoped to a screenshot of that target, and retain a submit count of one across interruption and reattachment. Its tracker and Discord implementations are in-memory local fakes; substituting production adapters is forbidden in this test.
 
+### Production operator proof and timing audit
+
+Place a harmless exact `Resume.pdf` under ignored `runtime/`, then run `python production_operator.py local-demo --resume runtime/sanitized-demo/Resume.pdf --runtime-dir runtime/operator-demo --output runtime/operator-demo/report.json --approve-sanitized-submit`. The approval is deliberately named and scoped to the sanitized fixture; omitting it must stop before Chrome starts. The command has no live mode and cannot select a different fixture. It requires every operational health check before the fixture submit, uses the complete versioned Greenhouse field map, and records only the closed PII-free timing vocabulary. Preparation must be under five minutes and verified fixture submission under ten minutes.
+
+Run `python production_operator.py audit --report runtime/operator-demo/report.json` as a separate read-only step. It recomputes health, timing, Review, single-use/replay, one-shot count, portal, tracker-read-back, Discord-read-back, and safety verdicts from the value-free report. Only `ready_for_manual_live_authorization_review` is a passing proof, and even that artifact explicitly retains `real_application_authorized: false`. Do not treat it as a submission token or connect the local tracker/Discord fakes to production services.
+
 ### Tracker smoke test
 
 ```bash
@@ -113,6 +120,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 - Tracker append/read-back must precede Discord send/read-back; partial recovery is read-back-only and may never duplicate tracker, message, or submit side effects.
 - Production preparation must use exact versioned tenant maps and semantic keys; unknown selectors, tenants, steps, or unmet transition conditions must never trigger live rediscovery.
 - The real-Chrome integration must remain static-fixture-only, pipe-scoped, ephemeral, and sanitized; it must not bind production pages, production tracker/Discord adapters, or any desktop-input facility.
+- The operator proof report must remain value-free and path-free, meet both timing targets, retain submit count one and replay denial, and explicitly state that no real application is authorized or submitted.
 
 ## Release checklist for engineering changes
 

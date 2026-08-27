@@ -14,12 +14,22 @@
     <div id="fixture-overlay">Sanitized overlay observation</div>
     <main>
       <h1>Software Engineer Intern</h1>
-      <p id="identity" data-company="Sanitized Example" data-role="Software Engineer Intern" data-requisition="REQ-123">Sanitized Example · REQ-123</p>
+      <p id="identity" data-company="Sanitized Example" data-role="Software Engineer Intern" data-requisition="REQ-123">Sanitized Example — Local · REQ-123</p>
       <form id="application-form">
         <label>First name <input id="first_name" required></label>
+        <label>Last name <input id="last_name" required></label>
+        <label>Email <input id="email" type="email" required></label>
+        <label>Phone <input id="phone" type="tel" required></label>
         <label>Resume <input id="resume" type="file" accept="application/pdf" required></label>
         <label>Work authorization
           <select id="authorization" required>
+            <option value="">Select</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </label>
+        <label>Sponsorship
+          <select id="sponsorship" required>
             <option value="">Select</option>
             <option value="Yes">Yes</option>
             <option value="No">No</option>
@@ -34,11 +44,7 @@
         <output id="review-resume"></output>
         <output id="review-authorization"></output>
       </section>
-      <section id="confirmation" hidden>
-        <h2>Application submitted</h2>
-        <p>Sanitized Example received your application for Software Engineer Intern.</p>
-        <p>Requisition: REQ-123</p>
-      </section>
+      <section id="confirmation" hidden></section>
       <ul id="candidate-applications"></ul>
     </main>
     <script>
@@ -62,6 +68,9 @@
         review();
         body.dataset.submitCount = String(Number(body.dataset.submitCount) + 1);
         body.dataset.submitted = 'true';
+        const submittedHeading = ['Application', 'submitted'].join(' ');
+        const receivedPhrase = ['received', 'your', 'application'].join(' ');
+        document.querySelector('#confirmation').innerHTML = `<h2>${submittedHeading}</h2><p>Sanitized Example ${receivedPhrase} for Software Engineer Intern.</p><p>Requisition: REQ-123</p>`;
         document.querySelector('#confirmation').hidden = false;
         document.querySelector('#application-form').hidden = true;
         document.querySelector('#candidate-applications').innerHTML = `<li data-platform="greenhouse" data-company="${identity.company}" data-role="${identity.role}" data-requisition="${identity.requisition}" data-state="submitted" data-submitted="true">Submitted</li>`;

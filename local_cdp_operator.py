@@ -285,7 +285,11 @@ class LocalExactCDPPage(MutableCDPPageAdapter):
             "identity": identity,
             "fields": {
                 "#first_name": self.read_value("#first_name"),
+                "#last_name": self.read_value("#last_name"),
+                "#email": self.read_value("#email"),
+                "#phone": self.read_value("#phone"),
                 "#authorization": authorization,
+                "#sponsorship": self.read_value("#sponsorship"),
             },
             "resume": resume,
             "parser_repairs": [],
@@ -323,6 +327,7 @@ class LocalChromeFixtureSession:
         self._pid: int | None = None
         self._wait_status: int | None = None
         self._channel: _PipeCDPChannel | None = None
+        self.browser_product = ""
         self.page_url = ""
         self.target_id = ""
 
@@ -402,10 +407,15 @@ class LocalChromeFixtureSession:
             if self._poll():
                 raise LocalCDPIntegrationError("headless Chrome exited before CDP startup")
             try:
+                version = self._channel.call("Browser.getVersion", {})
                 response = self._channel.call("Target.getTargets", {})
             except LocalCDPIntegrationError:
                 time.sleep(0.02)
                 continue
+            product = version.get("product")
+            if not isinstance(product, str) or "Chrome" not in product:
+                raise LocalCDPIntegrationError("local browser did not identify as Chrome")
+            self.browser_product = product
             targets = response.get("targetInfos", [])
             match = next(
                 (
