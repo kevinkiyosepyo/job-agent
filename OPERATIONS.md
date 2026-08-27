@@ -32,6 +32,8 @@ python setup_diagnostics.py --skip-browser
 python browser_health.py --base-url http://127.0.0.1:9222
 ```
 
+Only bind a known exact page target. Mutable CDP preparation uses the local `MutableCDPPageAdapter` contract: each field operation re-reads the target URL, rejects absent/hidden/disabled controls, and is limited to text, native select, checked control, or file attachment. It must never navigate, use raw desktop input or coordinates, or operate on a changed target.
+
 ### Tracker smoke test
 
 ```bash
