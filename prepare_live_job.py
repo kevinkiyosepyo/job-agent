@@ -6,7 +6,17 @@ only durable result is sanitized Review-ready evidence.
 """
 from __future__ import annotations
 
+import argparse
+import json
+import re
+from pathlib import Path
 from typing import Callable, Protocol
+from urllib.parse import urlsplit
+
+from answer_coverage import build_coverage_matrix
+from cdp_page_executor import CDPPageExecutor
+from prepare_job import prepare_saved_html
+from scoped_cdp import ScopedCDPTransport
 
 
 class ReadOnlyLivePage(Protocol):
@@ -21,6 +31,7 @@ class LivePreparationError(ValueError):
 
 Prepare = Callable[..., dict]
 Coverage = Callable[..., dict]
+TransportFactory = Callable[[str], object]
 
 
 def _identity(payload: dict) -> dict[str, str]:
@@ -81,3 +92,191 @@ def prepare_live_job(
         "applied_answers": applied_answers,
         "evidence": {"sanitized": True, "target_bound": True},
     }
+
+
+def _load_json_object(path: str, *, label: str) -> dict:
+    payload = json.loads(Path(path).read_text())
+    if not isinstance(payload, dict):
+        raise LivePreparationError(f"{label} must be a JSON object")
+    return payload
+
+
+def _validate_local_cdp_base_url(base_url: str) -> None:
+    parsed = urlsplit(base_url)
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/"}
+    ):
+        raise LivePreparationError("CDP base URL must be an uncredentialed loopback HTTP origin")
+
+
+def _questions_from_fields(payload: dict) -> list[dict[str, object]]:
+    fields = payload.get("fields", [])
+    if not isinstance(fields, list):
+        raise LivePreparationError("handler returned an invalid field inventory")
+    questions: list[dict[str, object]] = []
+    for field in fields:
+        if not isinstance(field, dict):
+            continue
+        label = field.get("label") or field.get("name")
+        if isinstance(label, str) and label:
+            questions.append({"label": label, "required": field.get("required") is True})
+    return questions
+
+
+def _has_exact_identity(text: str, value: str) -> bool:
+    if not value:
+        return False
+    return re.search(r"(?<![\w-])" + re.escape(value) + r"(?![\w-])", text) is not None
+
+
+def _dispatch_live_html(
+    *, html_text: str, page_url: str, expected_identity: dict[str, str]
+) -> dict:
+    payload = prepare_saved_html(html_text=html_text, page_url=page_url)
+    manual_gates = payload.get("manual_gates") or (
+        [payload["manual_gate"]] if payload.get("manual_gate") else []
+    )
+    if manual_gates:
+        raise LivePreparationError("handler reported a human-required gate before preparation")
+    if payload.get("page_type") not in {None, "application"}:
+        raise LivePreparationError("handler did not report an application form surface")
+
+    identity_sources = {
+        "company": html_text,
+        "role": html_text,
+        "requisition": f"{html_text}\n{page_url}",
+    }
+    for key, expected in expected_identity.items():
+        observed = payload.get(key)
+        if not observed and _has_exact_identity(identity_sources[key], expected):
+            payload[key] = expected
+    payload["questions"] = _questions_from_fields(payload)
+    return payload
+
+
+def _apply_text_answers(
+    *, page: object, target_id: str, expected_url: str, answers: dict[str, str]
+) -> dict[str, object]:
+    executor = CDPPageExecutor(page)  # type: ignore[arg-type]
+    field_evidence = [
+        executor.replace_text(
+            target_id=target_id,
+            expected_url=expected_url,
+            selector=selector,
+            value=value,
+        )
+        for selector, value in answers.items()
+    ]
+    return {
+        "action": "fill_known_page",
+        "field_evidence": field_evidence,
+        "verified": bool(field_evidence) and all(item.get("verified") is True for item in field_evidence),
+    }
+
+
+def _sanitize_review_evidence(payload: dict) -> dict:
+    applied = payload.get("applied_answers", {})
+    sanitized_fields = []
+    for field in applied.get("field_evidence", []):
+        sanitized_fields.append({
+            key: field[key]
+            for key in ("action", "selector", "verified", "target_id", "target_url")
+            if key in field
+        })
+    return {
+        **payload,
+        "applied_answers": {
+            "action": applied.get("action", "fill_known_page"),
+            "field_evidence": sanitized_fields,
+            "verified": applied.get("verified") is True,
+        },
+        "evidence": {
+            **payload.get("evidence", {}),
+            "answer_values_persisted": False,
+        },
+    }
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    transport_factory: TransportFactory = ScopedCDPTransport,
+    prepare: Prepare | None = None,
+    coverage: Coverage = build_coverage_matrix,
+) -> int:
+    parser = argparse.ArgumentParser(description="Prepare one exact-bound live ATS page without submitting")
+    parser.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
+    parser.add_argument("--target-id", required=True)
+    parser.add_argument("--expected-url", required=True)
+    parser.add_argument("--company", required=True)
+    parser.add_argument("--role", required=True)
+    parser.add_argument("--requisition", required=True)
+    parser.add_argument("--profile", required=True)
+    parser.add_argument("--approved-answers", required=True)
+    parser.add_argument("--output", required=True)
+    args = parser.parse_args(argv)
+
+    try:
+        _validate_local_cdp_base_url(args.cdp_base_url)
+        expected_identity = {
+            "company": args.company,
+            "role": args.role,
+            "requisition": args.requisition,
+        }
+        if not args.target_id or not all(expected_identity.values()):
+            raise LivePreparationError("target and expected identity values must be non-empty")
+        profile = _load_json_object(args.profile, label="profile")
+        approved_answers = _load_json_object(args.approved_answers, label="approved answers")
+        if not approved_answers or not all(
+            isinstance(selector, str)
+            and bool(selector)
+            and isinstance(value, str)
+            for selector, value in approved_answers.items()
+        ):
+            raise LivePreparationError("approved answers must be a non-empty selector-to-string map")
+
+        selected_prepare = prepare or (
+            lambda **kwargs: _dispatch_live_html(
+                **kwargs, expected_identity=expected_identity
+            )
+        )
+        transport = transport_factory(args.cdp_base_url)
+        with transport.bind_mutable_page_target(args.target_id) as page:  # type: ignore[attr-defined]
+            result = prepare_live_job(
+                page=page,
+                target_id=args.target_id,
+                expected_url=args.expected_url,
+                expected_identity=expected_identity,
+                profile=profile,
+                prepare=selected_prepare,
+                coverage=coverage,
+                approved_answers=approved_answers,
+                apply_known=lambda answers: _apply_text_answers(
+                    page=page,
+                    target_id=args.target_id,
+                    expected_url=args.expected_url,
+                    answers=answers,
+                ),
+            )
+        sanitized = _sanitize_review_evidence(result)
+        Path(args.output).write_text(json.dumps(sanitized, indent=2, sort_keys=True) + "\n")
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(json.dumps({
+            "error": str(exc),
+            "submission_enabled": False,
+            "review_evidence_persisted": False,
+        }))
+        return 2
+
+    print(json.dumps(sanitized, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -144,6 +144,8 @@ class ScopedCDPTransport:
         class ManagedAdapter(MutableCDPPageAdapter):
             def __enter__(self):
                 return self
+            def read_only_snapshot(self):
+                return bound.read_only_snapshot()
             def __exit__(self, exc_type, exc_value, traceback):
                 bound.__exit__(exc_type, exc_value, traceback)
 

@@ -37,7 +37,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `njoyn_live_executor.py` — non-submitting CGI/Njoyn execution contract: batches an approved known-page answer map, verifies the handler-plan parser-repair fields through exact read-back, and always returns `stop_before_submit` for human Review.
 - `fixture_e2e.py` — non-submitting vertical fixture flows for supported ATSs, including CGI/Njoyn resume attachment verification, parsed-profile review evidence, and sanitized confirmation artifacts. Explicit parsed-profile mismatches emit field-only parser-repair evidence and remain blocked until every required correction is recorded; unrelated recorded correction IDs are explicitly rejected rather than counting toward completion. The flows never submit, write a tracker row, or send a notification.
 - `ats_registry.py` / `prepare_job.py` — shared non-submitting dispatcher for Greenhouse, Workday, Lever, Oracle, and CGI/Njoyn saved surfaces. Every payload explicitly carries `submission_enabled: false`; manual-gated and listing surfaces remain fail-closed. `prepare_job.py --tenant-metadata <path>` loads a matching learned tenant record only after hostname/platform validation; it carries only a runtime-only session reference and authenticated-state metadata into the plan, allowing a repeat flow to reuse an already authenticated session without serializing credentials or scheduling account creation.
-- `prepare_live_job.py` — exact-target, non-submitting live-preparation seam. It requires fresh trusted page target/URL read-back, exact company/role/requisition equality, handler question inventory, and sanitized answer-coverage evidence before declaring a Review-ready bundle; it applies only an explicit approved answer map and refuses unverified post-fill read-back; target or identity drift fails before handler dispatch.
+- `prepare_live_job.py` — guarded exact-target, non-submitting live-preparation CLI and seam. The CLI accepts only a loopback CDP origin, freshly binds the requested page target, requires exact URL/company/role/requisition evidence, dispatches the ATS handler, runs answer coverage, and applies only an explicit selector-to-string answer map through the bounded CDP executor. Every field must pass post-action read-back before the command persists a Review-ready bundle; persisted evidence retains selectors and verification state but strips profile and answer values.
 - `session_gate.py` — validates a tenant’s runtime-only session reference and returns either authenticated-session reuse or an explicit human login/identity-verification gate; it never receives or serializes credentials.
 - `tenant_metadata.py` — loads versioned learned-tenant records only after matching the page hostname, ATS platform, and tenant identity; it returns a secret-free runtime-only session reference or fails closed.
 - `browser_integration_canary.py` — sanitised non-mutating canaries for Njoyn, Workday, Greenhouse, Lever, and Oracle that fail closed on invalid Retina scale, stale target focus, hidden controls, overlays, or unexpected native windows while requiring submission to remain disabled.
@@ -128,6 +128,24 @@ python browser_health.py --base-url http://127.0.0.1:9222
 ```
 
 Exit code `0` means the endpoint is ready for automation. Exit code `1` means the issue is recoverable and the JSON payload includes a stable `error_code` such as `connection_refused` or `no_page_targets`.
+
+## Guarded live preparation
+
+Keep the approved-answer map and generated evidence under ignored `runtime/`. After independently reading the current page target ID and exact identity, run:
+
+```bash
+python prepare_live_job.py \
+  --target-id '<exact-page-target-id>' \
+  --expected-url 'https://sanitized.example.test/apply/REQ-123' \
+  --company 'Sanitized Example' \
+  --role 'Software Engineer Intern' \
+  --requisition 'REQ-123' \
+  --profile runtime/sanitized-profile.json \
+  --approved-answers runtime/approved-answers.json \
+  --output runtime/review-evidence.json
+```
+
+The command never navigates or submits. A changed target/URL, unsupported or gated ATS surface, identity mismatch, unapproved field, or failed field read-back exits nonzero without writing Review evidence.
 
 ## Offline setup diagnostics
 

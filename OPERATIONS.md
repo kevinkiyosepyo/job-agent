@@ -34,6 +34,10 @@ python browser_health.py --base-url http://127.0.0.1:9222
 
 Only bind a known exact page target. Mutable CDP preparation uses the local `MutableCDPPageAdapter` contract: each field operation re-reads the target URL, rejects absent/hidden/disabled controls, and is limited to text, native select, checked control, or file attachment. It must never navigate, use raw desktop input or coordinates, or operate on a changed target. Start live preparation only through the exact-target `prepare_live_job` seam; it is non-submitting, uses only explicitly approved answers, requires verified post-fill evidence, and fails before handler dispatch if target URL or company/role/requisition differs from the operator-bound request.
 
+### Guarded non-submitting preparation
+
+Store the explicit selector-to-string answer map and output only under ignored `runtime/`. Read the current target ID from the local CDP target list, independently verify the exact URL/company/role/requisition, and invoke `prepare_live_job.py` with `--target-id`, `--expected-url`, `--company`, `--role`, `--requisition`, `--profile`, `--approved-answers`, and `--output`. The CDP origin must remain an uncredentialed loopback HTTP origin. Treat a nonzero exit as a hard stop: do not reuse an old target ID, manually edit failed evidence into a passing state, or proceed when any field lacks verified read-back. The successful artifact intentionally omits answer/profile values and is only input to authoritative Review; it is not submission authority.
+
 ### Tracker smoke test
 
 ```bash
@@ -73,6 +77,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 - Dry-run commands must not submit applications, notify third parties, or mutate production trackers without explicit integration-check behavior.
 - Confirmation evidence must be validated from actual confirmation text, not assumed from button clicks.
 - New automation must preserve MAANGO manual-only routing and CAPTCHA stop conditions.
+- `prepare_live_job.py` evidence must contain no answer/profile values, and its Review-ready result must never be treated as submit authorization.
 
 ## Release checklist for engineering changes
 
