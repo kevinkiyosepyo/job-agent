@@ -9,6 +9,7 @@ from typing import Any
 
 SUPPORTED_PLATFORMS = ("greenhouse", "lever", "oracle", "workday")
 LEARNED_ATS_PLATFORM = "njoyn"
+CANARY_PLATFORMS = ("greenhouse", "lever", "njoyn", "oracle", "workday")
 PREPARATION_TARGET_SECONDS = 5 * 60
 VERIFIED_SUBMISSION_TARGET_SECONDS = 10 * 60
 LEARNED_ATS_SAFETY_INVARIANTS = (
@@ -34,6 +35,7 @@ def build_audit(
     dry_run_verification: dict[str, Any],
     fixture_flows: dict[str, dict[str, Any]],
     learned_ats_benchmark: dict[str, Any] | None = None,
+    browser_canaries: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Return a safe readiness verdict from persisted non-submitting evidence."""
     dry_run_verified = all(
@@ -50,6 +52,16 @@ def build_audit(
         for platform in SUPPORTED_PLATFORMS
         if fixture_flows.get(platform, {}).get("submission_enabled") is False
         and fixture_flows[platform].get("plan", {}).get("platform") == platform
+    )
+    browser_canaries_verified = (
+        sorted(
+            platform
+            for platform in CANARY_PLATFORMS
+            if browser_canaries.get(platform, {}).get("status") == "passed"
+            and browser_canaries[platform].get("submission_enabled") is False
+        )
+        if browser_canaries is not None
+        else None
     )
     benchmark_report = None
     if learned_ats_benchmark is not None:
@@ -86,6 +98,7 @@ def build_audit(
     ready = (
         dry_run_verified
         and fixture_flows_verified == list(SUPPORTED_PLATFORMS)
+        and (browser_canaries_verified is None or browser_canaries_verified == list(CANARY_PLATFORMS))
         and (benchmark_report is None or benchmark_report["ready"])
     )
     report = {
@@ -94,6 +107,8 @@ def build_audit(
         "fixture_flows_verified": fixture_flows_verified,
         "human_only_gates": list(HUMAN_ONLY_GATES),
     }
+    if browser_canaries_verified is not None:
+        report["browser_canaries_verified"] = browser_canaries_verified
     if benchmark_report is not None:
         report["learned_ats_benchmark"] = benchmark_report
     return report
@@ -105,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run-report", required=True)
     parser.add_argument("--fixture-flows", required=True)
     parser.add_argument("--learned-ats-benchmark")
+    parser.add_argument("--browser-canaries")
     args = parser.parse_args(argv)
     dry_run = json.loads(Path(args.dry_run_report).read_text(encoding="utf-8"))
     fixture_flows = json.loads(Path(args.fixture_flows).read_text(encoding="utf-8"))
@@ -113,16 +129,24 @@ def main(argv: list[str] | None = None) -> int:
         if args.learned_ats_benchmark
         else None
     )
+    browser_canaries = (
+        json.loads(Path(args.browser_canaries).read_text(encoding="utf-8"))
+        if args.browser_canaries
+        else None
+    )
     if not isinstance(dry_run, dict) or not isinstance(dry_run.get("verification"), dict):
         raise ValueError("dry-run report must contain a verification object")
     if not isinstance(fixture_flows, dict):
         raise ValueError("fixture flows must be a JSON object")
     if learned_ats_benchmark is not None and not isinstance(learned_ats_benchmark, dict):
         raise ValueError("learned ATS benchmark must be a JSON object")
+    if browser_canaries is not None and not isinstance(browser_canaries, dict):
+        raise ValueError("browser canaries must be a JSON object")
     report = build_audit(
         dry_run_verification=dry_run["verification"],
         fixture_flows=fixture_flows,
         learned_ats_benchmark=learned_ats_benchmark,
+        browser_canaries=browser_canaries,
     )
     print(json.dumps(report, sort_keys=True))
     return 0 if report["status"] == "ready_for_human_gated_production" else 1
