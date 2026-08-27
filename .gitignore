@@ -20,6 +20,10 @@ orchestrator-report.json
 scan-results.json
 pipeline-plan.json
 e2e-*.json
+cron_candidates_*.json
+cron_scan_*.json
+cron_scan_recheck_*.json
+ocr_jobs_*.json
 sheet-api-test-append.json
 discord-target.json
 *.log
