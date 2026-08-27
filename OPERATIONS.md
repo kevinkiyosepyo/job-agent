@@ -46,6 +46,10 @@ Re-read the server-rendered Review surface on the same exact target and reconcil
 
 Issue authorization through `SubmissionAuthorizationStore` only for the unchanged authoritative Review artifact and an explicit operator actor. Set a short, explicit expiry and keep the returned token only in ignored runtime state; SQLite stores its digest, never the token. Immediately before submission, supply fresh job ID, target ID, URL, requisition, Review hash, and actor evidence to atomic consumption. Expired or replayed tokens are hard stops. Any binding drift permanently invalidates the token and requires a fresh Review plus fresh approval; returning the page to an earlier state does not restore it.
 
+### One-shot submit and recovery
+
+Use only `execute_one_shot_submit(...)` with an exact-target page implementation. Before authorization consumption it must observe no CAPTCHA, assessment, email-verification, or identity-verification gate; MAANGO requires separate explicit approval. The submit control must read back as one exact visible, enabled, unique button. After authorization consumption, verify the target/control again, append sanitized submit intent to the page journal, and call the one-shot submit method once. A successful click is not proof of submission: inspect confirmation. If the call is interrupted or confirmation is absent, never click again or issue a replacement token; follow `inspect_confirmation_without_replay` until Task 6 reconciliation proves the outcome.
+
 ### Tracker smoke test
 
 ```bash
@@ -88,6 +92,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 - `prepare_live_job.py` evidence must contain no answer/profile values, and its Review-ready result must never be treated as submit authorization.
 - Authoritative Review artifacts must stay value-free, require exact `Resume.pdf`, and retain every target, parser, or required-question discrepancy as human-required.
 - Authorization tokens must remain runtime-only, expire explicitly, be consumed once, and be reissued only after a fresh authoritative Review when any binding drifts.
+- Submit intent must be journaled before the only exact click; interruption and unknown confirmation state are inspection-only and must never replay submission.
 
 ## Release checklist for engineering changes
 
