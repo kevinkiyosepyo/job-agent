@@ -42,6 +42,10 @@ Store the explicit selector-to-string answer map and output only under ignored `
 
 Re-read the server-rendered Review surface on the same exact target and reconcile it with `review_reconciler.py`. Review authority requires exact target ID, URL, company, role, and requisition; exact equality for all supplied profile facts; an independently preflighted file and server evidence both naming `Resume.pdf` with the same SHA-256; verified server read-back for every required parser repair; and answered plus verified evidence for every required question. Any `human_required` entry is a hard stop. The canonical Review hash binds the next approval step but does not authorize submission, and the artifact must never be edited to remove a blocker.
 
+### Expiring single-use authorization
+
+Issue authorization through `SubmissionAuthorizationStore` only for the unchanged authoritative Review artifact and an explicit operator actor. Set a short, explicit expiry and keep the returned token only in ignored runtime state; SQLite stores its digest, never the token. Immediately before submission, supply fresh job ID, target ID, URL, requisition, Review hash, and actor evidence to atomic consumption. Expired or replayed tokens are hard stops. Any binding drift permanently invalidates the token and requires a fresh Review plus fresh approval; returning the page to an earlier state does not restore it.
+
 ### Tracker smoke test
 
 ```bash
@@ -83,6 +87,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 - New automation must preserve MAANGO manual-only routing and CAPTCHA stop conditions.
 - `prepare_live_job.py` evidence must contain no answer/profile values, and its Review-ready result must never be treated as submit authorization.
 - Authoritative Review artifacts must stay value-free, require exact `Resume.pdf`, and retain every target, parser, or required-question discrepancy as human-required.
+- Authorization tokens must remain runtime-only, expire explicitly, be consumed once, and be reissued only after a fresh authoritative Review when any binding drifts.
 
 ## Release checklist for engineering changes
 
