@@ -216,6 +216,18 @@ python production_operator.py live review \
 
 The command freshly rebinds and revalidates the exact page, reads only a learned platform Review seam (falling back to conservative versioned-map observation), and compares it with the prior preparation, explicit approved answers, and exact resume evidence. Stdout contains only the Review hash, verified field identifiers, blockers, and exact job identity. The persisted `runtime_paths.review` wrapper is likewise value-free. Missing server resume hashes, parser repairs, required-question evidence, or tenant readers remain blockers; Review authority is still not submit authority.
 
+Issue a short-lived authorization only after independently checking that output:
+
+```bash
+python production_operator.py live authorize \
+  --manifest runtime/live-run/manifest.json \
+  --actor '<explicit-operator-identity>' \
+  --approve-review-hash '<exact-review-sha256>' \
+  --expires-in-seconds 300
+```
+
+Expiry is explicit and capped at 600 seconds. MAANGO runs require both `manual_gate.maango_approved: true` in the manifest and `--approve-maango` at authorization time. The opaque single-use token is never printed: it is written once with mode `0600` to `runtime_paths.authorization_handoff`; the authorization database stores only its digest. An existing handoff, Review/job drift, any blocker, a mismatched hash, or uncleared manual gate stops issuance.
+
 ## Offline setup diagnostics
 
 ```bash

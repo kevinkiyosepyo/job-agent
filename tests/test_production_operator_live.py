@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import stat
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -393,3 +395,126 @@ def test_live_review_cli_reads_exact_server_review_and_persists_only_authority_e
     ):
         assert sensitive not in persisted_text
         assert sensitive not in json.dumps(summary)
+
+
+def _write_authoritative_review(manifest: dict) -> dict:
+    review = {
+        "review_authoritative": True,
+        "submission_authorized": False,
+        "binding": {
+            "target_id": manifest["target"]["id"],
+            "page_url": manifest["target"]["url"],
+            "company": manifest["identity"]["company"],
+            "role": manifest["identity"]["role"],
+            "requisition": manifest["identity"]["requisition"],
+            "verified": True,
+        },
+        "fields": [{"field": "#first_name", "verified": True}],
+        "resume": {"basename": "Resume.pdf", "verified": True},
+        "parser_repairs": [],
+        "required_questions": [
+            {"question_id": "work_authorization", "verified": True}
+        ],
+        "human_required": [],
+        "evidence": {"sanitized": True, "review_authority_only": True},
+    }
+    canonical = json.dumps(review, sort_keys=True, separators=(",", ":")).encode()
+    review["review_evidence_sha256"] = hashlib.sha256(canonical).hexdigest()
+    wrapper = {
+        "status": "reviewed",
+        "job_identity": {
+            "job_id": manifest["job_id"],
+            "queue_id": manifest["queue_id"],
+            "target_id": manifest["target"]["id"],
+            "page_url": manifest["target"]["url"],
+            **manifest["identity"],
+        },
+        "review": review,
+    }
+    Path(manifest["runtime_paths"]["review"]).write_text(json.dumps(wrapper))
+    return wrapper
+
+
+def test_live_authorize_cli_requires_explicit_hash_and_delivers_token_only_to_protected_handoff(
+    tmp_path, capsys
+):
+    import production_operator
+
+    manifest_path, _, manifest = _write_live_inputs(tmp_path)
+    wrapper = _write_authoritative_review(manifest)
+    review_hash = wrapper["review"]["review_evidence_sha256"]
+    now = datetime(2026, 8, 27, 10, 0, tzinfo=timezone.utc)
+
+    result = production_operator.main(
+        [
+            "live",
+            "authorize",
+            "--manifest",
+            str(manifest_path),
+            "--actor",
+            "sanitized-local-operator",
+            "--approve-review-hash",
+            review_hash,
+            "--expires-in-seconds",
+            "300",
+        ],
+        live_clock=lambda: now,
+    )
+
+    assert result == 0
+    handoff_path = Path(manifest["runtime_paths"]["authorization_handoff"])
+    handoff = json.loads(handoff_path.read_text())
+    assert stat.S_IMODE(handoff_path.stat().st_mode) == 0o600
+    assert handoff["schema_version"] == 1
+    assert handoff["actor"] == "sanitized-local-operator"
+    assert handoff["review_evidence_sha256"] == review_hash
+    assert handoff["single_use"] is True
+    assert isinstance(handoff["token"], str) and len(handoff["token"]) > 32
+
+    stdout_text = capsys.readouterr().out
+    assert handoff["token"] not in stdout_text
+    assert str(tmp_path) not in stdout_text
+    assert json.loads(stdout_text) == {
+        "status": "authorized",
+        "authorization_issued": True,
+        "single_use": True,
+        "actor": "sanitized-local-operator",
+        "expires_at": "2026-08-27T10:05:00+00:00",
+        "review_evidence_sha256": review_hash,
+        "token_delivery": "protected_runtime_handoff",
+        "job_identity": wrapper["job_identity"],
+    }
+    database_bytes = Path(manifest["runtime_paths"]["authorization_db"]).read_bytes()
+    assert handoff["token"].encode() not in database_bytes
+    assert handoff["token"] not in Path(manifest["runtime_paths"]["review"]).read_text()
+
+
+def test_live_authorize_requires_separate_maango_approval_when_manifest_is_maango(
+    tmp_path, capsys
+):
+    import production_operator
+
+    manifest_path, _, manifest = _write_live_inputs(tmp_path)
+    manifest["manual_gate"].update({"maango": True, "maango_approved": True})
+    manifest_path.write_text(json.dumps(manifest))
+    wrapper = _write_authoritative_review(manifest)
+
+    result = production_operator.main(
+        [
+            "live",
+            "authorize",
+            "--manifest",
+            str(manifest_path),
+            "--actor",
+            "sanitized-local-operator",
+            "--approve-review-hash",
+            wrapper["review"]["review_evidence_sha256"],
+            "--expires-in-seconds",
+            "300",
+        ],
+        live_clock=lambda: datetime(2026, 8, 27, 10, 0, tzinfo=timezone.utc),
+    )
+
+    assert result == 2
+    assert "explicit MAANGO approval is required" in capsys.readouterr().out
+    assert not Path(manifest["runtime_paths"]["authorization_handoff"]).exists()

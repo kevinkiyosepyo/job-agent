@@ -11,6 +11,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import secrets
 import time
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
@@ -571,6 +573,7 @@ DemoRunner = Callable[..., dict]
 LiveTransportFactory = Callable[[str], object]
 LiveHealthProbe = Callable[[str], dict]
 LiveCoverage = Callable[..., dict]
+LiveClock = Callable[[], datetime]
 
 
 def _load_runtime_object(path: Path | str, *, label: str) -> dict:
@@ -922,6 +925,119 @@ def run_live_review(
     return wrapper, _review_summary(wrapper)
 
 
+def _write_protected_authorization_handoff(path: Path, issued: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        raise OperatorBlockedError("authorization handoff already exists")
+    payload = {
+        "schema_version": 1,
+        "token": issued["token"],
+        "actor": issued["binding"]["actor"],
+        "review_evidence_sha256": issued["binding"]["review_evidence_sha256"],
+        "expires_at": issued["expires_at"],
+        "single_use": True,
+    }
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        encoded = (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8")
+        os.write(descriptor, encoded)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def run_live_authorize(
+    *,
+    manifest_path: Path,
+    actor: str,
+    approved_review_hash: str,
+    expires_in_seconds: int,
+    maango_approved: bool,
+    production_enabled: bool,
+    clock: LiveClock,
+) -> dict[str, object]:
+    """Issue one token and deliver it only through the protected runtime handoff."""
+    manifest = live_run_manifest.load_manifest(
+        manifest_path, production_enabled=production_enabled
+    )
+    if not isinstance(actor, str) or not actor.strip():
+        raise OperatorBlockedError("explicit authorization actor is required")
+    if (
+        not isinstance(expires_in_seconds, int)
+        or isinstance(expires_in_seconds, bool)
+        or not 1 <= expires_in_seconds <= 600
+    ):
+        raise OperatorBlockedError("authorization expiry must be between 1 and 600 seconds")
+    gate_state = manifest["manual_gate"]
+    if gate_state["gates"]:
+        raise OperatorBlockedError("manual gates must be cleared before authorization")
+    if gate_state["maango"] is True and not (
+        gate_state["maango_approved"] is True and maango_approved is True
+    ):
+        raise OperatorBlockedError("explicit MAANGO approval is required")
+
+    wrapper = _load_runtime_object(
+        manifest["runtime_paths"]["review"], label="Review evidence"
+    )
+    if set(wrapper) != {"status", "job_identity", "review"}:
+        raise OperatorBlockedError("canonical Review wrapper is required")
+    if wrapper.get("status") != "reviewed" or wrapper.get("job_identity") != _manifest_job_identity(
+        manifest
+    ):
+        raise OperatorBlockedError("Review job identity drift detected")
+    review = wrapper.get("review")
+    if not isinstance(review, dict):
+        raise OperatorBlockedError("canonical Review evidence is required")
+    review_hash = review.get("review_evidence_sha256")
+    if (
+        not isinstance(review_hash, str)
+        or not isinstance(approved_review_hash, str)
+        or not secrets.compare_digest(review_hash, approved_review_hash)
+    ):
+        raise OperatorBlockedError("explicit approved Review hash did not match")
+    if (
+        review.get("review_authoritative") is not True
+        or review.get("submission_authorized") is not False
+        or review.get("human_required") != []
+    ):
+        raise OperatorBlockedError("authoritative blocker-free Review is required")
+
+    now = clock()
+    if not isinstance(now, datetime) or now.tzinfo is None:
+        raise OperatorBlockedError("authorization clock must be timezone-aware")
+    issued_at = now.astimezone(timezone.utc).replace(microsecond=0)
+    expires_at = issued_at + timedelta(seconds=expires_in_seconds)
+    handoff_path = Path(manifest["runtime_paths"]["authorization_handoff"])
+    if handoff_path.exists():
+        raise OperatorBlockedError("authorization handoff already exists")
+    store = submission_authorization.SubmissionAuthorizationStore(
+        manifest["runtime_paths"]["authorization_db"]
+    )
+    issued = store.issue(
+        job_id=manifest["job_id"],
+        review_evidence=review,
+        actor=actor.strip(),
+        issued_at=issued_at,
+        expires_at=expires_at,
+    )
+    _write_protected_authorization_handoff(handoff_path, issued)
+    return {
+        "status": "authorized",
+        "authorization_issued": True,
+        "single_use": True,
+        "actor": actor.strip(),
+        "expires_at": issued["expires_at"],
+        "review_evidence_sha256": review_hash,
+        "token_delivery": "protected_runtime_handoff",
+        "job_identity": wrapper["job_identity"],
+    }
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -929,6 +1045,7 @@ def main(
     live_transport_factory: LiveTransportFactory = ScopedCDPTransport,
     live_health_probe: LiveHealthProbe = browser_health.probe_cdp_health,
     live_coverage: LiveCoverage = prepare_live_job.build_coverage_matrix,
+    live_clock: LiveClock = _utc_now,
 ) -> int:
     parser = argparse.ArgumentParser(description="Guarded production operator proof")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -955,6 +1072,13 @@ def main(
     live_review.add_argument("--required-question", action="append", default=[])
     live_review.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
     live_review.add_argument("--enable-production-live", action="store_true")
+    live_authorize = live_commands.add_parser("authorize")
+    live_authorize.add_argument("--manifest", required=True)
+    live_authorize.add_argument("--actor", required=True)
+    live_authorize.add_argument("--approve-review-hash", required=True)
+    live_authorize.add_argument("--expires-in-seconds", required=True, type=int)
+    live_authorize.add_argument("--approve-maango", action="store_true")
+    live_authorize.add_argument("--enable-production-live", action="store_true")
     args = parser.parse_args(argv)
 
     if args.command == "live":
@@ -971,7 +1095,7 @@ def main(
                     coverage=live_coverage,
                 )
                 exit_code = 0
-            else:
+            elif args.live_command == "review":
                 wrapper, result = run_live_review(
                     manifest_path=Path(args.manifest),
                     approved_answers_path=Path(args.approved_answers),
@@ -984,6 +1108,17 @@ def main(
                     health_probe=live_health_probe,
                 )
                 exit_code = 0 if wrapper["review"]["review_authoritative"] else 1
+            else:
+                result = run_live_authorize(
+                    manifest_path=Path(args.manifest),
+                    actor=args.actor,
+                    approved_review_hash=args.approve_review_hash,
+                    expires_in_seconds=args.expires_in_seconds,
+                    maango_approved=args.approve_maango,
+                    production_enabled=args.enable_production_live,
+                    clock=live_clock,
+                )
+                exit_code = 0
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({
                 "error": str(exc),
