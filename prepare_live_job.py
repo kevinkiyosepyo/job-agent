@@ -17,6 +17,7 @@ from answer_coverage import build_coverage_matrix
 from cdp_page_executor import CDPPageExecutor
 from prepare_job import prepare_saved_html
 from scoped_cdp import ScopedCDPTransport
+from tenant_field_maps import build_step_actions, execute_step_actions, resolve_field_map
 
 
 class ReadOnlyLivePage(Protocol):
@@ -47,8 +48,8 @@ def prepare_live_job(
     profile: dict,
     prepare: Prepare,
     coverage: Coverage,
-    approved_answers: dict[str, str] | None = None,
-    apply_known: Callable[[dict[str, str]], dict[str, object]] | None = None,
+    approved_answers: dict[str, object] | None = None,
+    apply_known: Callable[[dict[str, object]], dict[str, object]] | None = None,
 ) -> dict:
     """Inspect one fresh exact target and emit non-submitting Review evidence."""
     snapshot = page.read_only_snapshot()
@@ -136,9 +137,15 @@ def _has_exact_identity(text: str, value: str) -> bool:
 
 
 def _dispatch_live_html(
-    *, html_text: str, page_url: str, expected_identity: dict[str, str]
+    *,
+    html_text: str,
+    page_url: str,
+    expected_identity: dict[str, str],
+    expected_platform: str | None = None,
 ) -> dict:
     payload = prepare_saved_html(html_text=html_text, page_url=page_url)
+    if expected_platform is not None and payload.get("platform") != expected_platform:
+        raise LivePreparationError("learned field-map platform did not match ATS handler")
     manual_gates = payload.get("manual_gates") or (
         [payload["manual_gate"]] if payload.get("manual_gate") else []
     )
@@ -186,7 +193,7 @@ def _sanitize_review_evidence(payload: dict) -> dict:
     for field in applied.get("field_evidence", []):
         sanitized_fields.append({
             key: field[key]
-            for key in ("action", "selector", "verified", "target_id", "target_url")
+            for key in ("action", "field", "selector", "verified", "target_id", "target_url")
             if key in field
         })
     return {
@@ -217,6 +224,8 @@ def main(
     parser.add_argument("--company", required=True)
     parser.add_argument("--role", required=True)
     parser.add_argument("--requisition", required=True)
+    parser.add_argument("--platform")
+    parser.add_argument("--step")
     parser.add_argument("--profile", required=True)
     parser.add_argument("--approved-answers", required=True)
     parser.add_argument("--output", required=True)
@@ -234,20 +243,45 @@ def main(
         profile = _load_json_object(args.profile, label="profile")
         approved_answers = _load_json_object(args.approved_answers, label="approved answers")
         if not approved_answers or not all(
-            isinstance(selector, str)
-            and bool(selector)
-            and isinstance(value, str)
-            for selector, value in approved_answers.items()
+            isinstance(field, str) and bool(field) for field in approved_answers
         ):
-            raise LivePreparationError("approved answers must be a non-empty selector-to-string map")
+            raise LivePreparationError("approved answers must be a non-empty object")
 
-        selected_prepare = prepare or (
-            lambda **kwargs: _dispatch_live_html(
-                **kwargs, expected_identity=expected_identity
+        learned_actions = None
+        if prepare is None:
+            if not isinstance(args.platform, str) or not args.platform or not isinstance(args.step, str) or not args.step:
+                raise LivePreparationError("default live preparation requires exact platform and learned step")
+            mapping = resolve_field_map(page_url=args.expected_url, platform=args.platform)
+            learned_actions = build_step_actions(
+                mapping=mapping,
+                step=args.step,
+                approved_answers=approved_answers,
             )
-        )
+            selected_prepare = lambda **kwargs: _dispatch_live_html(
+                **kwargs,
+                expected_identity=expected_identity,
+                expected_platform=args.platform,
+            )
+        else:
+            if not all(isinstance(value, str) for value in approved_answers.values()):
+                raise LivePreparationError("injected preparation answers must be selector-to-string values")
+            selected_prepare = prepare
         transport = transport_factory(args.cdp_base_url)
         with transport.bind_mutable_page_target(args.target_id) as page:  # type: ignore[attr-defined]
+            if learned_actions is not None:
+                apply_operation = lambda answers: execute_step_actions(
+                    page=page,
+                    target_id=args.target_id,
+                    expected_url=args.expected_url,
+                    actions=learned_actions,
+                )
+            else:
+                apply_operation = lambda answers: _apply_text_answers(
+                    page=page,
+                    target_id=args.target_id,
+                    expected_url=args.expected_url,
+                    answers=answers,  # type: ignore[arg-type]
+                )
             result = prepare_live_job(
                 page=page,
                 target_id=args.target_id,
@@ -257,12 +291,7 @@ def main(
                 prepare=selected_prepare,
                 coverage=coverage,
                 approved_answers=approved_answers,
-                apply_known=lambda answers: _apply_text_answers(
-                    page=page,
-                    target_id=args.target_id,
-                    expected_url=args.expected_url,
-                    answers=answers,
-                ),
+                apply_known=apply_operation,
             )
         sanitized = _sanitize_review_evidence(result)
         Path(args.output).write_text(json.dumps(sanitized, indent=2, sort_keys=True) + "\n")

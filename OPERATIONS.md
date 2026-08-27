@@ -36,7 +36,7 @@ Only bind a known exact page target. Mutable CDP preparation uses the local `Mut
 
 ### Guarded non-submitting preparation
 
-Store the explicit selector-to-string answer map and output only under ignored `runtime/`. Read the current target ID from the local CDP target list, independently verify the exact URL/company/role/requisition, and invoke `prepare_live_job.py` with `--target-id`, `--expected-url`, `--company`, `--role`, `--requisition`, `--profile`, `--approved-answers`, and `--output`. The CDP origin must remain an uncredentialed loopback HTTP origin. Treat a nonzero exit as a hard stop: do not reuse an old target ID, manually edit failed evidence into a passing state, or proceed when any field lacks verified read-back. The successful artifact intentionally omits answer/profile values and is only input to authoritative Review; it is not submission authority.
+Store the explicit semantic answer map and output only under ignored `runtime/`; never put raw selectors in the answer file. Read the current target ID from the local CDP target list, independently verify the exact URL/company/role/requisition, and invoke `prepare_live_job.py` with `--target-id`, `--expected-url`, `--company`, `--role`, `--requisition`, `--platform`, `--step`, `--profile`, `--approved-answers`, and `--output`. The CDP origin must remain an uncredentialed loopback HTTP origin. Treat a nonzero exit as a hard stop: do not reuse an old target ID, manually edit failed evidence into a passing state, or proceed when any field lacks verified read-back. The successful artifact intentionally omits answer/profile values and is only input to authoritative Review; it is not submission authority.
 
 ### Authoritative Review reconciliation
 
@@ -57,6 +57,10 @@ Run sanitized confirmation HTML through `extract_confirmation(...)` for the exac
 ### Post-submit delivery transaction
 
 Pass only verified portal evidence to `PostSubmitTransactionCoordinator`. The coordinator first checks for an existing tracker row by transaction ID, records tracker-append intent before one append, and requires exact Sheets read-back of the transaction/payload hash. Discord is forbidden until that read-back is verified. It then checks for an existing message, records send intent before one send, and requires exact Discord read-back of the transaction/message hash. A partial result is resumable only through read-back; never manually retry append/send, alter hashed inputs, or revisit submit. The complete artifact contains hashes, receipt IDs, job identity, and verification flags only.
+
+### Learned tenant maps and conditional steps
+
+Resolve controls only through `tenant_field_maps.py`. The page URL and requested platform must select exactly one versioned hostname/path-bound tenant; unknown tenants require an explicit reviewed map change, never live selector discovery. Supply semantic answer keys for the current learned step. Validate observed selectors when inventory evidence is available, and stop on any control drift. Advance with `plan_next_step(...)` only when every required semantic field and condition is verified. Parser repair, required-question, authenticated-session, referral-option, Oracle combobox, and authoritative-Review conditions are hard gates. Human-required and submit controls are never executable as ordinary answer actions.
 
 ### Tracker smoke test
 
@@ -103,6 +107,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 - Submit intent must be journaled before the only exact click; interruption and unknown confirmation state are inspection-only and must never replay submission.
 - A success-looking confirmation page is insufficient: learned-handler confirmation and an exact, unique, explicitly submitted candidate-portal read-back are both mandatory.
 - Tracker append/read-back must precede Discord send/read-back; partial recovery is read-back-only and may never duplicate tracker, message, or submit side effects.
+- Production preparation must use exact versioned tenant maps and semantic keys; unknown selectors, tenants, steps, or unmet transition conditions must never trigger live rediscovery.
 
 ## Release checklist for engineering changes
 
