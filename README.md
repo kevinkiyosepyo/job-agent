@@ -228,6 +228,19 @@ python production_operator.py live authorize \
 
 Expiry is explicit and capped at 600 seconds. MAANGO runs require both `manual_gate.maango_approved: true` in the manifest and `--approve-maango` at authorization time. The opaque single-use token is never printed: it is written once with mode `0600` to `runtime_paths.authorization_handoff`; the authorization database stores only its digest. An existing handoff, Review/job drift, any blocker, a mismatched hash, or uncleared manual gate stops issuance.
 
+Submit only through the one-shot stage, repeating the Review inputs so authority is freshly recomputed on the rebound target:
+
+```bash
+python production_operator.py live submit \
+  --manifest runtime/live-run/manifest.json \
+  --approved-answers runtime/live-run/approved-answers.json \
+  --step application \
+  --required-question work_authorization \
+  --actor '<same-operator-identity>'
+```
+
+Immediately before consumption and again before the sole DOM activation, this stage verifies loopback health, exact target/URL/job/tenant identity, page gates and MAANGO state, the visible/enabled/unique learned submit button, and a newly reconciled Review hash equal to the approved hash. Submit intent is written to `runtime_paths.submit_journal` before the click. Once consumed, the raw-token handoff is removed; interruption or missing confirmation always returns `inspect_confirmation_without_replay`. Even an observed confirmation remains unreconciled until the next stage, and this command has no tracker or notification path.
+
 ## Offline setup diagnostics
 
 ```bash

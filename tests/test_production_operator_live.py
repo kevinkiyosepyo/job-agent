@@ -409,7 +409,17 @@ def _write_authoritative_review(manifest: dict) -> dict:
             "requisition": manifest["identity"]["requisition"],
             "verified": True,
         },
-        "fields": [{"field": "#first_name", "verified": True}],
+        "fields": [
+            {"field": selector, "verified": True}
+            for selector in (
+                "#first_name",
+                "#last_name",
+                "#email",
+                "#phone",
+                "#authorization",
+                "#sponsorship",
+            )
+        ],
         "resume": {"basename": "Resume.pdf", "verified": True},
         "parser_repairs": [],
         "required_questions": [
@@ -518,3 +528,197 @@ def test_live_authorize_requires_separate_maango_approval_when_manifest_is_maang
     assert result == 2
     assert "explicit MAANGO approval is required" in capsys.readouterr().out
     assert not Path(manifest["runtime_paths"]["authorization_handoff"]).exists()
+
+
+def test_live_submit_reconciles_fresh_review_journals_before_one_click_and_denies_replay(
+    tmp_path, capsys
+):
+    import production_operator
+
+    manifest_path, answers_path, manifest = _write_live_inputs(tmp_path)
+    answers = json.loads(answers_path.read_text())
+    preparation = {
+        "target_id": "target-abc",
+        "page_url": PAGE_URL,
+        "identity": {
+            key: manifest["identity"][key]
+            for key in ("company", "role", "requisition")
+        },
+        "platform": "greenhouse",
+        "submission_enabled": False,
+        "review_ready": True,
+        "answer_coverage": {"human_required": []},
+        "applied_answers": {
+            "verified": True,
+            "field_evidence": [
+                {"selector": selector, "verified": True}
+                for selector in (
+                    "#first_name",
+                    "#last_name",
+                    "#email",
+                    "#phone",
+                    "#resume",
+                    "#authorization",
+                    "#sponsorship",
+                )
+            ],
+        },
+        "evidence": {
+            "sanitized": True,
+            "target_bound": True,
+            "answer_values_persisted": False,
+        },
+    }
+    Path(manifest["runtime_paths"]["preparation"]).write_text(json.dumps(preparation))
+    wrapper = _write_authoritative_review(manifest)
+    now = datetime(2026, 8, 27, 10, 0, tzinfo=timezone.utc)
+    assert production_operator.main(
+        [
+            "live",
+            "authorize",
+            "--manifest",
+            str(manifest_path),
+            "--actor",
+            "sanitized-local-operator",
+            "--approve-review-hash",
+            wrapper["review"]["review_evidence_sha256"],
+            "--expires-in-seconds",
+            "300",
+        ],
+        live_clock=lambda: now,
+    ) == 0
+    capsys.readouterr()
+
+    fixture_html = (ROOT / "fixtures" / "local_operator_e2e.html").read_text()
+
+    class SubmitPage:
+        target_id = "target-abc"
+
+        def __init__(self):
+            self.clicks = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read_only_snapshot(self):
+            return {
+                "target_id": self.target_id,
+                "url": PAGE_URL,
+                "html": fixture_html,
+                "read_only": True,
+                "identity": {
+                    key: manifest["identity"][key]
+                    for key in ("company", "role", "requisition")
+                },
+                "gates": [],
+                "maango": False,
+            }
+
+        def read_server_review(self):
+            return {
+                "target_id": self.target_id,
+                "page_url": PAGE_URL,
+                "identity": self.read_only_snapshot()["identity"],
+                "fields": {
+                    "#first_name": answers["first_name"],
+                    "#last_name": answers["last_name"],
+                    "#email": answers["email"],
+                    "#phone": answers["phone"],
+                    "#authorization": answers["work_authorization"],
+                    "#sponsorship": answers["sponsorship"],
+                },
+                "resume": {
+                    "basename": "Resume.pdf",
+                    "sha256": manifest["resume"]["sha256"],
+                },
+                "parser_repairs": [],
+                "questions": [
+                    {
+                        "id": "work_authorization",
+                        "required": True,
+                        "answered": True,
+                        "verified": True,
+                    }
+                ],
+            }
+
+        def inspect_submit_control(self, selector):
+            return {
+                "selector": selector,
+                "target_id": self.target_id,
+                "url": PAGE_URL,
+                "visible": True,
+                "enabled": True,
+                "unique": True,
+                "role": "button",
+            }
+
+        def click_submit_once(self, selector):
+            assert selector == "#submit"
+            journal = Path(manifest["runtime_paths"]["submit_journal"])
+            assert journal.exists()
+            assert json.loads(journal.read_text().splitlines()[-1])["evidence"][
+                "status"
+            ] == "intent_recorded"
+            self.clicks += 1
+
+        def inspect_confirmation(self):
+            return {"confirmed": self.clicks == 1, "state": "submitted"}
+
+    page = SubmitPage()
+
+    class Transport:
+        def __init__(self, base_url):
+            assert base_url == "http://127.0.0.1:9222"
+
+        def bind_mutable_page_target(self, target_id):
+            assert target_id == "target-abc"
+            return page
+
+    argv = [
+        "live",
+        "submit",
+        "--manifest",
+        str(manifest_path),
+        "--approved-answers",
+        str(answers_path),
+        "--step",
+        "application",
+        "--required-question",
+        "work_authorization",
+        "--actor",
+        "sanitized-local-operator",
+    ]
+    result = production_operator.main(
+        argv,
+        live_transport_factory=Transport,
+        live_health_probe=lambda base_url: {"status": "ready", "base_url": base_url},
+        live_clock=lambda: now,
+    )
+
+    assert result == 0
+    assert page.clicks == 1
+    assert not Path(manifest["runtime_paths"]["authorization_handoff"]).exists()
+    output = json.loads(capsys.readouterr().out)
+    assert output == {
+        "status": "confirmation_observed",
+        "stage": "confirmation_inspection",
+        "authorization_consumed": True,
+        "one_shot": True,
+        "replay_allowed": False,
+        "confirmation_reconciled": False,
+        "next_action": "live confirmation",
+        "job_identity": wrapper["job_identity"],
+    }
+
+    assert production_operator.main(
+        argv,
+        live_transport_factory=Transport,
+        live_health_probe=lambda base_url: {"status": "ready", "base_url": base_url},
+        live_clock=lambda: now,
+    ) == 2
+    assert page.clicks == 1
+    assert "authorization handoff is unavailable" in capsys.readouterr().out

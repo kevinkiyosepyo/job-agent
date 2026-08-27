@@ -178,3 +178,55 @@ class MutableCDPPageAdapter:
             )
         )
         return value if isinstance(value, str) else ""
+
+    def inspect_submit_control(self, selector: str) -> dict[str, object]:
+        """Observe one exact submit control without activating it."""
+        self._fresh_target()
+        value = self._evaluate(
+            "(() => { const selector = " + json.dumps(selector) + "; "
+            "const matches = [...document.querySelectorAll(selector)]; const element = matches[0]; "
+            "if (!element) return {count: 0}; const style = getComputedStyle(element); "
+            "const rect = element.getBoundingClientRect(); "
+            "const visible = style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0; "
+            "const top = visible ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null; "
+            "return {count: matches.length, visible, enabled: !element.disabled, "
+            "unobscured: top === element || element.contains(top), "
+            "role: element.getAttribute('role') || (element.tagName === 'BUTTON' ? 'button' : '')}; })()"
+        )
+        state = value if isinstance(value, dict) else {}
+        return {
+            "selector": selector,
+            "target_id": self.target_id,
+            "url": self.target_url,
+            "visible": state.get("visible") is True and state.get("unobscured") is True,
+            "enabled": state.get("enabled") is True,
+            "unique": state.get("count") == 1,
+            "role": state.get("role"),
+        }
+
+    def click_submit_once(self, selector: str) -> None:
+        """Activate one verified DOM submit control; authorization lives upstream."""
+        self._fresh_target()
+        self._evaluate(
+            "(() => { const selector = " + json.dumps(selector) + "; "
+            "const matches = [...document.querySelectorAll(selector)]; const element = matches[0]; "
+            "if (matches.length !== 1 || !element) throw new Error('unique submit control required'); "
+            "const style = getComputedStyle(element); const rect = element.getBoundingClientRect(); "
+            "const visible = style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0; "
+            "const top = visible ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null; "
+            "const role = element.getAttribute('role') || (element.tagName === 'BUTTON' ? 'button' : ''); "
+            "if (!visible || element.disabled || !(top === element || element.contains(top)) || role !== 'button') "
+            "throw new Error('submit control must be visible, enabled, unobscured, and button-role'); "
+            "element.click(); return true; })()"
+        )
+
+    def inspect_confirmation(self) -> dict[str, object]:
+        """Conservatively observe a page-declared submitted state without replay."""
+        self._fresh_target()
+        value = self._evaluate(
+            "(() => { const declared = document.body && document.body.dataset.submitted === 'true'; "
+            "const marker = document.querySelector('[data-submission-state=" + '"submitted"' + "]'); "
+            "const visible = marker && getComputedStyle(marker).display !== 'none' && getComputedStyle(marker).visibility !== 'hidden'; "
+            "return {confirmed: Boolean(declared || visible), state: (declared || visible) ? 'submitted' : 'unknown'}; })()"
+        )
+        return value if isinstance(value, dict) else {"confirmed": False, "state": "unknown"}

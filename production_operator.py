@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import secrets
+import stat
 import time
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
@@ -1034,6 +1035,282 @@ def run_live_authorize(
     }
 
 
+def _read_protected_authorization_handoff(path: Path) -> dict:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise OperatorBlockedError("authorization handoff is unavailable") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or stat.S_IMODE(metadata.st_mode) != 0o600
+            or metadata.st_uid != os.getuid()
+            or metadata.st_size > 16384
+        ):
+            raise OperatorBlockedError("authorization handoff protection is invalid")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 4096)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    finally:
+        os.close(descriptor)
+    try:
+        payload = json.loads(b"".join(chunks).decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise OperatorBlockedError("authorization handoff is invalid") from exc
+    expected_fields = {
+        "schema_version",
+        "token",
+        "actor",
+        "review_evidence_sha256",
+        "expires_at",
+        "single_use",
+    }
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != expected_fields
+        or payload.get("schema_version") != 1
+        or payload.get("single_use") is not True
+        or not isinstance(payload.get("token"), str)
+        or not payload["token"]
+    ):
+        raise OperatorBlockedError("authorization handoff is invalid")
+    return payload
+
+
+class _ManifestSubmitPage:
+    """Revalidate exact handler identity on every one-shot page observation."""
+
+    def __init__(self, *, page: object, manifest: dict, mapping: dict, production_enabled: bool):
+        self.page = page
+        self.manifest = manifest
+        self.mapping = mapping
+        self.production_enabled = production_enabled
+
+    def read_only_snapshot(self) -> dict:
+        snapshot = self.page.read_only_snapshot()  # type: ignore[attr-defined]
+        html = snapshot.get("html") if isinstance(snapshot, dict) else None
+        if not isinstance(html, str):
+            raise OperatorBlockedError("exact submit target HTML was unavailable")
+        identity = self.manifest["identity"]
+        expected_identity = {
+            key: identity[key] for key in ("company", "role", "requisition")
+        }
+        observed = prepare_live_job._dispatch_live_html(
+            html_text=html,
+            page_url=self.manifest["target"]["url"],
+            expected_identity=expected_identity,
+            expected_platform=identity["platform"],
+        )
+        live_run_manifest.validate_manifest(
+            self.manifest,
+            production_enabled=self.production_enabled,
+            observed_binding={
+                "target_id": snapshot.get("target_id"),
+                "page_url": snapshot.get("url"),
+                **{key: observed.get(key) for key in ("company", "role", "requisition")},
+                "platform": observed.get("platform"),
+                "tenant": self.mapping["tenant"],
+            },
+        )
+        raw_gates = snapshot.get("gates", self.manifest["manual_gate"]["gates"])
+        return {
+            **snapshot,
+            "identity": expected_identity,
+            "gates": raw_gates,
+            "maango": snapshot.get("maango", self.manifest["manual_gate"]["maango"]),
+        }
+
+    def inspect_submit_control(self, selector: str) -> dict:
+        return self.page.inspect_submit_control(selector)  # type: ignore[attr-defined]
+
+    def click_submit_once(self, selector: str) -> None:
+        self.page.click_submit_once(selector)  # type: ignore[attr-defined]
+
+    def inspect_confirmation(self) -> dict:
+        return self.page.inspect_confirmation()  # type: ignore[attr-defined]
+
+
+def run_live_submit(
+    *,
+    manifest_path: Path,
+    approved_answers_path: Path,
+    step: str,
+    required_parser_repairs: list[str],
+    required_question_ids: list[str],
+    actor: str,
+    maango_approved: bool,
+    cdp_base_url: str,
+    production_enabled: bool,
+    transport_factory: LiveTransportFactory,
+    health_probe: LiveHealthProbe,
+    clock: LiveClock,
+) -> dict[str, object]:
+    """Recompute Review authority, consume once, journal, and click exactly once."""
+    prepare_live_job._validate_local_cdp_base_url(cdp_base_url)
+    manifest = live_run_manifest.load_manifest(
+        manifest_path, production_enabled=production_enabled
+    )
+    _, resume = _verified_profile_resume(manifest)
+    preparation = _load_runtime_object(
+        manifest["runtime_paths"]["preparation"], label="preparation evidence"
+    )
+    wrapper = _load_runtime_object(
+        manifest["runtime_paths"]["review"], label="Review evidence"
+    )
+    if (
+        set(wrapper) != {"status", "job_identity", "review"}
+        or wrapper.get("status") != "reviewed"
+        or wrapper.get("job_identity") != _manifest_job_identity(manifest)
+        or not isinstance(wrapper.get("review"), dict)
+    ):
+        raise OperatorBlockedError("canonical exact-job Review is required")
+    persisted_review = wrapper["review"]
+    persisted_hash = submission_authorization._review_hash(persisted_review)
+
+    handoff_path = Path(manifest["runtime_paths"]["authorization_handoff"])
+    handoff = _read_protected_authorization_handoff(handoff_path)
+    if (
+        handoff.get("actor") != actor
+        or handoff.get("review_evidence_sha256") != persisted_hash
+    ):
+        raise OperatorBlockedError("authorization handoff binding drift detected")
+
+    identity = manifest["identity"]
+    target = manifest["target"]
+    mapping = tenant_field_maps.resolve_field_map(
+        page_url=target["url"], platform=identity["platform"]
+    )
+    if mapping.get("tenant") != identity["tenant"]:
+        raise OperatorBlockedError("learned tenant differs from manifest identity")
+    approved_answers = _load_runtime_object(
+        approved_answers_path, label="approved answers"
+    )
+    resume_answer = approved_answers.get("resume")
+    if resume_answer is not None and Path(str(resume_answer)).resolve() != Path(
+        resume["path"]
+    ).resolve():
+        raise OperatorBlockedError("approved resume differs from profile-selected Resume.pdf")
+    approved_answers["resume"] = str(Path(resume["path"]).resolve())
+    actions = tenant_field_maps.build_step_actions(
+        mapping=mapping, step=step, approved_answers=approved_answers
+    )
+    profile_fields = {
+        str(action["selector"]): action["value"]
+        for action in actions
+        if action.get("operation") != "cdp_upload"
+    }
+    review_step = mapping.get("steps", {}).get("review", {})
+    submit_control = review_step.get("controls", {}).get("submit", {})
+    if (
+        not isinstance(submit_control, dict)
+        or submit_control.get("operation") != "submit"
+        or not isinstance(submit_control.get("selector"), str)
+    ):
+        raise OperatorBlockedError("exact learned submit control is unavailable")
+
+    health = health_probe(cdp_base_url)
+    if not isinstance(health, dict) or health.get("status") != "ready":
+        raise OperatorBlockedError("loopback Chrome CDP health gate failed")
+    now = clock()
+    if not isinstance(now, datetime) or now.tzinfo is None:
+        raise OperatorBlockedError("submission clock must be timezone-aware")
+
+    transport = transport_factory(cdp_base_url)
+    with transport.bind_mutable_page_target(target["id"]) as page:  # type: ignore[attr-defined]
+        submit_page = _ManifestSubmitPage(
+            page=page,
+            manifest=manifest,
+            mapping=mapping,
+            production_enabled=production_enabled,
+        )
+        submit_page.read_only_snapshot()
+        expected_identity = {
+            key: identity[key] for key in ("company", "role", "requisition")
+        }
+        server_review = live_review_reader.read_server_review(
+            page=page,
+            platform=identity["platform"],
+            mapping=mapping,
+            step=step,
+            target_id=target["id"],
+            page_url=target["url"],
+            identity=expected_identity,
+            required_parser_repairs=required_parser_repairs,
+            required_question_ids=required_question_ids,
+        )
+        fresh_review = review_reconciler.reconcile_review(
+            preparation_evidence=preparation,
+            server_review=server_review,
+            expected_target={
+                "target_id": target["id"],
+                "page_url": target["url"],
+                **expected_identity,
+            },
+            profile_fields=profile_fields,
+            resume_preflight={
+                key: resume[key]
+                for key in ("basename", "content_type", "sha256", "verified")
+            },
+            required_parser_repairs=required_parser_repairs,
+            required_question_ids=required_question_ids,
+        )
+        if (
+            fresh_review.get("review_authoritative") is not True
+            or not secrets.compare_digest(
+                str(fresh_review.get("review_evidence_sha256", "")), persisted_hash
+            )
+        ):
+            raise OperatorBlockedError("fresh authoritative Review hash drift detected")
+        store = submission_authorization.SubmissionAuthorizationStore(
+            manifest["runtime_paths"]["authorization_db"]
+        )
+        submitted = one_shot_submit.execute_one_shot_submit(
+            authorization_store=store,
+            token=handoff["token"],
+            page=submit_page,
+            journal_path=Path(manifest["runtime_paths"]["submit_journal"]),
+            job_id=manifest["job_id"],
+            target_id=target["id"],
+            expected_url=target["url"],
+            requisition=identity["requisition"],
+            review_evidence_sha256=persisted_hash,
+            actor=actor,
+            now=now,
+            submit_selector=submit_control["selector"],
+            maango_approved=maango_approved,
+        )
+
+    if submitted.get("authorization_consumed") is True:
+        try:
+            handoff_path.unlink()
+        except OSError as exc:
+            raise OperatorBlockedError(
+                "authorization was consumed but protected handoff retirement failed"
+            ) from exc
+    result: dict[str, object] = {
+        "status": submitted.get("status"),
+        "stage": "confirmation_inspection",
+        "authorization_consumed": submitted.get("authorization_consumed") is True,
+        "one_shot": submitted.get("one_shot") is True,
+        "replay_allowed": False,
+        "confirmation_reconciled": False,
+        "next_action": (
+            "live confirmation"
+            if submitted.get("status") == "confirmation_observed"
+            else "inspect_confirmation_without_replay"
+        ),
+        "job_identity": wrapper["job_identity"],
+    }
+    if submitted.get("blocker"):
+        result["blocker"] = submitted["blocker"]
+    return result
+
+
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -1079,6 +1356,16 @@ def main(
     live_authorize.add_argument("--expires-in-seconds", required=True, type=int)
     live_authorize.add_argument("--approve-maango", action="store_true")
     live_authorize.add_argument("--enable-production-live", action="store_true")
+    live_submit = live_commands.add_parser("submit")
+    live_submit.add_argument("--manifest", required=True)
+    live_submit.add_argument("--approved-answers", required=True)
+    live_submit.add_argument("--step", required=True)
+    live_submit.add_argument("--required-parser-repair", action="append", default=[])
+    live_submit.add_argument("--required-question", action="append", default=[])
+    live_submit.add_argument("--actor", required=True)
+    live_submit.add_argument("--approve-maango", action="store_true")
+    live_submit.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
+    live_submit.add_argument("--enable-production-live", action="store_true")
     args = parser.parse_args(argv)
 
     if args.command == "live":
@@ -1108,7 +1395,7 @@ def main(
                     health_probe=live_health_probe,
                 )
                 exit_code = 0 if wrapper["review"]["review_authoritative"] else 1
-            else:
+            elif args.live_command == "authorize":
                 result = run_live_authorize(
                     manifest_path=Path(args.manifest),
                     actor=args.actor,
@@ -1119,6 +1406,22 @@ def main(
                     clock=live_clock,
                 )
                 exit_code = 0
+            else:
+                result = run_live_submit(
+                    manifest_path=Path(args.manifest),
+                    approved_answers_path=Path(args.approved_answers),
+                    step=args.step,
+                    required_parser_repairs=args.required_parser_repair,
+                    required_question_ids=args.required_question,
+                    actor=args.actor,
+                    maango_approved=args.approve_maango,
+                    cdp_base_url=args.cdp_base_url,
+                    production_enabled=args.enable_production_live,
+                    transport_factory=live_transport_factory,
+                    health_probe=live_health_probe,
+                    clock=live_clock,
+                )
+                exit_code = 0 if result.get("status") == "confirmation_observed" else 1
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({
                 "error": str(exc),

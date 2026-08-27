@@ -83,6 +83,8 @@ Once the human has inspected the Review page, run `python production_operator.py
 
 Authorize with `python production_operator.py live authorize --manifest runtime/live-run/manifest.json --actor '<operator>' --approve-review-hash '<exact-hash-from-review>' --expires-in-seconds 300`. Retyping the exact hash is the explicit approval input; expiry must be 1–600 seconds. For MAANGO, also require the reviewed manifest flag and pass `--approve-maango`. Confirm that the protected handoff is mode `0600`; do not print, copy into logs, or move its token into another file. If a handoff already exists, determine its stage through the recovery command once available rather than deleting it and issuing another authorization.
 
+Run `python production_operator.py live submit --manifest runtime/live-run/manifest.json --approved-answers runtime/live-run/approved-answers.json --step application --actor '<same-operator>'`, repeating every required repair/question flag used for Review. The stage must recompute the same authoritative Review hash while holding the fresh exact-target binding. It then consumes once, journals intent, rechecks gates and the exact learned submit button, and performs one DOM activation. A consumed handoff is retired. Any post-consumption error is confirmation inspection only: never recreate the handoff, reauthorize, or call submit again. `confirmation_observed` is still not tracker-safe until learned confirmation and Candidate Home reconciliation pass.
+
 ### Tracker smoke test
 
 ```bash
