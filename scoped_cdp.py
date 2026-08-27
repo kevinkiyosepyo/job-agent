@@ -135,3 +135,16 @@ class ScopedCDPTransport:
             raise TargetBindingError("exact page target has no URL")
 
         return BoundPage(target_id, target_url, self._connect(websocket_url))
+
+    def bind_mutable_page_target(self, target_id: str):
+        """Bind a newly discovered exact page and expose bounded field operations."""
+        from mutable_cdp_page_adapter import MutableCDPPageAdapter
+        bound = self.bind_page_target(target_id)
+
+        class ManagedAdapter(MutableCDPPageAdapter):
+            def __enter__(self):
+                return self
+            def __exit__(self, exc_type, exc_value, traceback):
+                bound.__exit__(exc_type, exc_value, traceback)
+
+        return ManagedAdapter(target_id=bound.target_id, target_url=bound.target_url, connection=bound._connection)

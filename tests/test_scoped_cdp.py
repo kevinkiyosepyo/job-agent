@@ -97,3 +97,28 @@ def test_bind_rejects_non_page_or_unknown_target_without_connecting():
 
     with pytest.raises(scoped_cdp.TargetBindingError, match="exact page target was not found"):
         transport.bind_page_target("worker-7")
+
+
+def test_bind_mutable_page_target_returns_exact_adapter_with_same_connection():
+    import scoped_cdp
+
+    calls = []
+    class Connection:
+        def call(self, method, params):
+            calls.append((method, params))
+            return {"result": {"value": "https://careers.example.test/apply"}}
+        def close(self):
+            calls.append(("close", {}))
+    connection = Connection()
+    transport = scoped_cdp.ScopedCDPTransport(
+        "http://127.0.0.1:18800",
+        fetch_json=lambda _: [{"id": "page-42", "type": "page", "url": "https://careers.example.test/apply", "webSocketDebuggerUrl": "ws://page"}],
+        connect=lambda _: connection,
+    )
+
+    with transport.bind_mutable_page_target("page-42") as page:
+        assert page.target_id == "page-42"
+        assert page.target_url == "https://careers.example.test/apply"
+        assert page.read_only_snapshot()["read_only"] is True
+
+    assert calls[-1] == ("close", {})
