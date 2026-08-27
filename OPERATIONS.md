@@ -38,6 +38,10 @@ Only bind a known exact page target. Mutable CDP preparation uses the local `Mut
 
 Store the explicit selector-to-string answer map and output only under ignored `runtime/`. Read the current target ID from the local CDP target list, independently verify the exact URL/company/role/requisition, and invoke `prepare_live_job.py` with `--target-id`, `--expected-url`, `--company`, `--role`, `--requisition`, `--profile`, `--approved-answers`, and `--output`. The CDP origin must remain an uncredentialed loopback HTTP origin. Treat a nonzero exit as a hard stop: do not reuse an old target ID, manually edit failed evidence into a passing state, or proceed when any field lacks verified read-back. The successful artifact intentionally omits answer/profile values and is only input to authoritative Review; it is not submission authority.
 
+### Authoritative Review reconciliation
+
+Re-read the server-rendered Review surface on the same exact target and reconcile it with `review_reconciler.py`. Review authority requires exact target ID, URL, company, role, and requisition; exact equality for all supplied profile facts; an independently preflighted file and server evidence both naming `Resume.pdf` with the same SHA-256; verified server read-back for every required parser repair; and answered plus verified evidence for every required question. Any `human_required` entry is a hard stop. The canonical Review hash binds the next approval step but does not authorize submission, and the artifact must never be edited to remove a blocker.
+
 ### Tracker smoke test
 
 ```bash
@@ -78,6 +82,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 - Confirmation evidence must be validated from actual confirmation text, not assumed from button clicks.
 - New automation must preserve MAANGO manual-only routing and CAPTCHA stop conditions.
 - `prepare_live_job.py` evidence must contain no answer/profile values, and its Review-ready result must never be treated as submit authorization.
+- Authoritative Review artifacts must stay value-free, require exact `Resume.pdf`, and retain every target, parser, or required-question discrepancy as human-required.
 
 ## Release checklist for engineering changes
 
