@@ -82,6 +82,28 @@ class MutableCDPPageAdapter:
         self._fresh_target()
         return {"target_id": self.target_id, "url": self.target_url, "read_only": True}
 
+    def inspect_safety_surface(self, selectors: list[str]) -> dict[str, object]:
+        """Observe exact-page control/overlay facts for the browser canary."""
+        if not selectors or not all(isinstance(selector, str) and selector for selector in selectors):
+            raise PageControlError("learned canary selectors are required")
+        self._fresh_target()
+        value = self._evaluate(
+            "(() => { const selectors = " + json.dumps(selectors) + "; "
+            "const states = selectors.map(selector => { const matches = [...document.querySelectorAll(selector)]; "
+            "const element = matches[0]; if (!element) return {count: matches.length, visible: false, enabled: false, unobscured: false}; "
+            "const style = getComputedStyle(element); const rect = element.getBoundingClientRect(); "
+            "const visible = style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0; "
+            "const top = visible ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null; "
+            "return {count: matches.length, visible, enabled: !element.disabled, unobscured: top === element || element.contains(top)}; }); "
+            "return {retina_scale: window.devicePixelRatio, "
+            "control_visible: states.every(item => item.count === 1 && item.visible && item.enabled && item.unobscured), "
+            "overlay_present: states.some(item => item.visible && item.enabled && !item.unobscured), "
+            "native_window_detected: false}; })()"
+        )
+        if not isinstance(value, dict):
+            raise PageControlError("exact-page safety surface was unavailable")
+        return value
+
     def replace_text(self, selector: str, value: str) -> None:
         self._mutate(
             selector,

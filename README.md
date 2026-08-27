@@ -192,6 +192,18 @@ The approval flag applies only to the marker-checked static fixture. Before its 
 
 `live_run_manifest.py` defines the closed v1 runtime contract used by the unified CLI work. It binds one mode, job/queue ID, exact target ID/URL, company, role, requisition, learned platform/tenant, verified profile and exact `Resume.pdf` hashes, explicit manual-gate state, and unique absolute runtime artifact paths. Unknown or missing fields and observed identity drift fail closed. A `production_live` manifest is inert unless the caller separately passes explicit production enablement; setting the mode inside the manifest cannot enable itself.
 
+The first unified stage is non-submitting preparation:
+
+```bash
+python production_operator.py live prepare \
+  --manifest runtime/live-run/manifest.json \
+  --approved-answers runtime/live-run/approved-answers.json \
+  --step application \
+  --cdp-base-url http://127.0.0.1:9222
+```
+
+It never chooses a tab: the exact target ID comes from the manifest. Before any mapped field action it verifies loopback CDP health, the current target/URL and job identity, the learned tenant and step, answer coverage, visible/unobscured controls, and profile-selected `Resume.pdf` bytes. The result at the manifest's `runtime_paths.preparation` contains identifiers, verified field evidence, and gate booleans only; answer values and local paths are removed. Production manifests additionally require `--enable-production-live`; sanitized/local development does not use that flag.
+
 ## Offline setup diagnostics
 
 ```bash

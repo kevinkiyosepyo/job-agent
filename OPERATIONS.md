@@ -77,6 +77,8 @@ Run `python production_operator.py audit --report runtime/operator-demo/report.j
 
 Keep every unified-run manifest and all paths it names under ignored, access-controlled runtime storage. Validate it through `live_run_manifest.load_manifest(...)` before opening any stage. The v1 schema is closed and binds the exact target/job identity, independently verified profile and exact `Resume.pdf` digests, manual gates/MAANGO state, and a distinct path for each stage artifact. Never accept an edited manifest as production enablement: `production_live` additionally requires a separate caller-side enablement input, and a fresh observed binding must exactly equal the manifest before use.
 
+For a sanitized/local manifest, run `python production_operator.py live prepare --manifest runtime/live-run/manifest.json --approved-answers runtime/live-run/approved-answers.json --step application --cdp-base-url http://127.0.0.1:9222`. Supply the exact target in the manifest; the command has no target auto-selection or navigation path. It must stop if CDP is not healthy, the exact target/identity changes, the handler or learned tenant differs, coverage remains human-required, controls are hidden/obscured, or the profile-selected PDF differs from the manifest. Treat the sanitized preparation artifact as input to Review only, never as approval or submission evidence.
+
 ### Tracker smoke test
 
 ```bash

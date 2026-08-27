@@ -18,12 +18,16 @@ from pathlib import Path
 from typing import Callable
 
 import browser_integration_canary
+import browser_health
 import confirmation_reconciliation
 import greenhouse_handler
+import live_run_manifest
 import one_shot_submit
 import post_submit_transaction
 import prepare_live_job
+import resume_preflight
 import review_reconciler
+from scoped_cdp import ScopedCDPTransport
 import submission_authorization
 import tenant_field_maps
 import timing_telemetry
@@ -563,12 +567,212 @@ def run_local_sanitized_demo(
 
 
 DemoRunner = Callable[..., dict]
+LiveTransportFactory = Callable[[str], object]
+LiveHealthProbe = Callable[[str], dict]
+LiveCoverage = Callable[..., dict]
+
+
+def _load_runtime_object(path: Path | str, *, label: str) -> dict:
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise OperatorBlockedError(f"{label} could not be read") from exc
+    if not isinstance(payload, dict):
+        raise OperatorBlockedError(f"{label} must be a JSON object")
+    return payload
+
+
+def _verify_manifest_file(path: Path | str, expected_sha256: str, *, label: str) -> None:
+    try:
+        actual = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError as exc:
+        raise OperatorBlockedError(f"{label} could not be read") from exc
+    if actual != expected_sha256:
+        raise OperatorBlockedError(f"{label} evidence drift detected")
+
+
+def _verified_profile_resume(manifest: dict) -> tuple[dict, dict]:
+    profile_binding = manifest["profile"]
+    resume_binding = manifest["resume"]
+    profile_path = Path(profile_binding["path"])
+    _verify_manifest_file(profile_path, profile_binding["sha256"], label="profile")
+    profile = _load_runtime_object(profile_path, label="profile")
+    try:
+        evidence = resume_preflight.preflight_profile_resume(profile_path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise OperatorBlockedError("profile-selected Resume.pdf preflight failed") from exc
+    expected = {
+        "path": str(Path(resume_binding["path"]).resolve()),
+        "basename": resume_binding["basename"],
+        "content_type": resume_binding["content_type"],
+        "sha256": resume_binding["sha256"],
+        "verified": resume_binding["verified"],
+    }
+    observed = {
+        "path": str(Path(evidence["path"]).resolve()),
+        "basename": evidence["basename"],
+        "content_type": evidence["content_type"],
+        "sha256": evidence["sha256"],
+        "verified": evidence["verified"],
+    }
+    if observed != expected:
+        raise OperatorBlockedError("profile-selected Resume.pdf evidence drift detected")
+    return profile, evidence
+
+
+def run_live_prepare(
+    *,
+    manifest_path: Path,
+    approved_answers_path: Path,
+    step: str,
+    cdp_base_url: str,
+    production_enabled: bool,
+    transport_factory: LiveTransportFactory = ScopedCDPTransport,
+    health_probe: LiveHealthProbe = browser_health.probe_cdp_health,
+    coverage: LiveCoverage = prepare_live_job.build_coverage_matrix,
+) -> dict:
+    """Prepare one manifest-bound page without navigation or submission."""
+    prepare_live_job._validate_local_cdp_base_url(cdp_base_url)
+    manifest = live_run_manifest.load_manifest(
+        manifest_path, production_enabled=production_enabled
+    )
+    profile, resume = _verified_profile_resume(manifest)
+    approved_answers = _load_runtime_object(
+        approved_answers_path, label="approved answers"
+    )
+    resume_answer = approved_answers.get("resume")
+    if resume_answer is not None and Path(str(resume_answer)).resolve() != Path(
+        resume["path"]
+    ).resolve():
+        raise OperatorBlockedError("approved resume differs from profile-selected Resume.pdf")
+    approved_answers["resume"] = str(Path(resume["path"]).resolve())
+
+    identity = manifest["identity"]
+    target = manifest["target"]
+    mapping = tenant_field_maps.resolve_field_map(
+        page_url=target["url"], platform=identity["platform"]
+    )
+    if mapping.get("tenant") != identity["tenant"]:
+        raise OperatorBlockedError("learned tenant differs from manifest identity")
+    actions = tenant_field_maps.build_step_actions(
+        mapping=mapping,
+        step=step,
+        approved_answers=approved_answers,
+    )
+    if not any(action.get("field") == "resume" for action in actions):
+        raise OperatorBlockedError("live prepare step must upload profile-selected Resume.pdf")
+    transition = tenant_field_maps.plan_next_step(
+        mapping=mapping,
+        current_step=step,
+        completed_fields=set(approved_answers),
+        conditions={},
+    )
+    if transition.get("status") == "human_required":
+        raise OperatorBlockedError("learned step conditions remain human-required")
+
+    health = health_probe(cdp_base_url)
+    if not isinstance(health, dict) or health.get("status") != "ready":
+        raise OperatorBlockedError("loopback Chrome CDP health gate failed")
+
+    transport = transport_factory(cdp_base_url)
+    with transport.bind_mutable_page_target(target["id"]) as page:  # type: ignore[attr-defined]
+        snapshot = page.read_only_snapshot()
+        if (
+            snapshot.get("read_only") is not True
+            or snapshot.get("target_id") != target["id"]
+            or snapshot.get("url") != target["url"]
+        ):
+            raise OperatorBlockedError("exact target binding drift detected")
+        selectors = [str(action["selector"]) for action in actions]
+        surface_reader = getattr(page, "inspect_safety_surface", None)
+        if not callable(surface_reader):
+            raise OperatorBlockedError("exact-page browser canary evidence is unavailable")
+        surface = surface_reader(selectors)
+        canary = browser_integration_canary.run_canary(
+            identity["platform"],
+            {
+                **surface,
+                "target_current": True,
+                "submission_enabled": False,
+            },
+        )
+        if canary.get("status") != "passed":
+            raise OperatorBlockedError(
+                f"exact-page browser canary blocked: {canary.get('reason', 'unknown')}"
+            )
+
+        expected_identity = {
+            key: identity[key] for key in ("company", "role", "requisition")
+        }
+
+        def dispatch(**kwargs):
+            return prepare_live_job._dispatch_live_html(
+                **kwargs,
+                expected_identity=expected_identity,
+                expected_platform=identity["platform"],
+            )
+
+        prepared = prepare_live_job.prepare_live_job(
+            page=page,
+            target_id=target["id"],
+            expected_url=target["url"],
+            expected_identity=expected_identity,
+            profile=profile,
+            prepare=dispatch,
+            coverage=coverage,
+            approved_answers=approved_answers,
+            apply_known=lambda _: tenant_field_maps.execute_step_actions(
+                page=page,
+                target_id=target["id"],
+                expected_url=target["url"],
+                actions=actions,
+            ),
+        )
+
+    live_run_manifest.validate_manifest(
+        manifest,
+        production_enabled=production_enabled,
+        observed_binding={
+            "target_id": prepared["target_id"],
+            "page_url": prepared["page_url"],
+            **prepared["identity"],
+            "platform": prepared["platform"],
+            "tenant": mapping["tenant"],
+        },
+    )
+    sanitized = {
+        **prepare_live_job._sanitize_review_evidence(prepared),
+        "status": "prepared",
+        "manifest_binding": {
+            "schema_version": manifest["schema_version"],
+            "mode": manifest["mode"],
+            "job_id": manifest["job_id"],
+            "queue_id": manifest["queue_id"],
+            "tenant": identity["tenant"],
+        },
+        "health": {
+            "browser_ready": True,
+            "canary_passed": True,
+            "exact_target_bound": True,
+        },
+        "learned_map": {"version": mapping["version"], "tenant": mapping["tenant"]},
+        "resume": {"basename": "Resume.pdf", "verified": True},
+    }
+    output = Path(manifest["runtime_paths"]["preparation"])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(sanitized, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return sanitized
 
 
 def main(
     argv: list[str] | None = None,
     *,
     demo_runner: DemoRunner | None = None,
+    live_transport_factory: LiveTransportFactory = ScopedCDPTransport,
+    live_health_probe: LiveHealthProbe = browser_health.probe_cdp_health,
+    live_coverage: LiveCoverage = prepare_live_job.build_coverage_matrix,
 ) -> int:
     parser = argparse.ArgumentParser(description="Guarded production operator proof")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -579,7 +783,39 @@ def main(
     demo.add_argument("--approve-sanitized-submit", action="store_true")
     audit = commands.add_parser("audit")
     audit.add_argument("--report", required=True)
+    live = commands.add_parser("live")
+    live_commands = live.add_subparsers(dest="live_command", required=True)
+    live_prepare = live_commands.add_parser("prepare")
+    live_prepare.add_argument("--manifest", required=True)
+    live_prepare.add_argument("--approved-answers", required=True)
+    live_prepare.add_argument("--step", required=True)
+    live_prepare.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
+    live_prepare.add_argument("--enable-production-live", action="store_true")
     args = parser.parse_args(argv)
+
+    if args.command == "live":
+        try:
+            result = run_live_prepare(
+                manifest_path=Path(args.manifest),
+                approved_answers_path=Path(args.approved_answers),
+                step=args.step,
+                cdp_base_url=args.cdp_base_url,
+                production_enabled=args.enable_production_live,
+                transport_factory=live_transport_factory,
+                health_probe=live_health_probe,
+                coverage=live_coverage,
+            )
+        except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+            print(json.dumps({
+                "error": str(exc),
+                "stage": "prepare",
+                "status": "blocked",
+                "submission_enabled": False,
+                "review_evidence_persisted": False,
+            }, sort_keys=True))
+            return 2
+        print(json.dumps(result, sort_keys=True))
+        return 0
 
     if args.command == "audit":
         try:
