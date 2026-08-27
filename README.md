@@ -241,6 +241,15 @@ python production_operator.py live submit \
 
 Immediately before consumption and again before the sole DOM activation, this stage verifies loopback health, exact target/URL/job/tenant identity, page gates and MAANGO state, the visible/enabled/unique learned submit button, and a newly reconciled Review hash equal to the approved hash. Submit intent is written to `runtime_paths.submit_journal` before the click. Once consumed, the raw-token handoff is removed; interruption or missing confirmation always returns `inspect_confirmation_without_replay`. Even an observed confirmation remains unreconciled until the next stage, and this command has no tracker or notification path.
 
+Reconcile confirmation without replay:
+
+```bash
+python production_operator.py live confirmation \
+  --manifest runtime/live-run/manifest.json
+```
+
+The stage requires exact submit-journal evidence, rebinds only the manifest target, validates confirmation through the matching learned ATS handler, and calls the verified `(platform, tenant)` Candidate Home reader. Njoyn, Workday, Greenhouse, Lever, and Oracle are registered. Exactly one matching company/role/requisition record must report both `state: submitted` and `submitted: true`. The sanitized result is written to `runtime_paths.confirmation`; raw HTML and portal payloads are not. An unavailable tenant reader, uncertain confirmation, identity/state mismatch, or duplicate match becomes `human_required` and remains unsafe for post-submit delivery.
+
 ## Offline setup diagnostics
 
 ```bash

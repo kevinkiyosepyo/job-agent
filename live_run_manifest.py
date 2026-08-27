@@ -37,6 +37,7 @@ RUNTIME_PATH_FIELDS = {
     "authorization_db",
     "authorization_handoff",
     "submit_journal",
+    "confirmation",
     "transaction_db",
     "status",
 }

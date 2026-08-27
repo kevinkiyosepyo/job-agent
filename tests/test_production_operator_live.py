@@ -83,6 +83,7 @@ def _write_live_inputs(tmp_path: Path) -> tuple[Path, Path, dict]:
             "authorization_db": str(runtime / "authorization.sqlite3"),
             "authorization_handoff": str(runtime / "authorization.handoff"),
             "submit_journal": str(runtime / "submit.jsonl"),
+            "confirmation": str(runtime / "confirmation.json"),
             "transaction_db": str(runtime / "transactions.sqlite3"),
             "status": str(runtime / "status.json"),
         },
@@ -722,3 +723,88 @@ def test_live_submit_reconciles_fresh_review_journals_before_one_click_and_denie
     ) == 2
     assert page.clicks == 1
     assert "authorization handoff is unavailable" in capsys.readouterr().out
+
+
+def test_live_confirmation_cli_persists_sanitized_exact_candidate_home_reconciliation(
+    tmp_path, capsys
+):
+    import production_operator
+
+    manifest_path, _, manifest = _write_live_inputs(tmp_path)
+    Path(manifest["runtime_paths"]["submit_journal"]).write_text(
+        json.dumps(
+            {
+                "action": "submit",
+                "evidence": {
+                    "status": "confirmation_observed",
+                    "verified": True,
+                    "job_id": 41,
+                    "target_id": "target-abc",
+                    "page_url": PAGE_URL,
+                    "requisition": "REQ-123",
+                },
+            }
+        )
+        + "\n"
+    )
+    confirmation_html = (ROOT / "fixtures" / "greenhouse_confirmation.html").read_text()
+
+    class Page:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read_only_snapshot(self):
+            return {
+                "target_id": "target-abc",
+                "url": PAGE_URL,
+                "html": confirmation_html,
+                "read_only": True,
+            }
+
+        def read_greenhouse_candidate_applications(self):
+            return [
+                {
+                    "platform": "greenhouse",
+                    "company": "Sanitized Example",
+                    "role": "Software Engineer Intern",
+                    "requisition": "REQ-123",
+                    "state": "submitted",
+                    "submitted": True,
+                }
+            ]
+
+    class Transport:
+        def __init__(self, base_url):
+            assert base_url == "http://127.0.0.1:9222"
+
+        def bind_mutable_page_target(self, target_id):
+            assert target_id == "target-abc"
+            return Page()
+
+    result = production_operator.main(
+        ["live", "confirmation", "--manifest", str(manifest_path)],
+        live_transport_factory=Transport,
+        live_health_probe=lambda base_url: {"status": "ready", "base_url": base_url},
+    )
+
+    assert result == 0
+    persisted_text = Path(manifest["runtime_paths"]["confirmation"]).read_text()
+    persisted = json.loads(persisted_text)
+    assert persisted["status"] == "portal_confirmed"
+    assert persisted["portal"]["portal_confirmed"] is True
+    assert persisted["portal"]["safe_for_post_submit"] is True
+    summary = json.loads(capsys.readouterr().out)
+    assert summary == {
+        "status": "portal_confirmed",
+        "portal_confirmed": True,
+        "safe_for_post_submit": True,
+        "matched_application_count": 1,
+        "human_required": [],
+        "reader": {"platform": "greenhouse", "tenant": "fixture", "verified": True},
+        "job_identity": persisted["job_identity"],
+    }
+    assert "<html" not in persisted_text.casefold()
+    assert str(tmp_path) not in persisted_text

@@ -85,6 +85,8 @@ Authorize with `python production_operator.py live authorize --manifest runtime/
 
 Run `python production_operator.py live submit --manifest runtime/live-run/manifest.json --approved-answers runtime/live-run/approved-answers.json --step application --actor '<same-operator>'`, repeating every required repair/question flag used for Review. The stage must recompute the same authoritative Review hash while holding the fresh exact-target binding. It then consumes once, journals intent, rechecks gates and the exact learned submit button, and performs one DOM activation. A consumed handoff is retired. Any post-consumption error is confirmation inspection only: never recreate the handoff, reauthorize, or call submit again. `confirmation_observed` is still not tracker-safe until learned confirmation and Candidate Home reconciliation pass.
 
+Run `python production_operator.py live confirmation --manifest runtime/live-run/manifest.json` whether the submit call observed confirmation or ended uncertain after consumption. This command is observation-only and requires the exact submit journal. It does not navigate to Candidate Home: the learned tenant reader must expose an authenticated exact-page read-back seam. Require one exact explicitly submitted record and `safe_for_post_submit: true` in `runtime_paths.confirmation`. If the reader is unavailable or any identity/state evidence differs, preserve the human-required artifact and escalate; never replay submit or infer success from the confirmation page alone.
+
 ### Tracker smoke test
 
 ```bash

@@ -51,6 +51,7 @@ def _manifest(tmp_path: Path, *, mode: str = "sanitized_local") -> dict:
             "authorization_db": str(tmp_path / "authorization.sqlite3"),
             "authorization_handoff": str(tmp_path / "authorization.handoff"),
             "submit_journal": str(tmp_path / "submit.jsonl"),
+            "confirmation": str(tmp_path / "confirmation.json"),
             "transaction_db": str(tmp_path / "transactions.sqlite3"),
             "status": str(tmp_path / "status.json"),
         },

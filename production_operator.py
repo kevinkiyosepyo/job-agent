@@ -24,6 +24,7 @@ import browser_integration_canary
 import browser_health
 import confirmation_reconciliation
 import greenhouse_handler
+import live_confirmation_reader
 import live_review_reader
 import live_run_manifest
 import one_shot_submit
@@ -1311,6 +1312,85 @@ def run_live_submit(
     return result
 
 
+def _require_submit_inspection_evidence(path: Path, manifest: dict) -> dict:
+    try:
+        entries = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except (OSError, json.JSONDecodeError) as exc:
+        raise OperatorBlockedError("submit recovery journal is unavailable") from exc
+    latest = entries[-1] if entries else None
+    evidence = latest.get("evidence") if isinstance(latest, dict) else None
+    if (
+        not isinstance(latest, dict)
+        or latest.get("action") != "submit"
+        or not isinstance(evidence, dict)
+        or evidence.get("job_id") != manifest["job_id"]
+        or evidence.get("target_id") != manifest["target"]["id"]
+        or evidence.get("page_url") != manifest["target"]["url"]
+        or evidence.get("requisition") != manifest["identity"]["requisition"]
+    ):
+        raise OperatorBlockedError("exact submit inspection evidence is required")
+    return evidence
+
+
+def run_live_confirmation(
+    *,
+    manifest_path: Path,
+    cdp_base_url: str,
+    production_enabled: bool,
+    transport_factory: LiveTransportFactory,
+    health_probe: LiveHealthProbe,
+) -> tuple[dict, dict]:
+    """Inspect confirmation and Candidate Home without navigating or replaying."""
+    prepare_live_job._validate_local_cdp_base_url(cdp_base_url)
+    manifest = live_run_manifest.load_manifest(
+        manifest_path, production_enabled=production_enabled
+    )
+    _require_submit_inspection_evidence(
+        Path(manifest["runtime_paths"]["submit_journal"]), manifest
+    )
+    health = health_probe(cdp_base_url)
+    if not isinstance(health, dict) or health.get("status") != "ready":
+        raise OperatorBlockedError("loopback Chrome CDP health gate failed")
+    target = manifest["target"]
+    identity = manifest["identity"]
+    transport = transport_factory(cdp_base_url)
+    with transport.bind_mutable_page_target(target["id"]) as page:  # type: ignore[attr-defined]
+        portal = live_confirmation_reader.read_and_reconcile(
+            page=page,
+            platform=identity["platform"],
+            tenant=identity["tenant"],
+            target_id=target["id"],
+            expected_url=target["url"],
+            expected_identity={
+                key: identity[key] for key in ("company", "role", "requisition")
+            },
+        )
+    wrapper = {
+        "status": "portal_confirmed" if portal["portal_confirmed"] else "human_required",
+        "job_identity": _manifest_job_identity(manifest),
+        "portal": portal,
+    }
+    output = Path(manifest["runtime_paths"]["confirmation"])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(wrapper, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    summary = {
+        "status": wrapper["status"],
+        "portal_confirmed": portal.get("portal_confirmed") is True,
+        "safe_for_post_submit": portal.get("safe_for_post_submit") is True,
+        "matched_application_count": portal.get("portal_readback", {}).get(
+            "matched_application_count", 0
+        ),
+        "human_required": portal.get("human_required", []),
+        "reader": portal.get("reader"),
+        "job_identity": wrapper["job_identity"],
+    }
+    return wrapper, summary
+
+
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -1366,6 +1446,10 @@ def main(
     live_submit.add_argument("--approve-maango", action="store_true")
     live_submit.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
     live_submit.add_argument("--enable-production-live", action="store_true")
+    live_confirmation = live_commands.add_parser("confirmation")
+    live_confirmation.add_argument("--manifest", required=True)
+    live_confirmation.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
+    live_confirmation.add_argument("--enable-production-live", action="store_true")
     args = parser.parse_args(argv)
 
     if args.command == "live":
@@ -1406,7 +1490,7 @@ def main(
                     clock=live_clock,
                 )
                 exit_code = 0
-            else:
+            elif args.live_command == "submit":
                 result = run_live_submit(
                     manifest_path=Path(args.manifest),
                     approved_answers_path=Path(args.approved_answers),
@@ -1422,6 +1506,15 @@ def main(
                     clock=live_clock,
                 )
                 exit_code = 0 if result.get("status") == "confirmation_observed" else 1
+            else:
+                wrapper, result = run_live_confirmation(
+                    manifest_path=Path(args.manifest),
+                    cdp_base_url=args.cdp_base_url,
+                    production_enabled=args.enable_production_live,
+                    transport_factory=live_transport_factory,
+                    health_probe=live_health_probe,
+                )
+                exit_code = 0 if wrapper["portal"]["portal_confirmed"] else 1
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({
                 "error": str(exc),
