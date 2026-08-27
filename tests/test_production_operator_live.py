@@ -935,3 +935,98 @@ def test_live_delivery_cli_uses_injected_local_adapters_in_order_and_is_idempote
     assert json.loads(capsys.readouterr().out) == first
     assert tracker_adapter.appends == 1
     assert discord_adapter.sends == 1
+
+
+def test_live_status_and_resume_turn_uncertain_submit_into_confirmation_inspection_only(
+    tmp_path, capsys
+):
+    import production_operator
+
+    manifest_path, _, manifest = _write_live_inputs(tmp_path)
+    Path(manifest["runtime_paths"]["preparation"]).write_text(
+        json.dumps({"status": "prepared"})
+    )
+    _write_authoritative_review(manifest)
+    Path(manifest["runtime_paths"]["submit_journal"]).write_text(
+        json.dumps(
+            {
+                "action": "submit",
+                "evidence": {
+                    "status": "intent_recorded",
+                    "verified": False,
+                    "job_id": 41,
+                    "target_id": "target-abc",
+                    "page_url": PAGE_URL,
+                    "requisition": "REQ-123",
+                },
+            }
+        )
+        + "\n"
+    )
+
+    assert production_operator.main(
+        ["live", "status", "--manifest", str(manifest_path)]
+    ) == 0
+    status = json.loads(capsys.readouterr().out)
+    assert status["stages"] == {
+        "preparation": "complete",
+        "review": "complete",
+        "authorization": "consumed_or_unavailable",
+        "submit": "uncertain",
+        "confirmation": "not_started",
+        "tracker": "not_started",
+        "discord": "not_started",
+    }
+    assert status["next_action"] == "inspect_confirmation_without_replay"
+    assert status["submit_replay_allowed"] is False
+    assert json.loads(Path(manifest["runtime_paths"]["status"]).read_text()) == status
+
+    confirmation_html = (ROOT / "fixtures" / "greenhouse_confirmation.html").read_text()
+
+    class InspectionOnlyPage:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read_only_snapshot(self):
+            return {
+                "target_id": "target-abc",
+                "url": PAGE_URL,
+                "html": confirmation_html,
+                "read_only": True,
+            }
+
+        def read_greenhouse_candidate_applications(self):
+            return [
+                {
+                    "platform": "greenhouse",
+                    "company": "Sanitized Example",
+                    "role": "Software Engineer Intern",
+                    "requisition": "REQ-123",
+                    "state": "submitted",
+                    "submitted": True,
+                }
+            ]
+
+        def click_submit_once(self, selector):
+            raise AssertionError("resume must never replay submit")
+
+    class Transport:
+        def __init__(self, base_url):
+            assert base_url == "http://127.0.0.1:9222"
+
+        def bind_mutable_page_target(self, target_id):
+            assert target_id == "target-abc"
+            return InspectionOnlyPage()
+
+    assert production_operator.main(
+        ["live", "resume", "--manifest", str(manifest_path)],
+        live_transport_factory=Transport,
+        live_health_probe=lambda base_url: {"status": "ready", "base_url": base_url},
+    ) == 0
+    resumed = json.loads(capsys.readouterr().out)
+    assert resumed["resume_action"] == "confirmation_inspection_without_replay"
+    assert resumed["portal_confirmed"] is True
+    assert resumed["submit_replay_allowed"] is False

@@ -260,6 +260,15 @@ python production_operator.py live deliver \
 
 Delivery requires the exact portal-confirmed artifact. The durable coordinator performs tracker lookup/append/authenticated read-back before Discord lookup/send/authenticated read-back, with one stable transaction ID and separate payload/message hashes. Sanitized mode forbids `--commit-external` and uses local adapters. A `production_live` manifest additionally requires `--enable-production-live --commit-external --discord-channel-id '<exact-channel-id>'`; the Discord token is fetched at call time from the named environment variable and is never persisted. `GoogleSheetsTransactionAdapter` and `DiscordTransactionAdapter` independently require the `commit_external` capability, embed idempotency markers, and refuse changed hashes. Partial recovery is read-back-only.
 
+Inspect or safely resume an interrupted run:
+
+```bash
+python production_operator.py live status --manifest runtime/live-run/manifest.json
+python production_operator.py live resume --manifest runtime/live-run/manifest.json
+```
+
+`status` writes the value-free seven-stage report to `runtime_paths.status` and recommends exactly one next action. `resume` can perform only confirmation inspection after submit intent or durable tracker/Discord read-back after a claimed downstream attempt. It never calls prepare, Review, authorization, or submit. An uncertain or already verified submit always has `submit_replay_allowed: false`; missing authorization handoffs and invalid artifacts route to human review instead of token reissuance. Delivery recovery requires the same explicit submitted date and, for production, the same external commit gates.
+
 ## Offline setup diagnostics
 
 ```bash

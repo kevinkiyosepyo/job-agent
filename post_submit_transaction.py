@@ -29,6 +29,49 @@ def _text_hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def inspect_transaction_state(state_path: Path | str, *, job_id: int) -> dict[str, object]:
+    """Read durable downstream flags without constructing or calling adapters."""
+    path = Path(state_path)
+    if not path.is_file():
+        return {"status": "not_started", "tracker": "not_started", "discord": "not_started"}
+    try:
+        connection = sqlite3.connect(path)
+        connection.row_factory = sqlite3.Row
+        try:
+            row = connection.execute(
+                "SELECT tracker_attempted, tracker_verified, discord_attempted, "
+                "discord_verified FROM post_submit_transactions WHERE job_id = ?",
+                (job_id,),
+            ).fetchone()
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        return {"status": "invalid", "tracker": "unknown", "discord": "unknown"}
+    if row is None:
+        return {"status": "not_started", "tracker": "not_started", "discord": "not_started"}
+    tracker_state = (
+        "complete"
+        if row["tracker_verified"] == 1
+        else "readback_pending"
+        if row["tracker_attempted"] == 1
+        else "not_started"
+    )
+    discord_state = (
+        "complete"
+        if row["discord_verified"] == 1
+        else "readback_pending"
+        if row["discord_attempted"] == 1
+        else "ready"
+        if row["tracker_verified"] == 1
+        else "not_started"
+    )
+    return {
+        "status": "complete" if row["discord_verified"] == 1 else "partial",
+        "tracker": tracker_state,
+        "discord": discord_state,
+    }
+
+
 def _validate_portal(portal: dict) -> None:
     readback = portal.get("portal_readback", {})
     evidence = portal.get("evidence", {})

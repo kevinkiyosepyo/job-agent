@@ -1482,6 +1482,185 @@ def run_live_delivery(
     return {**transaction, "delivery_mode": delivery_mode}
 
 
+def _json_artifact_state(path: Path, *, complete_status: str) -> str:
+    if not path.is_file():
+        return "not_started"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "invalid"
+    if not isinstance(payload, dict):
+        return "invalid"
+    status_value = payload.get("status")
+    if status_value == complete_status:
+        return "complete"
+    if status_value in {"blocked", "human_required"}:
+        return "human_required"
+    if complete_status == "prepared" and payload.get("review_ready") is True:
+        return "complete"
+    return "invalid"
+
+
+def _submit_journal_state(path: Path, manifest: dict) -> str:
+    if not path.is_file():
+        return "not_started"
+    try:
+        entries = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except (OSError, json.JSONDecodeError):
+        return "invalid"
+    latest = entries[-1] if entries else None
+    evidence = latest.get("evidence") if isinstance(latest, dict) else None
+    if (
+        not isinstance(latest, dict)
+        or latest.get("action") != "submit"
+        or not isinstance(evidence, dict)
+        or evidence.get("job_id") != manifest["job_id"]
+        or evidence.get("target_id") != manifest["target"]["id"]
+        or evidence.get("page_url") != manifest["target"]["url"]
+        or evidence.get("requisition") != manifest["identity"]["requisition"]
+    ):
+        return "invalid"
+    return "confirmation_observed" if evidence.get("verified") is True else "uncertain"
+
+
+def build_live_status(manifest: dict) -> dict[str, object]:
+    """Derive a value-free recovery decision from manifest-bound durable evidence."""
+    paths = manifest["runtime_paths"]
+    preparation_state = _json_artifact_state(
+        Path(paths["preparation"]), complete_status="prepared"
+    )
+    review_state = _json_artifact_state(Path(paths["review"]), complete_status="reviewed")
+    submit_state = _submit_journal_state(Path(paths["submit_journal"]), manifest)
+    confirmation_state = _json_artifact_state(
+        Path(paths["confirmation"]), complete_status="portal_confirmed"
+    )
+    handoff = Path(paths["authorization_handoff"])
+    if submit_state != "not_started":
+        authorization_state = "consumed_or_unavailable"
+    elif handoff.is_file() and stat.S_IMODE(handoff.stat().st_mode) == 0o600:
+        authorization_state = "available"
+    elif Path(paths["authorization_db"]).is_file():
+        authorization_state = "handoff_missing"
+    else:
+        authorization_state = "not_started"
+    transaction = post_submit_transaction.inspect_transaction_state(
+        paths["transaction_db"], job_id=manifest["job_id"]
+    )
+    stages = {
+        "preparation": preparation_state,
+        "review": review_state,
+        "authorization": authorization_state,
+        "submit": submit_state,
+        "confirmation": confirmation_state,
+        "tracker": transaction["tracker"],
+        "discord": transaction["discord"],
+    }
+    if transaction["status"] == "complete":
+        next_action = "complete"
+    elif transaction["tracker"] == "readback_pending" or transaction["discord"] == "readback_pending":
+        next_action = "resume_delivery_readback"
+    elif confirmation_state == "complete":
+        next_action = "live deliver"
+    elif confirmation_state in {"human_required", "invalid"}:
+        next_action = "human_required"
+    elif submit_state in {"uncertain", "confirmation_observed"}:
+        next_action = "inspect_confirmation_without_replay"
+    elif submit_state == "invalid" or authorization_state == "handoff_missing":
+        next_action = "human_required"
+    elif authorization_state == "available":
+        next_action = "live submit"
+    elif review_state == "complete":
+        next_action = "live authorize"
+    elif review_state in {"human_required", "invalid"}:
+        next_action = "human_required"
+    elif preparation_state == "complete":
+        next_action = "live review"
+    elif preparation_state in {"human_required", "invalid"}:
+        next_action = "human_required"
+    else:
+        next_action = "live prepare"
+    report = {
+        "schema_version": 1,
+        "status": "complete" if next_action == "complete" else "incomplete",
+        "job_identity": _manifest_job_identity(manifest),
+        "stages": stages,
+        "next_action": next_action,
+        "submit_replay_allowed": False,
+    }
+    output = Path(paths["status"])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return report
+
+
+def run_live_status(*, manifest_path: Path, production_enabled: bool) -> dict[str, object]:
+    manifest = live_run_manifest.load_manifest(
+        manifest_path, production_enabled=production_enabled
+    )
+    return build_live_status(manifest)
+
+
+def run_live_resume(
+    *,
+    manifest_path: Path,
+    cdp_base_url: str,
+    submitted_date: str | None,
+    production_enabled: bool,
+    commit_external: bool,
+    discord_channel_id: str | None,
+    discord_token_env: str,
+    transport_factory: LiveTransportFactory,
+    health_probe: LiveHealthProbe,
+    tracker_adapter: object | None,
+    discord_adapter: object | None,
+) -> dict[str, object]:
+    """Resume only confirmation inspection or claimed downstream read-back."""
+    manifest = live_run_manifest.load_manifest(
+        manifest_path, production_enabled=production_enabled
+    )
+    status_report = build_live_status(manifest)
+    if status_report["next_action"] == "inspect_confirmation_without_replay":
+        _, summary = run_live_confirmation(
+            manifest_path=manifest_path,
+            cdp_base_url=cdp_base_url,
+            production_enabled=production_enabled,
+            transport_factory=transport_factory,
+            health_probe=health_probe,
+        )
+        return {
+            **summary,
+            "resume_action": "confirmation_inspection_without_replay",
+            "submit_replay_allowed": False,
+        }
+    if status_report["next_action"] == "resume_delivery_readback":
+        if not isinstance(submitted_date, str) or not submitted_date:
+            raise OperatorBlockedError("submitted date is required for delivery read-back")
+        delivery = run_live_delivery(
+            manifest_path=manifest_path,
+            submitted_date=submitted_date,
+            production_enabled=production_enabled,
+            commit_external=commit_external,
+            discord_channel_id=discord_channel_id,
+            discord_token_env=discord_token_env,
+            tracker_adapter=tracker_adapter,
+            discord_adapter=discord_adapter,
+        )
+        return {
+            **delivery,
+            "resume_action": "delivery_readback_without_replay",
+            "submit_replay_allowed": False,
+        }
+    return {
+        **status_report,
+        "resume_action": "none",
+        "resume_performed": False,
+    }
+
+
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -1550,6 +1729,17 @@ def main(
     live_deliver.add_argument("--discord-channel-id")
     live_deliver.add_argument("--discord-token-env", default="JOB_AGENT_DISCORD_BOT_TOKEN")
     live_deliver.add_argument("--enable-production-live", action="store_true")
+    live_status = live_commands.add_parser("status")
+    live_status.add_argument("--manifest", required=True)
+    live_status.add_argument("--enable-production-live", action="store_true")
+    live_resume = live_commands.add_parser("resume")
+    live_resume.add_argument("--manifest", required=True)
+    live_resume.add_argument("--submitted-date")
+    live_resume.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
+    live_resume.add_argument("--commit-external", action="store_true")
+    live_resume.add_argument("--discord-channel-id")
+    live_resume.add_argument("--discord-token-env", default="JOB_AGENT_DISCORD_BOT_TOKEN")
+    live_resume.add_argument("--enable-production-live", action="store_true")
     args = parser.parse_args(argv)
 
     if args.command == "live":
@@ -1615,7 +1805,7 @@ def main(
                     health_probe=live_health_probe,
                 )
                 exit_code = 0 if wrapper["portal"]["portal_confirmed"] else 1
-            else:
+            elif args.live_command == "deliver":
                 result = run_live_delivery(
                     manifest_path=Path(args.manifest),
                     submitted_date=args.submitted_date,
@@ -1627,6 +1817,27 @@ def main(
                     discord_adapter=live_discord_adapter,
                 )
                 exit_code = 0 if result.get("status") == "complete" else 1
+            elif args.live_command == "status":
+                result = run_live_status(
+                    manifest_path=Path(args.manifest),
+                    production_enabled=args.enable_production_live,
+                )
+                exit_code = 0
+            else:
+                result = run_live_resume(
+                    manifest_path=Path(args.manifest),
+                    cdp_base_url=args.cdp_base_url,
+                    submitted_date=args.submitted_date,
+                    production_enabled=args.enable_production_live,
+                    commit_external=args.commit_external,
+                    discord_channel_id=args.discord_channel_id,
+                    discord_token_env=args.discord_token_env,
+                    transport_factory=live_transport_factory,
+                    health_probe=live_health_probe,
+                    tracker_adapter=live_tracker_adapter,
+                    discord_adapter=live_discord_adapter,
+                )
+                exit_code = 1 if result.get("status") == "partial" else 0
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({
                 "error": str(exc),

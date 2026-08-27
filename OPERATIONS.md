@@ -89,6 +89,8 @@ Run `python production_operator.py live confirmation --manifest runtime/live-run
 
 For local proof, run `python production_operator.py live deliver --manifest runtime/live-run/manifest.json --submitted-date YYYY-MM-DD`; sanitized manifests always use local adapters and reject external commit. A production manifest requires all of `--enable-production-live`, `--commit-external`, and the exact `--discord-channel-id`. Provide the Discord bot token only through the runtime environment named by `--discord-token-env` (default `JOB_AGENT_DISCORD_BOT_TOKEN`); never put it in a manifest or command value. The tracker row and Discord content carry the same transaction-specific hash markers used for authenticated read-back. If delivery is partial, do not manually append or resend—resume read-back against `runtime_paths.transaction_db`.
 
+Use `python production_operator.py live status --manifest runtime/live-run/manifest.json` before any recovery. It reports preparation, Review, authorization, submit, confirmation, tracker, and Discord from durable evidence and writes the same sanitized report to `runtime_paths.status`. `live resume` is intentionally narrow: after any submit intent it may only run learned confirmation/Candidate Home inspection; after a claimed tracker or Discord attempt it may only re-enter coordinator read-back. Supply `--submitted-date` and the original external gates for delivery recovery. For all other next actions, `resume` returns instructions without performing the stage. Never delete a journal/database row to make status appear earlier.
+
 ### Tracker smoke test
 
 ```bash
