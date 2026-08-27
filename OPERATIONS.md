@@ -54,6 +54,10 @@ Use only `execute_one_shot_submit(...)` with an exact-target page implementation
 
 Run sanitized confirmation HTML through `extract_confirmation(...)` for the exact learned ATS platform. Then independently inventory candidate home/application list and call `reconcile_candidate_portal(...)`. The confirmation URL or reference must bind the requisition, and exactly one portal record must match platform, company, role, and requisition while explicitly reporting both `state: submitted` and `submitted: true`. Missing, pending, identity-mismatched, or duplicate records remain human-required. Preserve the sanitized text hash/reference only; do not persist raw confirmation HTML. Tracker or notification work is forbidden until both `portal_confirmed` and `safe_for_post_submit` are true.
 
+### Post-submit delivery transaction
+
+Pass only verified portal evidence to `PostSubmitTransactionCoordinator`. The coordinator first checks for an existing tracker row by transaction ID, records tracker-append intent before one append, and requires exact Sheets read-back of the transaction/payload hash. Discord is forbidden until that read-back is verified. It then checks for an existing message, records send intent before one send, and requires exact Discord read-back of the transaction/message hash. A partial result is resumable only through read-back; never manually retry append/send, alter hashed inputs, or revisit submit. The complete artifact contains hashes, receipt IDs, job identity, and verification flags only.
+
 ### Tracker smoke test
 
 ```bash
@@ -98,6 +102,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 - Authorization tokens must remain runtime-only, expire explicitly, be consumed once, and be reissued only after a fresh authoritative Review when any binding drifts.
 - Submit intent must be journaled before the only exact click; interruption and unknown confirmation state are inspection-only and must never replay submission.
 - A success-looking confirmation page is insufficient: learned-handler confirmation and an exact, unique, explicitly submitted candidate-portal read-back are both mandatory.
+- Tracker append/read-back must precede Discord send/read-back; partial recovery is read-back-only and may never duplicate tracker, message, or submit side effects.
 
 ## Release checklist for engineering changes
 
