@@ -87,6 +87,8 @@ Run `python production_operator.py live submit --manifest runtime/live-run/manif
 
 Run `python production_operator.py live confirmation --manifest runtime/live-run/manifest.json` whether the submit call observed confirmation or ended uncertain after consumption. This command is observation-only and requires the exact submit journal. It does not navigate to Candidate Home: the learned tenant reader must expose an authenticated exact-page read-back seam. Require one exact explicitly submitted record and `safe_for_post_submit: true` in `runtime_paths.confirmation`. If the reader is unavailable or any identity/state evidence differs, preserve the human-required artifact and escalate; never replay submit or infer success from the confirmation page alone.
 
+For local proof, run `python production_operator.py live deliver --manifest runtime/live-run/manifest.json --submitted-date YYYY-MM-DD`; sanitized manifests always use local adapters and reject external commit. A production manifest requires all of `--enable-production-live`, `--commit-external`, and the exact `--discord-channel-id`. Provide the Discord bot token only through the runtime environment named by `--discord-token-env` (default `JOB_AGENT_DISCORD_BOT_TOKEN`); never put it in a manifest or command value. The tracker row and Discord content carry the same transaction-specific hash markers used for authenticated read-back. If delivery is partial, do not manually append or resend—resume read-back against `runtime_paths.transaction_db`.
+
 ### Tracker smoke test
 
 ```bash

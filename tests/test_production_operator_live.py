@@ -808,3 +808,130 @@ def test_live_confirmation_cli_persists_sanitized_exact_candidate_home_reconcili
     }
     assert "<html" not in persisted_text.casefold()
     assert str(tmp_path) not in persisted_text
+
+
+def test_live_delivery_cli_uses_injected_local_adapters_in_order_and_is_idempotent(
+    tmp_path, capsys
+):
+    import production_operator
+
+    manifest_path, _, manifest = _write_live_inputs(tmp_path)
+    portal = {
+        "portal_confirmed": True,
+        "safe_for_post_submit": True,
+        "platform": "greenhouse",
+        "identity": {
+            key: manifest["identity"][key]
+            for key in ("company", "role", "requisition")
+        },
+        "confirmation": {
+            "url": PAGE_URL,
+            "reference_id": None,
+            "submitted": True,
+            "text_sha256": "a" * 64,
+        },
+        "portal_readback": {
+            "matched_application_count": 1,
+            "state": "submitted",
+            "submitted": True,
+            "verified": True,
+        },
+        "human_required": [],
+        "evidence": {"sanitized": True, "two_source_reconciliation": True},
+        "reader": {"platform": "greenhouse", "tenant": "fixture", "verified": True},
+    }
+    Path(manifest["runtime_paths"]["confirmation"]).write_text(
+        json.dumps(
+            {
+                "status": "portal_confirmed",
+                "job_identity": {
+                    "job_id": manifest["job_id"],
+                    "queue_id": manifest["queue_id"],
+                    "target_id": manifest["target"]["id"],
+                    "page_url": manifest["target"]["url"],
+                    **manifest["identity"],
+                },
+                "portal": portal,
+            }
+        )
+    )
+    events = []
+
+    class Tracker:
+        def __init__(self):
+            self.record = None
+            self.appends = 0
+
+        def append(self, **kwargs):
+            events.append("tracker.append")
+            self.appends += 1
+            self.record = kwargs
+
+        def read_back(self, *, transaction_id):
+            events.append("tracker.read_back")
+            if self.record is None:
+                return None
+            return {
+                "verified": True,
+                "transaction_id": transaction_id,
+                "payload_sha256": self.record["payload_sha256"],
+                "receipt_id": "local-row",
+            }
+
+    class Discord:
+        def __init__(self):
+            self.record = None
+            self.sends = 0
+
+        def send(self, **kwargs):
+            events.append("discord.send")
+            self.sends += 1
+            self.record = kwargs
+
+        def read_back(self, *, transaction_id):
+            events.append("discord.read_back")
+            if self.record is None:
+                return None
+            return {
+                "verified": True,
+                "transaction_id": transaction_id,
+                "message_sha256": self.record["message_sha256"],
+                "receipt_id": "local-message",
+            }
+
+    tracker_adapter = Tracker()
+    discord_adapter = Discord()
+    argv = [
+        "live",
+        "deliver",
+        "--manifest",
+        str(manifest_path),
+        "--submitted-date",
+        "2026-08-27",
+    ]
+    assert production_operator.main(
+        argv,
+        live_tracker_adapter=tracker_adapter,
+        live_discord_adapter=discord_adapter,
+    ) == 0
+    first = json.loads(capsys.readouterr().out)
+    assert first["status"] == "complete"
+    assert first["tracker"]["readback_verified"] is True
+    assert first["discord"]["readback_verified"] is True
+    assert events == [
+        "tracker.read_back",
+        "tracker.append",
+        "tracker.read_back",
+        "discord.read_back",
+        "discord.send",
+        "discord.read_back",
+    ]
+
+    assert production_operator.main(
+        argv,
+        live_tracker_adapter=tracker_adapter,
+        live_discord_adapter=discord_adapter,
+    ) == 0
+    assert json.loads(capsys.readouterr().out) == first
+    assert tracker_adapter.appends == 1
+    assert discord_adapter.sends == 1

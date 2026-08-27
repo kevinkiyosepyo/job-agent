@@ -250,6 +250,16 @@ python production_operator.py live confirmation \
 
 The stage requires exact submit-journal evidence, rebinds only the manifest target, validates confirmation through the matching learned ATS handler, and calls the verified `(platform, tenant)` Candidate Home reader. Njoyn, Workday, Greenhouse, Lever, and Oracle are registered. Exactly one matching company/role/requisition record must report both `state: submitted` and `submitted: true`. The sanitized result is written to `runtime_paths.confirmation`; raw HTML and portal payloads are not. An unavailable tenant reader, uncertain confirmation, identity/state mismatch, or duplicate match becomes `human_required` and remains unsafe for post-submit delivery.
 
+For a sanitized/local run, verify the downstream transaction with local adapters:
+
+```bash
+python production_operator.py live deliver \
+  --manifest runtime/live-run/manifest.json \
+  --submitted-date 2026-08-27
+```
+
+Delivery requires the exact portal-confirmed artifact. The durable coordinator performs tracker lookup/append/authenticated read-back before Discord lookup/send/authenticated read-back, with one stable transaction ID and separate payload/message hashes. Sanitized mode forbids `--commit-external` and uses local adapters. A `production_live` manifest additionally requires `--enable-production-live --commit-external --discord-channel-id '<exact-channel-id>'`; the Discord token is fetched at call time from the named environment variable and is never persisted. `GoogleSheetsTransactionAdapter` and `DiscordTransactionAdapter` independently require the `commit_external` capability, embed idempotency markers, and refuse changed hashes. Partial recovery is read-back-only.
+
 ## Offline setup diagnostics
 
 ```bash

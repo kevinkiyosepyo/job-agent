@@ -25,8 +25,10 @@ import browser_health
 import confirmation_reconciliation
 import greenhouse_handler
 import live_confirmation_reader
+import live_delivery_adapters
 import live_review_reader
 import live_run_manifest
+import notifier
 import one_shot_submit
 import post_submit_transaction
 import prepare_live_job
@@ -1391,6 +1393,95 @@ def run_live_confirmation(
     return wrapper, summary
 
 
+def run_live_delivery(
+    *,
+    manifest_path: Path,
+    submitted_date: str,
+    production_enabled: bool,
+    commit_external: bool,
+    discord_channel_id: str | None,
+    discord_token_env: str,
+    tracker_adapter: object | None,
+    discord_adapter: object | None,
+) -> dict[str, object]:
+    """Run portal → tracker/read-back → Discord/read-back under explicit mode."""
+    manifest = live_run_manifest.load_manifest(
+        manifest_path, production_enabled=production_enabled
+    )
+    try:
+        datetime.strptime(submitted_date, "%Y-%m-%d")
+    except (TypeError, ValueError) as exc:
+        raise OperatorBlockedError("submitted date must be explicit YYYY-MM-DD") from exc
+    confirmation = _load_runtime_object(
+        manifest["runtime_paths"]["confirmation"], label="confirmation evidence"
+    )
+    if (
+        set(confirmation) != {"status", "job_identity", "portal"}
+        or confirmation.get("status") != "portal_confirmed"
+        or confirmation.get("job_identity") != _manifest_job_identity(manifest)
+        or not isinstance(confirmation.get("portal"), dict)
+    ):
+        raise OperatorBlockedError("exact portal-confirmed artifact is required")
+
+    if manifest["mode"] == "production_live":
+        if commit_external is not True:
+            raise OperatorBlockedError("explicit external commit mode is required")
+        if tracker_adapter is None:
+            tracker_adapter = live_delivery_adapters.GoogleSheetsTransactionAdapter(
+                commit_mode=live_delivery_adapters.COMMIT_EXTERNAL
+            )
+        if discord_adapter is None:
+            if not isinstance(discord_channel_id, str) or not discord_channel_id:
+                raise OperatorBlockedError("explicit Discord channel ID is required")
+            if not isinstance(discord_token_env, str) or not discord_token_env:
+                raise OperatorBlockedError("Discord runtime token environment name is required")
+            client = live_delivery_adapters.DiscordRESTClient(
+                token_provider=lambda: os.environ.get(discord_token_env, "")
+            )
+            discord_adapter = live_delivery_adapters.DiscordTransactionAdapter(
+                commit_mode=live_delivery_adapters.COMMIT_EXTERNAL,
+                channel_id=discord_channel_id,
+                client=client,
+            )
+        delivery_mode = "external_commit"
+    else:
+        if commit_external is True:
+            raise OperatorBlockedError("external commit is forbidden for sanitized manifests")
+        tracker_adapter = tracker_adapter or _TimedLocalTracker()
+        discord_adapter = discord_adapter or _TimedLocalDiscord()
+        delivery_mode = "sanitized_local"
+
+    identity = manifest["identity"]
+    tracker_payload = {
+        "company": identity["company"],
+        "status": "Submitted - Pending Response",
+        "role": identity["role"],
+        "salary": "",
+        "date_submitted": submitted_date,
+        "job_url": manifest["target"]["url"],
+        "rejection_reason": "N/A",
+        "notes": f"Verified portal confirmation for requisition {identity['requisition']}",
+    }
+    discord_message = notifier.build_message(
+        "applied",
+        company=identity["company"],
+        role=identity["role"],
+        url=manifest["target"]["url"],
+        detail=f"Verified requisition {identity['requisition']}",
+    )
+    transaction = post_submit_transaction.PostSubmitTransactionCoordinator(
+        state_path=manifest["runtime_paths"]["transaction_db"],
+        tracker=tracker_adapter,  # type: ignore[arg-type]
+        discord=discord_adapter,  # type: ignore[arg-type]
+    ).run(
+        job_id=manifest["job_id"],
+        portal_evidence=confirmation["portal"],
+        tracker_payload=tracker_payload,
+        discord_message=discord_message,
+    )
+    return {**transaction, "delivery_mode": delivery_mode}
+
+
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -1403,6 +1494,8 @@ def main(
     live_health_probe: LiveHealthProbe = browser_health.probe_cdp_health,
     live_coverage: LiveCoverage = prepare_live_job.build_coverage_matrix,
     live_clock: LiveClock = _utc_now,
+    live_tracker_adapter: object | None = None,
+    live_discord_adapter: object | None = None,
 ) -> int:
     parser = argparse.ArgumentParser(description="Guarded production operator proof")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -1450,6 +1543,13 @@ def main(
     live_confirmation.add_argument("--manifest", required=True)
     live_confirmation.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
     live_confirmation.add_argument("--enable-production-live", action="store_true")
+    live_deliver = live_commands.add_parser("deliver")
+    live_deliver.add_argument("--manifest", required=True)
+    live_deliver.add_argument("--submitted-date", required=True)
+    live_deliver.add_argument("--commit-external", action="store_true")
+    live_deliver.add_argument("--discord-channel-id")
+    live_deliver.add_argument("--discord-token-env", default="JOB_AGENT_DISCORD_BOT_TOKEN")
+    live_deliver.add_argument("--enable-production-live", action="store_true")
     args = parser.parse_args(argv)
 
     if args.command == "live":
@@ -1506,7 +1606,7 @@ def main(
                     clock=live_clock,
                 )
                 exit_code = 0 if result.get("status") == "confirmation_observed" else 1
-            else:
+            elif args.live_command == "confirmation":
                 wrapper, result = run_live_confirmation(
                     manifest_path=Path(args.manifest),
                     cdp_base_url=args.cdp_base_url,
@@ -1515,6 +1615,18 @@ def main(
                     health_probe=live_health_probe,
                 )
                 exit_code = 0 if wrapper["portal"]["portal_confirmed"] else 1
+            else:
+                result = run_live_delivery(
+                    manifest_path=Path(args.manifest),
+                    submitted_date=args.submitted_date,
+                    production_enabled=args.enable_production_live,
+                    commit_external=args.commit_external,
+                    discord_channel_id=args.discord_channel_id,
+                    discord_token_env=args.discord_token_env,
+                    tracker_adapter=live_tracker_adapter,
+                    discord_adapter=live_discord_adapter,
+                )
+                exit_code = 0 if result.get("status") == "complete" else 1
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({
                 "error": str(exc),
