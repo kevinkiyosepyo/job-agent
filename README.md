@@ -204,6 +204,18 @@ python production_operator.py live prepare \
 
 It never chooses a tab: the exact target ID comes from the manifest. Before any mapped field action it verifies loopback CDP health, the current target/URL and job identity, the learned tenant and step, answer coverage, visible/unobscured controls, and profile-selected `Resume.pdf` bytes. The result at the manifest's `runtime_paths.preparation` contains identifiers, verified field evidence, and gate booleans only; answer values and local paths are removed. Production manifests additionally require `--enable-production-live`; sanitized/local development does not use that flag.
 
+After the ATS is visibly on its learned Review surface, extract and reconcile it separately:
+
+```bash
+python production_operator.py live review \
+  --manifest runtime/live-run/manifest.json \
+  --approved-answers runtime/live-run/approved-answers.json \
+  --step application \
+  --required-question work_authorization
+```
+
+The command freshly rebinds and revalidates the exact page, reads only a learned platform Review seam (falling back to conservative versioned-map observation), and compares it with the prior preparation, explicit approved answers, and exact resume evidence. Stdout contains only the Review hash, verified field identifiers, blockers, and exact job identity. The persisted `runtime_paths.review` wrapper is likewise value-free. Missing server resume hashes, parser repairs, required-question evidence, or tenant readers remain blockers; Review authority is still not submit authority.
+
 ## Offline setup diagnostics
 
 ```bash

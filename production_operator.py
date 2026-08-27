@@ -21,6 +21,7 @@ import browser_integration_canary
 import browser_health
 import confirmation_reconciliation
 import greenhouse_handler
+import live_review_reader
 import live_run_manifest
 import one_shot_submit
 import post_submit_transaction
@@ -766,6 +767,161 @@ def run_live_prepare(
     return sanitized
 
 
+def _manifest_job_identity(manifest: dict) -> dict[str, object]:
+    return {
+        "job_id": manifest["job_id"],
+        "queue_id": manifest["queue_id"],
+        "target_id": manifest["target"]["id"],
+        "page_url": manifest["target"]["url"],
+        **manifest["identity"],
+    }
+
+
+def _review_summary(wrapper: dict) -> dict[str, object]:
+    review = wrapper["review"]
+    return {
+        "status": wrapper["status"],
+        "review_authoritative": review.get("review_authoritative") is True,
+        "review_evidence_sha256": review.get("review_evidence_sha256"),
+        "verified_fields": [
+            item["field"]
+            for item in review.get("fields", [])
+            if isinstance(item, dict) and item.get("verified") is True
+        ],
+        "blockers": review.get("human_required", []),
+        "job_identity": wrapper["job_identity"],
+    }
+
+
+def run_live_review(
+    *,
+    manifest_path: Path,
+    approved_answers_path: Path,
+    step: str,
+    required_parser_repairs: list[str],
+    required_question_ids: list[str],
+    cdp_base_url: str,
+    production_enabled: bool,
+    transport_factory: LiveTransportFactory = ScopedCDPTransport,
+    health_probe: LiveHealthProbe = browser_health.probe_cdp_health,
+) -> tuple[dict, dict]:
+    """Freshly observe Review and persist canonical, value-free authority evidence."""
+    prepare_live_job._validate_local_cdp_base_url(cdp_base_url)
+    manifest = live_run_manifest.load_manifest(
+        manifest_path, production_enabled=production_enabled
+    )
+    _, resume = _verified_profile_resume(manifest)
+    preparation = _load_runtime_object(
+        manifest["runtime_paths"]["preparation"], label="preparation evidence"
+    )
+    identity = manifest["identity"]
+    target = manifest["target"]
+    mapping = tenant_field_maps.resolve_field_map(
+        page_url=target["url"], platform=identity["platform"]
+    )
+    if mapping.get("tenant") != identity["tenant"]:
+        raise OperatorBlockedError("learned tenant differs from manifest identity")
+    live_run_manifest.validate_manifest(
+        manifest,
+        production_enabled=production_enabled,
+        observed_binding={
+            "target_id": preparation.get("target_id"),
+            "page_url": preparation.get("page_url"),
+            **(
+                preparation.get("identity")
+                if isinstance(preparation.get("identity"), dict)
+                else {}
+            ),
+            "platform": preparation.get("platform"),
+            "tenant": mapping["tenant"],
+        },
+    )
+    approved_answers = _load_runtime_object(
+        approved_answers_path, label="approved answers"
+    )
+    resume_answer = approved_answers.get("resume")
+    if resume_answer is not None and Path(str(resume_answer)).resolve() != Path(
+        resume["path"]
+    ).resolve():
+        raise OperatorBlockedError("approved resume differs from profile-selected Resume.pdf")
+    approved_answers["resume"] = str(Path(resume["path"]).resolve())
+    actions = tenant_field_maps.build_step_actions(
+        mapping=mapping, step=step, approved_answers=approved_answers
+    )
+    profile_fields = {
+        str(action["selector"]): action["value"]
+        for action in actions
+        if action.get("operation") != "cdp_upload"
+    }
+
+    health = health_probe(cdp_base_url)
+    if not isinstance(health, dict) or health.get("status") != "ready":
+        raise OperatorBlockedError("loopback Chrome CDP health gate failed")
+    transport = transport_factory(cdp_base_url)
+    with transport.bind_mutable_page_target(target["id"]) as page:  # type: ignore[attr-defined]
+        snapshot = page.read_only_snapshot()
+        html = snapshot.get("html") if isinstance(snapshot, dict) else None
+        if not isinstance(html, str):
+            raise OperatorBlockedError("exact Review target HTML was unavailable")
+        expected_identity = {
+            key: identity[key] for key in ("company", "role", "requisition")
+        }
+        observed = prepare_live_job._dispatch_live_html(
+            html_text=html,
+            page_url=target["url"],
+            expected_identity=expected_identity,
+            expected_platform=identity["platform"],
+        )
+        live_run_manifest.validate_manifest(
+            manifest,
+            production_enabled=production_enabled,
+            observed_binding={
+                "target_id": snapshot.get("target_id"),
+                "page_url": snapshot.get("url"),
+                **{key: observed.get(key) for key in ("company", "role", "requisition")},
+                "platform": observed.get("platform"),
+                "tenant": mapping["tenant"],
+            },
+        )
+        server_review = live_review_reader.read_server_review(
+            page=page,
+            platform=identity["platform"],
+            mapping=mapping,
+            step=step,
+            target_id=target["id"],
+            page_url=target["url"],
+            identity=expected_identity,
+            required_parser_repairs=required_parser_repairs,
+            required_question_ids=required_question_ids,
+        )
+
+    authoritative = review_reconciler.reconcile_review(
+        preparation_evidence=preparation,
+        server_review=server_review,
+        expected_target={
+            "target_id": target["id"],
+            "page_url": target["url"],
+            **{key: identity[key] for key in ("company", "role", "requisition")},
+        },
+        profile_fields=profile_fields,
+        resume_preflight={
+            key: resume[key]
+            for key in ("basename", "content_type", "sha256", "verified")
+        },
+        required_parser_repairs=required_parser_repairs,
+        required_question_ids=required_question_ids,
+    )
+    wrapper = {
+        "status": "reviewed" if authoritative["review_authoritative"] else "blocked",
+        "job_identity": _manifest_job_identity(manifest),
+        "review": authoritative,
+    }
+    output = Path(manifest["runtime_paths"]["review"])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(wrapper, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return wrapper, _review_summary(wrapper)
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -791,31 +947,54 @@ def main(
     live_prepare.add_argument("--step", required=True)
     live_prepare.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
     live_prepare.add_argument("--enable-production-live", action="store_true")
+    live_review = live_commands.add_parser("review")
+    live_review.add_argument("--manifest", required=True)
+    live_review.add_argument("--approved-answers", required=True)
+    live_review.add_argument("--step", required=True)
+    live_review.add_argument("--required-parser-repair", action="append", default=[])
+    live_review.add_argument("--required-question", action="append", default=[])
+    live_review.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
+    live_review.add_argument("--enable-production-live", action="store_true")
     args = parser.parse_args(argv)
 
     if args.command == "live":
         try:
-            result = run_live_prepare(
-                manifest_path=Path(args.manifest),
-                approved_answers_path=Path(args.approved_answers),
-                step=args.step,
-                cdp_base_url=args.cdp_base_url,
-                production_enabled=args.enable_production_live,
-                transport_factory=live_transport_factory,
-                health_probe=live_health_probe,
-                coverage=live_coverage,
-            )
+            if args.live_command == "prepare":
+                result = run_live_prepare(
+                    manifest_path=Path(args.manifest),
+                    approved_answers_path=Path(args.approved_answers),
+                    step=args.step,
+                    cdp_base_url=args.cdp_base_url,
+                    production_enabled=args.enable_production_live,
+                    transport_factory=live_transport_factory,
+                    health_probe=live_health_probe,
+                    coverage=live_coverage,
+                )
+                exit_code = 0
+            else:
+                wrapper, result = run_live_review(
+                    manifest_path=Path(args.manifest),
+                    approved_answers_path=Path(args.approved_answers),
+                    step=args.step,
+                    required_parser_repairs=args.required_parser_repair,
+                    required_question_ids=args.required_question,
+                    cdp_base_url=args.cdp_base_url,
+                    production_enabled=args.enable_production_live,
+                    transport_factory=live_transport_factory,
+                    health_probe=live_health_probe,
+                )
+                exit_code = 0 if wrapper["review"]["review_authoritative"] else 1
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({
                 "error": str(exc),
-                "stage": "prepare",
+                "stage": args.live_command,
                 "status": "blocked",
                 "submission_enabled": False,
                 "review_evidence_persisted": False,
             }, sort_keys=True))
             return 2
         print(json.dumps(result, sort_keys=True))
-        return 0
+        return exit_code
 
     if args.command == "audit":
         try:

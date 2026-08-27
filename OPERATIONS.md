@@ -79,6 +79,8 @@ Keep every unified-run manifest and all paths it names under ignored, access-con
 
 For a sanitized/local manifest, run `python production_operator.py live prepare --manifest runtime/live-run/manifest.json --approved-answers runtime/live-run/approved-answers.json --step application --cdp-base-url http://127.0.0.1:9222`. Supply the exact target in the manifest; the command has no target auto-selection or navigation path. It must stop if CDP is not healthy, the exact target/identity changes, the handler or learned tenant differs, coverage remains human-required, controls are hidden/obscured, or the profile-selected PDF differs from the manifest. Treat the sanitized preparation artifact as input to Review only, never as approval or submission evidence.
 
+Once the human has inspected the Review page, run `python production_operator.py live review --manifest runtime/live-run/manifest.json --approved-answers runtime/live-run/approved-answers.json --step application`, adding repeatable `--required-parser-repair` and `--required-question` identifiers from the learned flow. This stage rebinds rather than trusting preparation-time state. A platform-specific learned reader may supply server-rendered evidence; otherwise the mapped fallback deliberately leaves unavailable resume hashes and question/repair evidence unverified. A blocked Review is useful evidence and exits nonzero. Never edit blockers out of `runtime_paths.review` or treat its canonical hash as authorization.
+
 ### Tracker smoke test
 
 ```bash

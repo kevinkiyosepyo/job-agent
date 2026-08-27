@@ -167,3 +167,14 @@ class MutableCDPPageAdapter:
             self._script(selector, "return element.files && element.files[0] ? element.files[0].name : '';"),
         )
         return value if isinstance(value, str) else ""
+
+    def read_uploaded_sha256(self, selector: str) -> str:
+        """Read a server-rendered upload digest when a learned tenant exposes one."""
+        self._fresh_target()
+        value = self._evaluate(
+            self._script(
+                selector,
+                "return element.dataset.uploadedSha256 || element.dataset.fileSha256 || '';",
+            )
+        )
+        return value if isinstance(value, str) else ""

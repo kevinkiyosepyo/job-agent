@@ -229,3 +229,167 @@ def test_live_prepare_cli_exact_binds_runs_gates_uploads_profile_resume_and_pers
         str(tmp_path),
     ):
         assert sensitive not in persisted_text
+
+
+def test_live_review_cli_reads_exact_server_review_and_persists_only_authority_evidence(
+    tmp_path, capsys
+):
+    import production_operator
+
+    manifest_path, answers_path, manifest = _write_live_inputs(tmp_path)
+    fixture_html = (ROOT / "fixtures" / "local_operator_e2e.html").read_text()
+    answers = json.loads(answers_path.read_text())
+    preparation = {
+        "target_id": "target-abc",
+        "page_url": PAGE_URL,
+        "identity": {
+            key: manifest["identity"][key]
+            for key in ("company", "role", "requisition")
+        },
+        "platform": "greenhouse",
+        "submission_enabled": False,
+        "review_ready": True,
+        "answer_coverage": {"human_required": []},
+        "applied_answers": {
+            "verified": True,
+            "field_evidence": [
+                {"selector": selector, "verified": True}
+                for selector in (
+                    "#first_name",
+                    "#last_name",
+                    "#email",
+                    "#phone",
+                    "#resume",
+                    "#authorization",
+                    "#sponsorship",
+                )
+            ],
+        },
+        "evidence": {
+            "sanitized": True,
+            "target_bound": True,
+            "answer_values_persisted": False,
+        },
+    }
+    Path(manifest["runtime_paths"]["preparation"]).write_text(json.dumps(preparation))
+
+    class ReviewPage:
+        target_id = "target-abc"
+
+        def __init__(self):
+            self.closed = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.closed = True
+
+        def read_only_snapshot(self):
+            return {
+                "target_id": self.target_id,
+                "url": PAGE_URL,
+                "html": fixture_html,
+                "read_only": True,
+            }
+
+        def read_server_review(self):
+            return {
+                "target_id": self.target_id,
+                "page_url": PAGE_URL,
+                "identity": {
+                    key: manifest["identity"][key]
+                    for key in ("company", "role", "requisition")
+                },
+                "fields": {
+                    "#first_name": answers["first_name"],
+                    "#last_name": answers["last_name"],
+                    "#email": answers["email"],
+                    "#phone": answers["phone"],
+                    "#authorization": answers["work_authorization"],
+                    "#sponsorship": answers["sponsorship"],
+                },
+                "resume": {
+                    "basename": "Resume.pdf",
+                    "sha256": manifest["resume"]["sha256"],
+                },
+                "parser_repairs": [],
+                "questions": [
+                    {
+                        "id": "work_authorization",
+                        "required": True,
+                        "answered": True,
+                        "verified": True,
+                    }
+                ],
+            }
+
+    page = ReviewPage()
+
+    class Transport:
+        def __init__(self, base_url):
+            assert base_url == "http://127.0.0.1:9222"
+
+        def bind_mutable_page_target(self, target_id):
+            assert target_id == "target-abc"
+            return page
+
+    result = production_operator.main(
+        [
+            "live",
+            "review",
+            "--manifest",
+            str(manifest_path),
+            "--approved-answers",
+            str(answers_path),
+            "--step",
+            "application",
+            "--required-question",
+            "work_authorization",
+        ],
+        live_transport_factory=Transport,
+        live_health_probe=lambda base_url: {"status": "ready", "base_url": base_url},
+    )
+
+    assert result == 0
+    assert page.closed is True
+    persisted_text = Path(manifest["runtime_paths"]["review"]).read_text()
+    persisted = json.loads(persisted_text)
+    review = persisted["review"]
+    assert persisted["status"] == "reviewed"
+    assert review["review_authoritative"] is True
+    assert review["submission_authorized"] is False
+    assert review["human_required"] == []
+    assert len(review["review_evidence_sha256"]) == 64
+
+    summary = json.loads(capsys.readouterr().out)
+    assert summary == {
+        "status": "reviewed",
+        "review_authoritative": True,
+        "review_evidence_sha256": review["review_evidence_sha256"],
+        "verified_fields": [
+            "#first_name",
+            "#last_name",
+            "#email",
+            "#phone",
+            "#authorization",
+            "#sponsorship",
+        ],
+        "blockers": [],
+        "job_identity": {
+            "job_id": 41,
+            "queue_id": "queue-41",
+            "target_id": "target-abc",
+            "page_url": PAGE_URL,
+            **manifest["identity"],
+        },
+    }
+    for sensitive in (
+        "Fixture Person",
+        "fixture@example.test",
+        "+1-555-0100",
+        str(tmp_path),
+        manifest["resume"]["sha256"],
+    ):
+        assert sensitive not in persisted_text
+        assert sensitive not in json.dumps(summary)
