@@ -91,6 +91,8 @@ For local proof, run `python production_operator.py live deliver --manifest runt
 
 Use `python production_operator.py live status --manifest runtime/live-run/manifest.json` before any recovery. It reports preparation, Review, authorization, submit, confirmation, tracker, and Discord from durable evidence and writes the same sanitized report to `runtime_paths.status`. `live resume` is intentionally narrow: after any submit intent it may only run learned confirmation/Candidate Home inspection; after a claimed tracker or Discord attempt it may only re-enter coordinator read-back. Supply `--submitted-date` and the original external gates for delivery recovery. For all other next actions, `resume` returns instructions without performing the stage. Never delete a journal/database row to make status appear earlier.
 
+Before binding a normal Chrome page for any mutable stage, run `python production_operator.py live preflight --manifest runtime/live-run/manifest.json --cdp-base-url http://127.0.0.1:9222`. The caller must have already copied the exact page target ID/URL into the manifest. Preflight reads the target twice through `bind_page_target`, confirms its content fingerprint did not change during observation, and revalidates the handler/platform/job identity. It cannot fill, upload, navigate, click, or submit. For release verification, `python -m pytest tests/test_production_operator_live_chrome.py -q` must pass the complete sanitized CLI sequence, overlay block, replay denial, local downstream read-backs, and terminal status.
+
 ### Tracker smoke test
 
 ```bash

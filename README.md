@@ -269,6 +269,17 @@ python production_operator.py live resume --manifest runtime/live-run/manifest.j
 
 `status` writes the value-free seven-stage report to `runtime_paths.status` and recommends exactly one next action. `resume` can perform only confirmation inspection after submit intent or durable tracker/Discord read-back after a claimed downstream attempt. It never calls prepare, Review, authorization, or submit. An uncertain or already verified submit always has `submit_replay_allowed: false`; missing authorization handoffs and invalid artifacts route to human review instead of token reissuance. Delivery recovery requires the same explicit submitted date and, for production, the same external commit gates.
 
+Run the complete real-Chrome CLI integration and the normal-Chrome read-only preflight:
+
+```bash
+python -m pytest tests/test_production_operator_live_chrome.py -q
+python production_operator.py live preflight \
+  --manifest runtime/live-run/manifest.json \
+  --cdp-base-url http://127.0.0.1:9222
+```
+
+The integration launches only the marker-checked local fixture in ephemeral Chrome, translates its exact process-scoped target to the sanitized learned URL, blocks on an overlay, then completes prepare → Review → authorize → one-shot submit → confirmation → local delivery → status. It asserts submit count one and rejects a second submit. `live preflight` is for an already running normal Chrome CDP endpoint: it binds only the manifest target through the read-only transport, takes two fresh snapshots, verifies unchanged content and exact learned identity, and exposes no mutation or submit operation. Production manifests still require explicit production enablement even for preflight.
+
 ## Offline setup diagnostics
 
 ```bash

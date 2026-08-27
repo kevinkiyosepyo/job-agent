@@ -575,6 +575,7 @@ def run_local_sanitized_demo(
 
 DemoRunner = Callable[..., dict]
 LiveTransportFactory = Callable[[str], object]
+LiveReadOnlyTransportFactory = Callable[[str], object]
 LiveHealthProbe = Callable[[str], dict]
 LiveCoverage = Callable[..., dict]
 LiveClock = Callable[[], datetime]
@@ -1604,6 +1605,85 @@ def run_live_status(*, manifest_path: Path, production_enabled: bool) -> dict[st
     return build_live_status(manifest)
 
 
+def run_normal_chrome_preflight(
+    *,
+    manifest_path: Path,
+    cdp_base_url: str,
+    production_enabled: bool,
+    transport_factory: LiveReadOnlyTransportFactory,
+    health_probe: LiveHealthProbe,
+) -> dict[str, object]:
+    """Prove exact-target normal-Chrome attachment through read-only snapshots."""
+    prepare_live_job._validate_local_cdp_base_url(cdp_base_url)
+    manifest = live_run_manifest.load_manifest(
+        manifest_path, production_enabled=production_enabled
+    )
+    health = health_probe(cdp_base_url)
+    if not isinstance(health, dict) or health.get("status") != "ready":
+        raise OperatorBlockedError("loopback Chrome CDP health gate failed")
+    target = manifest["target"]
+    identity = manifest["identity"]
+    transport = transport_factory(cdp_base_url)
+    with transport.bind_page_target(target["id"]) as page:  # type: ignore[attr-defined]
+        before = page.read_only_snapshot()
+        after = page.read_only_snapshot()
+    for snapshot in (before, after):
+        if (
+            not isinstance(snapshot, dict)
+            or snapshot.get("read_only") is not True
+            or snapshot.get("target_id") != target["id"]
+            or snapshot.get("url") != target["url"]
+            or not isinstance(snapshot.get("html"), str)
+        ):
+            raise OperatorBlockedError("read-only exact-target preflight drift detected")
+    fingerprint_keys = ("target_id", "url", "title", "body_text", "html")
+    before_fingerprint = hashlib.sha256(
+        json.dumps(
+            {key: before.get(key) for key in fingerprint_keys},
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    after_fingerprint = hashlib.sha256(
+        json.dumps(
+            {key: after.get(key) for key in fingerprint_keys},
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    if not secrets.compare_digest(before_fingerprint, after_fingerprint):
+        raise OperatorBlockedError("page content changed during read-only preflight")
+    expected_identity = {
+        key: identity[key] for key in ("company", "role", "requisition")
+    }
+    observed = prepare_live_job._dispatch_live_html(
+        html_text=before["html"],
+        page_url=target["url"],
+        expected_identity=expected_identity,
+        expected_platform=identity["platform"],
+    )
+    live_run_manifest.validate_manifest(
+        manifest,
+        production_enabled=production_enabled,
+        observed_binding={
+            "target_id": before["target_id"],
+            "page_url": before["url"],
+            **{key: observed.get(key) for key in ("company", "role", "requisition")},
+            "platform": observed.get("platform"),
+            "tenant": identity["tenant"],
+        },
+    )
+    return {
+        "status": "ready",
+        "exact_target_attached": True,
+        "read_only": True,
+        "content_unchanged": True,
+        "identity_verified": True,
+        "submission_enabled": False,
+        "job_identity": _manifest_job_identity(manifest),
+    }
+
+
 def run_live_resume(
     *,
     manifest_path: Path,
@@ -1670,6 +1750,7 @@ def main(
     *,
     demo_runner: DemoRunner | None = None,
     live_transport_factory: LiveTransportFactory = ScopedCDPTransport,
+    live_readonly_transport_factory: LiveReadOnlyTransportFactory = ScopedCDPTransport,
     live_health_probe: LiveHealthProbe = browser_health.probe_cdp_health,
     live_coverage: LiveCoverage = prepare_live_job.build_coverage_matrix,
     live_clock: LiveClock = _utc_now,
@@ -1740,6 +1821,10 @@ def main(
     live_resume.add_argument("--discord-channel-id")
     live_resume.add_argument("--discord-token-env", default="JOB_AGENT_DISCORD_BOT_TOKEN")
     live_resume.add_argument("--enable-production-live", action="store_true")
+    live_preflight = live_commands.add_parser("preflight")
+    live_preflight.add_argument("--manifest", required=True)
+    live_preflight.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
+    live_preflight.add_argument("--enable-production-live", action="store_true")
     args = parser.parse_args(argv)
 
     if args.command == "live":
@@ -1823,7 +1908,7 @@ def main(
                     production_enabled=args.enable_production_live,
                 )
                 exit_code = 0
-            else:
+            elif args.live_command == "resume":
                 result = run_live_resume(
                     manifest_path=Path(args.manifest),
                     cdp_base_url=args.cdp_base_url,
@@ -1838,6 +1923,15 @@ def main(
                     discord_adapter=live_discord_adapter,
                 )
                 exit_code = 1 if result.get("status") == "partial" else 0
+            else:
+                result = run_normal_chrome_preflight(
+                    manifest_path=Path(args.manifest),
+                    cdp_base_url=args.cdp_base_url,
+                    production_enabled=args.enable_production_live,
+                    transport_factory=live_readonly_transport_factory,
+                    health_probe=live_health_probe,
+                )
+                exit_code = 0
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({
                 "error": str(exc),
