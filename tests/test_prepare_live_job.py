@@ -43,6 +43,12 @@ def test_prepare_live_job_binds_exact_target_verifies_identity_and_stays_non_sub
             "submission_enabled": False,
         },
         coverage=lambda **kwargs: {"known": [], "company_specific": [], "optional_skip": [], "human_required": []},
+        approved_answers={"#first-name": "Kevin"},
+        apply_known=lambda answers: {
+            "action": "fill_known_page",
+            "field_evidence": [{"selector": "#first-name", "expected": answers["#first-name"], "actual": "Kevin", "verified": True}],
+            "verified": True,
+        },
     )
 
     assert result == {
@@ -53,6 +59,11 @@ def test_prepare_live_job_binds_exact_target_verifies_identity_and_stays_non_sub
         "submission_enabled": False,
         "review_ready": True,
         "answer_coverage": {"known": [], "company_specific": [], "optional_skip": [], "human_required": []},
+        "applied_answers": {
+            "action": "fill_known_page",
+            "field_evidence": [{"selector": "#first-name", "expected": "Kevin", "actual": "Kevin", "verified": True}],
+            "verified": True,
+        },
         "evidence": {"sanitized": True, "target_bound": True},
     }
 

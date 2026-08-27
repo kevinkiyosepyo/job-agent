@@ -36,6 +36,8 @@ def prepare_live_job(
     profile: dict,
     prepare: Prepare,
     coverage: Coverage,
+    approved_answers: dict[str, str] | None = None,
+    apply_known: Callable[[dict[str, str]], dict[str, object]] | None = None,
 ) -> dict:
     """Inspect one fresh exact target and emit non-submitting Review evidence."""
     snapshot = page.read_only_snapshot()
@@ -59,6 +61,14 @@ def prepare_live_job(
     if not isinstance(questions, list):
         raise LivePreparationError("handler returned invalid question inventory")
     answer_coverage = coverage(profile=profile, questions=questions, company=identity["company"])
+    answers = dict(approved_answers or {})
+    if answers and apply_known is None:
+        raise LivePreparationError("approved answers require an exact-target apply operation")
+    applied_answers = apply_known(answers) if answers else {
+        "action": "fill_known_page", "field_evidence": [], "verified": True,
+    }
+    if applied_answers.get("verified") is not True:
+        raise LivePreparationError("approved answer read-back was not verified")
     review_ready = not answer_coverage.get("human_required")
     return {
         "target_id": target_id,
@@ -68,5 +78,6 @@ def prepare_live_job(
         "submission_enabled": False,
         "review_ready": review_ready,
         "answer_coverage": answer_coverage,
+        "applied_answers": applied_answers,
         "evidence": {"sanitized": True, "target_bound": True},
     }
