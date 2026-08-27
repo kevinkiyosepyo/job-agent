@@ -26,6 +26,13 @@ class FakeCDPPage:
     def read_value(self, selector: str) -> str:
         return self.values[selector]
 
+    def select_option(self, selector: str, value: str) -> None:
+        self.operations.append(("native_select", selector, value))
+        self.values[selector] = value
+
+    def read_selected_option(self, selector: str) -> str:
+        return self.values[selector]
+
 
 def test_executor_replaces_text_only_after_exact_target_readback():
     import cdp_page_executor
@@ -46,6 +53,31 @@ def test_executor_replaces_text_only_after_exact_target_readback():
         "selector": "#first-name",
         "expected": "Kevin",
         "actual": "Kevin",
+        "verified": True,
+        "target_id": "page-42",
+        "target_url": "https://careers.example.test/apply",
+    }
+
+
+def test_executor_selects_native_option_only_after_exact_target_readback():
+    import cdp_page_executor
+
+    page = FakeCDPPage(target_id="page-42", url="https://careers.example.test/apply")
+    executor = cdp_page_executor.CDPPageExecutor(page)
+
+    evidence = executor.native_select(
+        target_id="page-42",
+        expected_url="https://careers.example.test/apply",
+        selector="#source",
+        value="social-media",
+    )
+
+    assert page.operations == [("native_select", "#source", "social-media")]
+    assert evidence == {
+        "action": "native_select",
+        "selector": "#source",
+        "expected": "social-media",
+        "actual": "social-media",
         "verified": True,
         "target_id": "page-42",
         "target_url": "https://careers.example.test/apply",

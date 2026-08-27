@@ -20,6 +20,10 @@ class ExactTargetTextPage(Protocol):
 
     def read_value(self, selector: str) -> str: ...
 
+    def select_option(self, selector: str, value: str) -> None: ...
+
+    def read_selected_option(self, selector: str) -> str: ...
+
 
 class StaleTargetError(ValueError):
     """Raised before mutation when the bound page identity or URL changed."""
@@ -49,4 +53,12 @@ class CDPPageExecutor:
         """Replace text once after target read-back, returning action evidence."""
         target_url = self._verify_target(target_id, expected_url)
         evidence = browser_actions.replace_text(self._page, selector, value)
+        return {**evidence, "target_id": target_id, "target_url": target_url}
+
+    def native_select(
+        self, *, target_id: str, expected_url: str, selector: str, value: str
+    ) -> dict[str, object]:
+        """Select a real native option once after target read-back."""
+        target_url = self._verify_target(target_id, expected_url)
+        evidence = browser_actions.native_select(self._page, selector, value)
         return {**evidence, "target_id": target_id, "target_url": target_url}
