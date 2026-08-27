@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Sanitized Local ATS Operator Fixture</title>
+    <style>
+      body { font: 16px system-ui; margin: 24px; }
+      label { display: block; margin: 12px 0; }
+      #fixture-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(20, 30, 40, .85); color: white; display: none; place-items: center; }
+      #review-panel, #confirmation { border: 2px solid #246; margin-top: 20px; padding: 16px; }
+    </style>
+  </head>
+  <body data-fixture="local-operator" data-submitted="false" data-submit-count="0" data-resume-name="" data-resume-sha256="">
+    <div id="fixture-overlay">Sanitized overlay observation</div>
+    <main>
+      <h1>Software Engineer Intern</h1>
+      <p id="identity" data-company="Sanitized Example" data-role="Software Engineer Intern" data-requisition="REQ-123">Sanitized Example · REQ-123</p>
+      <form id="application-form">
+        <label>First name <input id="first_name" required></label>
+        <label>Resume <input id="resume" type="file" accept="application/pdf" required></label>
+        <label>Work authorization
+          <select id="authorization" required>
+            <option value="">Select</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </label>
+        <button id="review" type="button">Review application</button>
+        <button id="submit" type="button">Submit application</button>
+      </form>
+      <section id="review-panel" hidden>
+        <h2>Review</h2>
+        <output id="review-first-name"></output>
+        <output id="review-resume"></output>
+        <output id="review-authorization"></output>
+      </section>
+      <section id="confirmation" hidden>
+        <h2>Application submitted</h2>
+        <p>Sanitized Example received your application for Software Engineer Intern.</p>
+        <p>Requisition: REQ-123</p>
+      </section>
+      <ul id="candidate-applications"></ul>
+    </main>
+    <script>
+      const body = document.body;
+      const identity = document.querySelector('#identity').dataset;
+      const review = () => {
+        document.querySelector('#review-first-name').textContent = document.querySelector('#first_name').value;
+        document.querySelector('#review-resume').textContent = body.dataset.resumeName;
+        document.querySelector('#review-authorization').textContent = document.querySelector('#authorization').value;
+        document.querySelector('#review-panel').hidden = false;
+      };
+      document.querySelector('#resume').addEventListener('change', async event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        body.dataset.resumeName = file.name;
+        const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+        body.dataset.resumeSha256 = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+      });
+      document.querySelector('#review').addEventListener('click', review);
+      document.querySelector('#submit').addEventListener('click', () => {
+        review();
+        body.dataset.submitCount = String(Number(body.dataset.submitCount) + 1);
+        body.dataset.submitted = 'true';
+        document.querySelector('#confirmation').hidden = false;
+        document.querySelector('#application-form').hidden = true;
+        document.querySelector('#candidate-applications').innerHTML = `<li data-platform="greenhouse" data-company="${identity.company}" data-role="${identity.role}" data-requisition="${identity.requisition}" data-state="submitted" data-submitted="true">Submitted</li>`;
+      });
+      window.fixtureToggleOverlay = visible => {
+        document.querySelector('#fixture-overlay').style.display = visible ? 'grid' : 'none';
+      };
+    </script>
+  </body>
+</html>

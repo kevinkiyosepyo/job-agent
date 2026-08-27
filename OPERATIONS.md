@@ -62,6 +62,10 @@ Pass only verified portal evidence to `PostSubmitTransactionCoordinator`. The co
 
 Resolve controls only through `tenant_field_maps.py`. The page URL and requested platform must select exactly one versioned hostname/path-bound tenant; unknown tenants require an explicit reviewed map change, never live selector discovery. Supply semantic answer keys for the current learned step. Validate observed selectors when inventory evidence is available, and stop on any control drift. Advance with `plan_next_step(...)` only when every required semantic field and condition is verified. Parser repair, required-question, authenticated-session, referral-option, Oracle combobox, and authoritative-Review conditions are hard gates. Human-required and submit controls are never executable as ordinary answer actions.
 
+### Sanitized local Chrome integration
+
+Run `python -m pytest tests/test_local_cdp_operator.py -q` before operator CLI changes. The harness is test-only: it accepts only the marker-checked repository fixture, an ephemeral profile, and an installed local Chrome-for-Testing executable. CDP travels through process-local pipe descriptors because no debugging port or browser-wide desktop control is needed. The proof must preserve one freshly discovered exact target ID/URL across preparation and submission, reject an overlay before mutation, verify every field by read-back, keep OCR observation scoped to a screenshot of that target, and retain a submit count of one across interruption and reattachment. Its tracker and Discord implementations are in-memory local fakes; substituting production adapters is forbidden in this test.
+
 ### Tracker smoke test
 
 ```bash
@@ -108,6 +112,7 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 - A success-looking confirmation page is insufficient: learned-handler confirmation and an exact, unique, explicitly submitted candidate-portal read-back are both mandatory.
 - Tracker append/read-back must precede Discord send/read-back; partial recovery is read-back-only and may never duplicate tracker, message, or submit side effects.
 - Production preparation must use exact versioned tenant maps and semantic keys; unknown selectors, tenants, steps, or unmet transition conditions must never trigger live rediscovery.
+- The real-Chrome integration must remain static-fixture-only, pipe-scoped, ephemeral, and sanitized; it must not bind production pages, production tracker/Discord adapters, or any desktop-input facility.
 
 ## Release checklist for engineering changes
 

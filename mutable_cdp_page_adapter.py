@@ -35,6 +35,13 @@ class MutableCDPPageAdapter:
         response = self._connection.call(
             "Runtime.evaluate", {"expression": expression, "returnByValue": return_by_value}
         )
+        exception = response.get("exceptionDetails")
+        if isinstance(exception, dict):
+            detail = exception.get("text") or "CDP page evaluation failed"
+            exception_value = exception.get("exception")
+            if isinstance(exception_value, dict) and isinstance(exception_value.get("description"), str):
+                detail = exception_value["description"]
+            raise PageControlError(str(detail))
         result = response.get("result", {})
         if not isinstance(result, dict):
             raise PageControlError("CDP returned no evaluation result")
@@ -47,7 +54,7 @@ class MutableCDPPageAdapter:
     @staticmethod
     def _script(selector: str, body: str, *values: object) -> str:
         selector_json = json.dumps(selector)
-        encoded = ", ".join(json.dumps(value) for value in values)
+        encoded_values = tuple(json.dumps(value) for value in values)
         return (
             "(() => { const element = document.querySelector(" + selector_json + "); "
             "if (!element) throw new Error('control not found'); "
@@ -55,8 +62,12 @@ class MutableCDPPageAdapter:
             "const visible = style.display !== 'none' && style.visibility !== 'hidden' "
             "&& element.getClientRects().length > 0; "
             "const enabled = !element.disabled; "
-            "if (!visible || !enabled) throw new Error('control must be visible and enabled'); "
-            + body.format(*values)
+            "const rect = element.getBoundingClientRect(); "
+            "const topElement = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2); "
+            "const unobscured = topElement === element || element.contains(topElement); "
+            "if (!visible || !enabled || !unobscured) "
+            "throw new Error('control must be visible, enabled, and unobscured'); "
+            + body.format(*encoded_values)
             + " })()"
         )
 
@@ -121,9 +132,12 @@ class MutableCDPPageAdapter:
             raise PageControlError("CDP did not expose a file-input object")
         node = self._connection.call("DOM.requestNode", {"objectId": result["objectId"]})
         node_id = node.get("nodeId")
-        if not isinstance(node_id, int):
-            raise PageControlError("CDP did not expose a file-input node")
-        self._connection.call("DOM.setFileInputFiles", {"files": [path], "nodeId": node_id})
+        reference = (
+            {"nodeId": node_id}
+            if isinstance(node_id, int) and node_id > 0
+            else {"objectId": result["objectId"]}
+        )
+        self._connection.call("DOM.setFileInputFiles", {"files": [path], **reference})
 
     def read_uploaded_filename(self, selector: str) -> str:
         self._fresh_target()
