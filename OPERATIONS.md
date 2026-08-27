@@ -73,6 +73,10 @@ Place a harmless exact `Resume.pdf` under ignored `runtime/`, then run `python p
 
 Run `python production_operator.py audit --report runtime/operator-demo/report.json` as a separate read-only step. It recomputes health, timing, Review, single-use/replay, one-shot count, portal, tracker-read-back, Discord-read-back, and safety verdicts from the value-free report. Only `ready_for_manual_live_authorization_review` is a passing proof, and even that artifact explicitly retains `real_application_authorized: false`. Do not treat it as a submission token or connect the local tracker/Discord fakes to production services.
 
+### Unified live-run manifest contract
+
+Keep every unified-run manifest and all paths it names under ignored, access-controlled runtime storage. Validate it through `live_run_manifest.load_manifest(...)` before opening any stage. The v1 schema is closed and binds the exact target/job identity, independently verified profile and exact `Resume.pdf` digests, manual gates/MAANGO state, and a distinct path for each stage artifact. Never accept an edited manifest as production enablement: `production_live` additionally requires a separate caller-side enablement input, and a fresh observed binding must exactly equal the manifest before use.
+
 ### Tracker smoke test
 
 ```bash

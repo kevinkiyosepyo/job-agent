@@ -188,6 +188,10 @@ python production_operator.py audit --report runtime/operator-demo/report.json
 
 The approval flag applies only to the marker-checked static fixture. Before its local submit, the command requires exact Chrome/CDP target health, a passing Retina canary, no mandatory gate or MAANGO routing, exact `Resume.pdf` preflight, all seven learned-map read-backs, and authoritative Review. The report contains no answer values, authorization token, local path, HTML, tracker payload, or Discord message. Preparation must remain below 300 seconds and verified local submission below 600 seconds. A successful final audit returns `ready_for_manual_live_authorization_review` while keeping `real_application_authorized: false`; it is readiness evidence, never live submission authority.
 
+## Unified live-run manifest
+
+`live_run_manifest.py` defines the closed v1 runtime contract used by the unified CLI work. It binds one mode, job/queue ID, exact target ID/URL, company, role, requisition, learned platform/tenant, verified profile and exact `Resume.pdf` hashes, explicit manual-gate state, and unique absolute runtime artifact paths. Unknown or missing fields and observed identity drift fail closed. A `production_live` manifest is inert unless the caller separately passes explicit production enablement; setting the mode inside the manifest cannot enable itself.
+
 ## Offline setup diagnostics
 
 ```bash
