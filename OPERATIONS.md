@@ -12,6 +12,7 @@ This repository is a local, safety-first job-agent build. The default mode is of
 4. Use dry-run orchestration only unless a separate, explicit application flow is being exercised.
 5. Verify tracker integration with the self-cleaning smoke test before any tracker-facing change ships.
 6. Run the sanitized real-Chrome operator proof and independently re-audit its persisted report.
+7. For unified-CLI changes, run the closed live release audit and confirm that it leaves every real-live capability false.
 
 ## Commands
 
@@ -69,13 +70,28 @@ Run `python -m pytest tests/test_local_cdp_operator.py -q` before operator CLI c
 
 ### Production operator proof and timing audit
 
-Place a harmless exact `Resume.pdf` under ignored `runtime/`, then run `python production_operator.py local-demo --resume runtime/sanitized-demo/Resume.pdf --runtime-dir runtime/operator-demo --output runtime/operator-demo/report.json --approve-sanitized-submit`. The approval is deliberately named and scoped to the sanitized fixture; omitting it must stop before Chrome starts. The command has no live mode and cannot select a different fixture. It requires every operational health check before the fixture submit, uses the complete versioned Greenhouse field map, and records only the closed PII-free timing vocabulary. Preparation must be under five minutes and verified fixture submission under ten minutes.
+Place a harmless exact `Resume.pdf` under ignored `runtime/`, then run `python production_operator.py local-demo --resume runtime/sanitized-demo/Resume.pdf --runtime-dir runtime/operator-demo --output runtime/operator-demo/report.json --approve-sanitized-submit`. The approval is deliberately named and scoped to the sanitized fixture; omitting it must stop before Chrome starts. `local-demo` cannot select another fixture or grant authority to the separate `live` command family. It requires every operational health check before the fixture submit, uses the complete versioned Greenhouse field map, and records only the closed PII-free timing vocabulary. Preparation must be under five minutes and verified fixture submission under ten minutes.
 
 Run `python production_operator.py audit --report runtime/operator-demo/report.json` as a separate read-only step. It recomputes health, timing, Review, single-use/replay, one-shot count, portal, tracker-read-back, Discord-read-back, and safety verdicts from the value-free report. Only `ready_for_manual_live_authorization_review` is a passing proof, and even that artifact explicitly retains `real_application_authorized: false`. Do not treat it as a submission token or connect the local tracker/Discord fakes to production services.
 
 ### Unified live-run manifest contract
 
 Keep every unified-run manifest and all paths it names under ignored, access-controlled runtime storage. Validate it through `live_run_manifest.load_manifest(...)` before opening any stage. The v1 schema is closed and binds the exact target/job identity, independently verified profile and exact `Resume.pdf` digests, manual gates/MAANGO state, and a distinct path for each stage artifact. Never accept an edited manifest as production enablement: `production_live` additionally requires a separate caller-side enablement input, and a fresh observed binding must exactly equal the manifest before use.
+
+Use this command order without skipping or reordering stages:
+
+1. `python browser_health.py --base-url http://127.0.0.1:9222`
+2. `python production_operator.py live preflight --manifest runtime/live-run/manifest.json --cdp-base-url http://127.0.0.1:9222`
+3. `python production_operator.py live prepare --manifest runtime/live-run/manifest.json --approved-answers runtime/live-run/approved-answers.json --step application --cdp-base-url http://127.0.0.1:9222`
+4. `python production_operator.py live review --manifest runtime/live-run/manifest.json --approved-answers runtime/live-run/approved-answers.json --step application --required-question work_authorization --cdp-base-url http://127.0.0.1:9222`
+5. `python production_operator.py live authorize --manifest runtime/live-run/manifest.json --actor '<operator>' --approve-review-hash '<exact-review-sha256>' --expires-in-seconds 300`
+6. `python production_operator.py live submit --manifest runtime/live-run/manifest.json --approved-answers runtime/live-run/approved-answers.json --step application --required-question work_authorization --actor '<same-operator>' --cdp-base-url http://127.0.0.1:9222`
+7. `python production_operator.py live confirmation --manifest runtime/live-run/manifest.json --cdp-base-url http://127.0.0.1:9222`
+8. `python production_operator.py live deliver --manifest runtime/live-run/manifest.json --submitted-date YYYY-MM-DD`
+9. `python production_operator.py live status --manifest runtime/live-run/manifest.json` before any recovery; use `live resume` only when its reported next action permits read-only reconciliation.
+10. `python production_operator.py live release-audit --evidence runtime/live-release-audit.json` after the engineering verification record is complete.
+
+These examples are sanitized/local. For a separately approved `production_live` manifest, every applicable invocation from preflight through status/resume must independently add `--enable-production-live`; no earlier flag persists. Production delivery additionally requires `--commit-external --discord-channel-id '<exact-channel-id>'`, and MAANGO authorization additionally requires `--approve-maango`. The release-audit command accepts none of those capability flags and can never enable them.
 
 For a sanitized/local manifest, run `python production_operator.py live prepare --manifest runtime/live-run/manifest.json --approved-answers runtime/live-run/approved-answers.json --step application --cdp-base-url http://127.0.0.1:9222`. Supply the exact target in the manifest; the command has no target auto-selection or navigation path. It must stop if CDP is not healthy, the exact target/identity changes, the handler or learned tenant differs, coverage remains human-required, controls are hidden/obscured, or the profile-selected PDF differs from the manifest. Treat the sanitized preparation artifact as input to Review only, never as approval or submission evidence.
 
@@ -92,6 +108,33 @@ For local proof, run `python production_operator.py live deliver --manifest runt
 Use `python production_operator.py live status --manifest runtime/live-run/manifest.json` before any recovery. It reports preparation, Review, authorization, submit, confirmation, tracker, and Discord from durable evidence and writes the same sanitized report to `runtime_paths.status`. `live resume` is intentionally narrow: after any submit intent it may only run learned confirmation/Candidate Home inspection; after a claimed tracker or Discord attempt it may only re-enter coordinator read-back. Supply `--submitted-date` and the original external gates for delivery recovery. For all other next actions, `resume` returns instructions without performing the stage. Never delete a journal/database row to make status appear earlier.
 
 Before binding a normal Chrome page for any mutable stage, run `python production_operator.py live preflight --manifest runtime/live-run/manifest.json --cdp-base-url http://127.0.0.1:9222`. The caller must have already copied the exact page target ID/URL into the manifest. Preflight reads the target twice through `bind_page_target`, confirms its content fingerprint did not change during observation, and revalidates the handler/platform/job identity. It cannot fill, upload, navigate, click, or submit. For release verification, `python -m pytest tests/test_production_operator_live_chrome.py -q` must pass the complete sanitized CLI sequence, overlay block, replay denial, local downstream read-backs, and terminal status.
+
+### Live rollback and recovery boundaries
+
+- Before authorization, correct only the authoritative source data or reviewed learned map, discard untrusted generated artifacts, and repeat preflight → prepare → Review. Never patch a blocker out of evidence.
+- An unconsumed authorization is not editable or transferable. Let it expire; any target, identity, actor, or Review drift requires a fresh Review and new authorization.
+- Submit intent is the point of no return. There is no submit rollback: never delete the journal, recreate the handoff, reauthorize, or call submit again. Run `status`, then confirmation/resume observation only.
+- Tracker or Discord intent is also no-replay. Resume the same transaction with the same submitted date and production gates so the coordinator performs lookup/read-back; never manually append or resend.
+- CAPTCHA, assessment, account/identity verification, unknown material facts, target/tenant drift, hidden or obscured controls, ambiguous portal records, and failed authenticated read-back are human-required stops.
+
+### Unified CLI health and final release audit
+
+Run the marker-checked sanitized Chrome suite, the focused normal-Chrome read-only preflight test, the full suite, whitespace check, executable-source safety scan, ordered-history check, and worktree check. Record only their booleans/counts in ignored `runtime/live-release-audit.json`; do not include paths, identities, answers, tokens, HTML, tracker rows, or message bodies. The closed schema requires:
+
+- `schema_version: 1`, `mode: sanitized_local_release`, the exact completed queue heading, ten completed tasks, and ordered task commits;
+- focused TDD plus the exact full-suite command/count;
+- sanitized Chrome `passed`, `sanitized_fixture_only`, submit count one, and replay denial;
+- normal-Chrome preflight `passed`, `read_only`, exact-target attachment, unchanged content, and submission disabled;
+- passing diff/source/worktree checks, README/OPERATIONS/job-application-skill updates, and the standard safety object with every credential/external/production effect false.
+
+Then run:
+
+```bash
+python production_operator.py live release-audit \
+  --evidence runtime/live-release-audit.json
+```
+
+Only `ready_for_manual_live_authorization_review` is a passing engineering result. The command always reports `real_live_enabled: false`, `commit_external_enabled: false`, and `real_application_authorized: false`; it is not a runtime authorization or rollback mechanism.
 
 ### Tracker smoke test
 
@@ -149,5 +192,9 @@ python orchestrator.py verified-candidates.json --output orchestrator-report.jso
 3. Implement the minimum fix.
 4. Re-run the targeted test.
 5. Run `python -m pytest tests -q`.
-6. Review `git status --short` for unexpected sensitive or generated files.
-7. Commit only verified code and documentation.
+6. Run the sanitized real-Chrome sequence and normal-Chrome read-only preflight test.
+7. Run `git diff --check` and the forbidden executable-source scan.
+8. Verify ordered task commits and review `git status --short` for unexpected sensitive or generated files.
+9. Validate the persistent job-application skill and its live reference.
+10. Run `live release-audit`; confirm all three real-live capability fields remain false.
+11. Commit only verified code and documentation, then confirm a clean worktree.

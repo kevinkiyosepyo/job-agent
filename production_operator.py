@@ -261,6 +261,104 @@ def audit_operator_report(report: object) -> dict[str, object]:
     }
 
 
+def audit_live_release_evidence(evidence: object) -> dict[str, object]:
+    """Validate the closed, value-free local release record without enabling live use."""
+    valid = isinstance(evidence, dict)
+    payload = evidence if isinstance(evidence, dict) else {}
+    queue_value = payload.get("queue")
+    queue = queue_value if isinstance(queue_value, dict) else {}
+    verification_value = payload.get("verification")
+    verification = verification_value if isinstance(verification_value, dict) else {}
+    full_suite_value = verification.get("full_suite")
+    full_suite = full_suite_value if isinstance(full_suite_value, dict) else {}
+    local_chrome_value = verification.get("local_chrome")
+    local_chrome = local_chrome_value if isinstance(local_chrome_value, dict) else {}
+    preflight_value = verification.get("normal_chrome_preflight")
+    preflight = preflight_value if isinstance(preflight_value, dict) else {}
+    documentation_value = payload.get("documentation")
+    documentation = documentation_value if isinstance(documentation_value, dict) else {}
+    passed = full_suite.get("passed")
+    valid = valid and all(
+        (
+            set(payload) == {
+                "schema_version",
+                "mode",
+                "queue",
+                "verification",
+                "documentation",
+                "safety",
+            },
+            payload.get("schema_version") == 1,
+            payload.get("mode") == "sanitized_local_release",
+            isinstance(queue_value, dict),
+            set(queue) == {"heading", "tasks_completed", "ordered_task_commits"},
+            queue.get("heading") == "Unified live-production CLI queue — completed",
+            queue.get("tasks_completed") == 10,
+            queue.get("ordered_task_commits") is True,
+            isinstance(verification_value, dict),
+            set(verification)
+            == {
+                "focused_tdd_passed",
+                "full_suite",
+                "local_chrome",
+                "normal_chrome_preflight",
+                "git_diff_check",
+                "forbidden_executable_source_matches",
+                "clean_worktree",
+            },
+            verification.get("focused_tdd_passed") is True,
+            isinstance(full_suite_value, dict),
+            set(full_suite) == {"command", "passed"},
+            full_suite.get("command") == "python -m pytest tests -q",
+            isinstance(passed, int) and not isinstance(passed, bool) and passed >= 306,
+            isinstance(local_chrome_value, dict),
+            local_chrome
+            == {
+                "passed": True,
+                "sanitized_fixture_only": True,
+                "submit_count": 1,
+                "replay_denied": True,
+            },
+            isinstance(preflight_value, dict),
+            preflight
+            == {
+                "passed": True,
+                "read_only": True,
+                "exact_target_attached": True,
+                "content_unchanged": True,
+                "submission_enabled": False,
+            },
+            verification.get("git_diff_check") is True,
+            verification.get("forbidden_executable_source_matches") == [],
+            verification.get("clean_worktree") is True,
+            isinstance(documentation_value, dict),
+            documentation
+            == {
+                "readme_updated": True,
+                "operations_updated": True,
+                "job_application_skill_updated": True,
+            },
+            payload.get("safety") == SAFETY_EVIDENCE,
+        )
+    )
+    return {
+        "checks_passed": bool(valid),
+        "commit_external_enabled": False,
+        "real_application_authorized": False,
+        "real_live_enabled": False,
+        "status": "ready_for_manual_live_authorization_review" if valid else "not_ready",
+    }
+
+
+def run_live_release_audit(*, evidence_path: Path) -> dict[str, object]:
+    """Read and audit a local release artifact; this command grants no capability."""
+    try:
+        evidence = json.loads(Path(evidence_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        evidence = None
+    return audit_live_release_evidence(evidence)
+
+
 def empty_verified_report_for_test() -> dict:
     """Return a value-free verified shape for focused fail-closed audit tests."""
     report = {
@@ -1825,6 +1923,8 @@ def main(
     live_preflight.add_argument("--manifest", required=True)
     live_preflight.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
     live_preflight.add_argument("--enable-production-live", action="store_true")
+    live_release_audit = live_commands.add_parser("release-audit")
+    live_release_audit.add_argument("--evidence", required=True)
     args = parser.parse_args(argv)
 
     if args.command == "live":
@@ -1923,7 +2023,7 @@ def main(
                     discord_adapter=live_discord_adapter,
                 )
                 exit_code = 1 if result.get("status") == "partial" else 0
-            else:
+            elif args.live_command == "preflight":
                 result = run_normal_chrome_preflight(
                     manifest_path=Path(args.manifest),
                     cdp_base_url=args.cdp_base_url,
@@ -1932,6 +2032,9 @@ def main(
                     health_probe=live_health_probe,
                 )
                 exit_code = 0
+            else:
+                result = run_live_release_audit(evidence_path=Path(args.evidence))
+                exit_code = 0 if result["checks_passed"] is True else 1
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({
                 "error": str(exc),

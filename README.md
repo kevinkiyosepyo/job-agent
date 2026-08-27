@@ -45,7 +45,7 @@ A safety-first local system for discovering, deduplicating, routing, preparing, 
 - `confirmation_reconciliation.py` — two-source learned-ATS submission proof for Greenhouse, Workday, Lever, Oracle, and Njoyn. A platform handler must first classify sanitized HTML as confirmation; then candidate-home/application-list evidence must contain exactly one matching platform/company/role/requisition record with both `state: submitted` and `submitted: true`. Requisition, identity, state, and ambiguity drift remain explicit blockers; raw HTML is replaced by a SHA-256.
 - `post_submit_transaction.py` — durable per-job portal → tracker/read-back → Discord/read-back coordinator with no submit API. It atomically records an attempt claim before either downstream side effect, hashes rather than persists tracker/message payloads, blocks Discord until exact tracker read-back, and completes only after exact Discord read-back. Partial failures resume by read-back only, preventing duplicate tracker rows or messages.
 - `local_cdp_operator.py` — real local Chrome-for-Testing integration harness for the sanitized `fixtures/local_operator_e2e.html` page. It launches one ephemeral headless process, communicates only through dedicated CDP pipe descriptors, freshly discovers and attaches one exact page target, and exposes bounded fixture-only Review/submit/confirmation observations. The integration covers Retina rendering, overlay rejection, scoped screenshot/OCR observation, interrupted-submit recovery, restart, and stale-target rejection without a network listener or production data.
-- `production_operator.py` — single approval-gated operator proof CLI. Its `local-demo` command composes all seven exact learned Greenhouse controls, authoritative Review, an expiring single-use authorization, one-shot fixture submit, learned-handler confirmation, candidate-portal reconciliation, and local-only tracker/Discord read-backs. It persists only health booleans, PII-free timing, sanitized evidence counts, and a recomputed final audit. There is deliberately no real-application command or production downstream adapter.
+- `production_operator.py` — one approval-gated operator CLI. `local-demo` retains the marker-checked fixture proof; the `live` family adds manifest-bound preflight, preparation, authoritative Review, protected authorization, one-shot submit, learned confirmation, commit-gated delivery, read-only recovery, and a non-authorizing release audit. Production paths require separate caller enablement at every stage, while sanitized tests inject local transports/adapters and cannot access external systems.
 - `session_gate.py` — validates a tenant’s runtime-only session reference and returns either authenticated-session reuse or an explicit human login/identity-verification gate; it never receives or serializes credentials.
 - `tenant_metadata.py` — loads versioned learned-tenant records only after matching the page hostname, ATS platform, and tenant identity; it returns a secret-free runtime-only session reference or fails closed.
 - `browser_integration_canary.py` — sanitised non-mutating canaries for Njoyn, Workday, Greenhouse, Lever, and Oracle that fail closed on invalid Retina scale, stale target focus, hidden controls, overlays, or unexpected native windows while requiring submission to remain disabled.
@@ -279,6 +279,15 @@ python production_operator.py live preflight \
 ```
 
 The integration launches only the marker-checked local fixture in ephemeral Chrome, translates its exact process-scoped target to the sanitized learned URL, blocks on an overlay, then completes prepare → Review → authorize → one-shot submit → confirmation → local delivery → status. It asserts submit count one and rejects a second submit. `live preflight` is for an already running normal Chrome CDP endpoint: it binds only the manifest target through the read-only transport, takes two fresh snapshots, verifies unchanged content and exact learned identity, and exposes no mutation or submit operation. Production manifests still require explicit production enablement even for preflight.
+
+Finish an engineering release with the closed, value-free audit described in `OPERATIONS.md`:
+
+```bash
+python production_operator.py live release-audit \
+  --evidence runtime/live-release-audit.json
+```
+
+A passing audit reports `ready_for_manual_live_authorization_review` while keeping `real_live_enabled`, `commit_external_enabled`, and `real_application_authorized` false. It verifies recorded TDD/full-suite results, ten ordered task commits, sanitized real-Chrome submit-count/replay evidence, read-only normal-Chrome preflight, documentation, source safety, and worktree hygiene. It is release evidence only; it cannot replace any per-command production, Review, actor, MAANGO, single-use authorization, external-commit, or authenticated read-back gate.
 
 ## Offline setup diagnostics
 
