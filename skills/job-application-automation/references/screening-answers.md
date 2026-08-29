@@ -10,7 +10,7 @@
 | University | University of California, San Diego |
 | Major/Field of study | Data Science |
 | GPA | 3.8 |
-| Preferred start date | Flexible / per posting |
+| Preferred start date / soonest available starting date | September 2026 |
 | Willing to relocate | Yes |
 | How did you hear about this role? | Company website / LinkedIn |
 | Veteran status | No |
