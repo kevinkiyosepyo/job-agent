@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol
+from datetime import datetime
+from typing import Callable, Protocol
 
 from page_recovery import record_page_action
+from submission_ledger import SubmissionLedger, parse_timestamp
+from submission_authorization import SubmissionAuthorizationStore
 
 
 MANDATORY_HUMAN_GATES = {
@@ -24,6 +27,8 @@ class SubmitInterrupted(RuntimeError):
 
 
 class AuthorizationStore(Protocol):
+    ledger: SubmissionLedger
+
     def consume(self, **kwargs) -> dict: ...
 
 
@@ -74,7 +79,7 @@ def _verify_snapshot(
     if mandatory is not None:
         raise SubmitBlockedError(f"{mandatory} gate blocks submission")
     if gates:
-        raise SubmitBlockedError(f"{gates[0]} human gate blocks submission")
+        raise SubmitBlockedError("unresolved human gate blocks submission")
     if snapshot.get("maango") is True and maango_approved is not True:
         raise SubmitBlockedError("explicit MAANGO approval is required")
 
@@ -118,26 +123,39 @@ def execute_one_shot_submit(
     requisition: str,
     review_evidence_sha256: str,
     actor: str,
-    now: str,
+    now: str | datetime,
     submit_selector: str,
     maango_approved: bool = False,
+    account_id: str | None = None,
+    tenant: str | None = None,
+    clock: Callable[[], str | datetime] | None = None,
 ) -> dict[str, object]:
     """Consume authorization, journal intent, click once, then only inspect."""
-    snapshot = page.read_only_snapshot()
-    _verify_snapshot(
-        snapshot,
-        target_id=target_id,
-        expected_url=expected_url,
-        requisition=requisition,
-        maango_approved=maango_approved,
-    )
-    _verify_control(
-        page.inspect_submit_control(submit_selector),
-        selector=submit_selector,
-        target_id=target_id,
-        expected_url=expected_url,
-    )
-    authorization_store.consume(
+    try:
+        snapshot = page.read_only_snapshot()
+        _verify_snapshot(
+            snapshot,
+            target_id=target_id,
+            expected_url=expected_url,
+            requisition=requisition,
+            maango_approved=maango_approved,
+        )
+        _verify_control(
+            page.inspect_submit_control(submit_selector),
+            selector=submit_selector,
+            target_id=target_id,
+            expected_url=expected_url,
+        )
+    except SubmitBlockedError:
+        raise
+    except Exception:
+        raise SubmitBlockedError("read-only submission preflight failed") from None
+    if not isinstance(authorization_store, SubmissionAuthorizationStore):
+        raise PermissionError("transactional submission authorization store is required")
+    if authorization_store.ledger.production and not callable(clock):
+        raise SubmitBlockedError("production requires a refreshable trusted UTC clock")
+    consumed_at = parse_timestamp(clock() if clock else now)
+    consumed = authorization_store.consume(
         token=token,
         current_binding={
             "job_id": job_id,
@@ -147,10 +165,14 @@ def execute_one_shot_submit(
             "review_evidence_sha256": review_evidence_sha256,
         },
         actor=actor,
-        now=now,
+        now=consumed_at,
+        account_id=account_id,
+        tenant=tenant,
     )
+    attempt_id = consumed["submission_attempt_id"]
     intent_evidence = {
         "status": "intent_recorded",
+        "submission_attempt_id": attempt_id,
         "verified": False,
         "job_id": job_id,
         "target_id": target_id,
@@ -159,9 +181,8 @@ def execute_one_shot_submit(
         "review_evidence_sha256": review_evidence_sha256,
         "selector": submit_selector,
     }
-    record_page_action(Path(journal_path), action="submit", evidence=intent_evidence)
-
     try:
+        record_page_action(Path(journal_path), action="submit", evidence=intent_evidence)
         _verify_snapshot(
             page.read_only_snapshot(),
             target_id=target_id,
@@ -175,47 +196,51 @@ def execute_one_shot_submit(
             target_id=target_id,
             expected_url=expected_url,
         )
-    except SubmitBlockedError:
-        return _blocked_after_consumption("target or submit control changed after authorization")
+        dispatch_at = parse_timestamp(clock() if clock else now)
+        if dispatch_at >= parse_timestamp(consumed["expires_at"]):
+            raise SubmitBlockedError("submission authorization expired before dispatch")
+    except Exception:
+        authorization_store.ledger.release_before_dispatch(attempt_id, now=consumed_at)
+        return _blocked_after_consumption("pre-dispatch checks or intent journal failed; reservation released")
 
     try:
+        authorization_store.ledger.mark_dispatch(attempt_id, now=dispatch_at)
+    except Exception:
+        # A failed acknowledgement can follow a successful COMMIT. Never release.
+        return _blocked_after_consumption("dispatch intent persistence is uncertain")
+    interrupted = False
+    try:
         page.click_submit_once(submit_selector)
-    except SubmitInterrupted:
+    except Exception:
+        interrupted = True
+    try:
         confirmation = page.inspect_confirmation()
-        if not isinstance(confirmation, dict) or confirmation.get("confirmed") is not True:
-            return _blocked_after_consumption("submit interrupted without confirmation")
+    except Exception:
+        return _blocked_after_consumption("confirmation inspection failed")
+    if not isinstance(confirmation, dict) or confirmation.get("confirmed") is not True:
+        return _blocked_after_consumption(
+            "submit interrupted without confirmation" if interrupted
+            else "submit completed without confirmation"
+        )
+    try:
+        authorization_store.ledger.confirm(attempt_id, now=clock() if clock else now, confirmed=True)
         record_page_action(
             Path(journal_path),
             action="submit",
             evidence={
                 **intent_evidence,
-                "status": "confirmation_observed_after_interruption",
+                "status": "confirmation_observed_after_interruption" if interrupted else "confirmation_observed",
                 "verified": True,
             },
         )
-        return {
-            "status": "confirmation_observed",
-            "authorization_consumed": True,
-            "one_shot": True,
-            "replay_allowed": False,
-            "recovered_by_inspection": True,
-        }
-
-    confirmation = page.inspect_confirmation()
-    if not isinstance(confirmation, dict) or confirmation.get("confirmed") is not True:
-        return _blocked_after_consumption("submit completed without confirmation")
-    record_page_action(
-        Path(journal_path),
-        action="submit",
-        evidence={
-            **intent_evidence,
-            "status": "confirmation_observed",
-            "verified": True,
-        },
-    )
-    return {
+    except Exception:
+        return _blocked_after_consumption("confirmation persistence requires reconciliation")
+    result = {
         "status": "confirmation_observed",
         "authorization_consumed": True,
         "one_shot": True,
         "replay_allowed": False,
     }
+    if interrupted:
+        result["recovered_by_inspection"] = True
+    return result

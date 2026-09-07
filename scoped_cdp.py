@@ -40,7 +40,13 @@ class WebSocketCDPConnection:
     def __init__(self, websocket_url: str) -> None:
         import websocket
 
-        self._socket = websocket.create_connection(websocket_url, timeout=20)
+        # Chrome's loopback debugging endpoint rejects websocket-client's
+        # synthetic Origin header unless Chrome is relaunched with a broad
+        # allowlist. CDP does not require an Origin header, so omit it rather
+        # than weakening the browser launch policy.
+        self._socket = websocket.create_connection(
+            websocket_url, timeout=20, suppress_origin=True
+        )
         self._sequence = 0
 
     def call(self, method: str, params: dict) -> dict:

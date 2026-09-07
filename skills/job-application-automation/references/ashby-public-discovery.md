@@ -1,0 +1,24 @@
+# Ashby public discovery, not application authority
+
+Use `terminal` to run `sources.py --ashby EXACT_BOARD --output PRIVATE_JSON --report PRIVATE_REPORT` with the installed project interpreter. Repeating `--ashby` collects multiple official public job boards. Dotted board identifiers are valid; whitespace, URL/path/query/fragment tokens are rejected, not repaired. This explicit-token interface is not currently wired into the approved-source registry. Do not change a live registry or enable a controller to work around that limit.
+
+The GET-only source adapter retains listed jobs, public posting ID, original title, description text/HTML, employment metadata, primary address, secondary locations and publication timestamp. It does not inspect an account or application history, touch Sheets, fill a form, or authorize submission. Company is a board-token-derived display label, not a verified legal employer name. Senior postings may be returned; subsequent classification and official eligibility checks remain mandatory.
+
+Pilot-driven interpretation:
+
+1. Preserve `employment_type` even when it says `FullTime` beside an explicit internship title/description. Do not silently rewrite the source or reject an internship based on this field alone.
+2. Inspect every `secondary_locations` record and its country/address. A primary Canadian location does not establish a Canada-only vacancy. The combined `location` is a display string; it is not a country/eligibility ruling. Do not infer authorization from an explicit US option.
+3. Read required and preferred sections independently. General winter/full-time interest does not establish an exact several-month commitment. Unknown material availability or qualifications stay parked.
+4. A public `is_listed=true` row describes the listing at capture time, not proof of current availability or accepting a filled application. Rows without explicit boolean true are excluded. Missing identity fields or an invalid feed must report an error rather than a successful zero scan.
+5. Read `source_runs`, `failures`, `source_health_status`, and the exit status. Missing/old publication dates are retained as freshness limitations. A fresh download does not change the employer's publication date. A source error cannot be replaced with invented postings.
+6. An Ashby application HTML shell without controls needs the approved normal-browser path for actual control inventory. This adapter provides no rendered/conditional control, bound-value, upload, Review, or employer-receipt evidence. Pending submit intent remains observation-only; do not create another ledger.
+
+## Saved public snapshot replay
+
+Use `terminal` to run `sources.py --ashby EXACT_BOARD --ashby-snapshot PRIVATE_SAVED_JSON --output PRIVATE_RESULT --report PRIVATE_REPORT` when an independently retrieved official public response already exists. Exactly one Ashby board is allowed, without other sources or a registry. Keep output/report distinct from the input, including symlink and hard-link aliases. Listed job URLs must match the declared official HTTPS board and posting ID.
+
+The report records `source_evidence.kind=saved_public_snapshot`, input path, SHA256 and `live_verified=false`; each result carries source `Ashby saved public snapshot` and `source_live_verified=false`. The scanner consumes that row-level flag directly for observation-only quarantine before URL deduplication: do not invent or rename provenance fields between the source CLI and scanner, and do not strip false markers. A report-level flag is not a replacement for the exact row's provenance. Quarantine preserves classification hints and known pending duplicates but excludes actionable queues/manual dispatch/notifications. Source booleans grant no eligibility or submission authority. Timestamp-based `healthy` status describes publication timestamps in the captured content, not a live endpoint health check. Preserve capture URL/time separately. These are unfiltered listed board roles, not eligible applications or an active-jobs feed.
+
+HTTP403 remains a source failure, not zero successful leads. Do not change client/security behavior to bypass a denial. Existing saved public evidence can support bounded parser engineering without authenticated browser access or submission permission.
+
+Verification: use the guarded `run_offline_tests.py` on `tests/test_ashby_public_sources.py` and `tests/test_scanner_source_provenance.py`, then the full guarded suite. Exercise the source CLI on approved actual data and inspect specific posting IDs and metadata; distinguish live GET from offline replay and do not report the whole board as eligible pilots. Pass the unchanged saved-source output to the inspected scanner CLI and require all non-live rows in `observation_only_results`, with no actionable queue or notification. Fixture passing, snapshot parsing or public GET success is not connected Ashby application support.

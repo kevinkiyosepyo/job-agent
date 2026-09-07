@@ -27,7 +27,9 @@ def _write_live_inputs(tmp_path: Path) -> tuple[Path, Path, dict]:
     profile.write_text(
         json.dumps(
             {
-                "personal": {"first_name": "Fixture"},
+                "name": {"first": "Fixture", "last": "Person"},
+                "contact": {"email": "fixture@example.test", "phone": "+1-555-0100"},
+                "work_authorization": "Yes", "requires_sponsorship": "No",
                 "resume": {
                     "primary": str(resume),
                     "required_application_filename": "Resume.pdf",
@@ -93,6 +95,42 @@ def _write_live_inputs(tmp_path: Path) -> tuple[Path, Path, dict]:
     return manifest_path, answers, manifest
 
 
+def test_canary_preserves_only_an_exact_existing_resume_slot():
+    import production_operator
+
+    class Page:
+        def read_uploaded_filename(self, selector):
+            assert selector == "#resume"
+            return "Resume.pdf"
+
+    selectors = production_operator._canary_selectors_for_actions(
+        page=Page(),
+        actions=[
+            {"field": "first_name", "operation": "replace_text", "selector": "#first_name"},
+            {"field": "resume", "operation": "cdp_upload", "selector": "#resume"},
+        ],
+        expected_resume_basename="Resume.pdf",
+    )
+
+    assert selectors == ["#first_name"]
+
+
+def test_canary_requires_a_resume_control_when_existing_filename_does_not_match():
+    import production_operator
+
+    class Page:
+        def read_uploaded_filename(self, selector):
+            return "Old Resume.pdf"
+
+    selectors = production_operator._canary_selectors_for_actions(
+        page=Page(),
+        actions=[{"field": "resume", "operation": "cdp_upload", "selector": "#resume"}],
+        expected_resume_basename="Resume.pdf",
+    )
+
+    assert selectors == ["#resume"]
+
+
 def test_live_prepare_cli_exact_binds_runs_gates_uploads_profile_resume_and_persists_sanitized_evidence(
     tmp_path, capsys
 ):
@@ -150,7 +188,7 @@ def test_live_prepare_cli_exact_binds_runs_gates_uploads_profile_resume_and_pers
             self.values[selector] = Path(path).name
 
         def read_uploaded_filename(self, selector):
-            return self.values[selector]
+            return self.values.get(selector, "")
 
     page = Page()
     bound_targets: list[tuple[str, str]] = []
@@ -298,6 +336,7 @@ def test_live_review_cli_reads_exact_server_review_and_persists_only_authority_e
 
         def read_server_review(self):
             return {
+                "source": "server_saved_review", "server_saved": True,
                 "target_id": self.target_id,
                 "page_url": PAGE_URL,
                 "identity": {
@@ -370,14 +409,9 @@ def test_live_review_cli_reads_exact_server_review_and_persists_only_authority_e
         "status": "reviewed",
         "review_authoritative": True,
         "review_evidence_sha256": review["review_evidence_sha256"],
-        "verified_fields": [
-            "#first_name",
-            "#last_name",
-            "#email",
-            "#phone",
-            "#authorization",
-            "#sponsorship",
-        ],
+        "verified_fields": sorted([
+            "#first_name", "#last_name", "#email", "#phone", "#authorization", "#sponsorship",
+        ]),
         "blockers": [],
         "job_identity": {
             "job_id": 41,
@@ -399,50 +433,33 @@ def test_live_review_cli_reads_exact_server_review_and_persists_only_authority_e
 
 
 def _write_authoritative_review(manifest: dict) -> dict:
-    review = {
-        "review_authoritative": True,
-        "submission_authorized": False,
-        "binding": {
-            "target_id": manifest["target"]["id"],
-            "page_url": manifest["target"]["url"],
-            "company": manifest["identity"]["company"],
-            "role": manifest["identity"]["role"],
-            "requisition": manifest["identity"]["requisition"],
-            "verified": True,
-        },
-        "fields": [
-            {"field": selector, "verified": True}
-            for selector in (
-                "#first_name",
-                "#last_name",
-                "#email",
-                "#phone",
-                "#authorization",
-                "#sponsorship",
-            )
-        ],
-        "resume": {"basename": "Resume.pdf", "verified": True},
-        "parser_repairs": [],
-        "required_questions": [
-            {"question_id": "work_authorization", "verified": True}
-        ],
-        "human_required": [],
-        "evidence": {"sanitized": True, "review_authority_only": True},
-    }
-    canonical = json.dumps(review, sort_keys=True, separators=(",", ":")).encode()
-    review["review_evidence_sha256"] = hashlib.sha256(canonical).hexdigest()
-    wrapper = {
-        "status": "reviewed",
-        "job_identity": {
-            "job_id": manifest["job_id"],
-            "queue_id": manifest["queue_id"],
-            "target_id": manifest["target"]["id"],
-            "page_url": manifest["target"]["url"],
-            **manifest["identity"],
-        },
-        "review": review,
-    }
-    Path(manifest["runtime_paths"]["review"]).write_text(json.dumps(wrapper))
+    """Offline fixture uses the real reconciler, not an invented boolean hash."""
+    import production_operator as op
+    import review_reconciler
+    import tenant_field_maps
+    profile = json.loads(Path(manifest['profile']['path']).read_text())
+    fields = {'#first_name':'Fixture', '#last_name':'Person', '#email':'fixture@example.test',
+              '#phone':'+1-555-0100', '#authorization':'Yes', '#sponsorship':'No'}
+    identity = {key:manifest['identity'][key] for key in ('company','role','requisition')}
+    preparation_path = Path(manifest['runtime_paths']['preparation'])
+    preparation = json.loads(preparation_path.read_text()) if preparation_path.exists() else {
+        'target_id':manifest['target']['id'], 'page_url':manifest['target']['url'], 'identity':identity,
+        'submission_enabled':False, 'review_ready':True, 'answer_coverage':{'human_required':[]},
+        'applied_answers':{'verified':True,'field_evidence':[]},
+        'evidence':{'sanitized':True,'target_bound':True,'answer_values_persisted':False}}
+    raw={'source':'server_saved_review','server_saved':True,
+         'target_id':manifest['target']['id'],'page_url':manifest['target']['url'],'identity':identity,
+         'fields':fields, 'resume':{'basename':'Resume.pdf','sha256':manifest['resume']['sha256']},
+         'parser_repairs':[],'questions':[{'id':'work_authorization','required':True,'answered':True,'verified':True}]}
+    mapping=tenant_field_maps.resolve_field_map(page_url=manifest['target']['url'],platform='greenhouse')
+    expected=op._independent_review_fields(profile,mapping,'application',raw)
+    review=review_reconciler.reconcile_review(preparation_evidence=preparation,server_review=raw,
+        expected_target={'target_id':manifest['target']['id'],'page_url':manifest['target']['url'],**identity},
+        profile_fields=expected,resume_preflight={k:manifest['resume'][k] for k in ('basename','content_type','sha256','verified')},required_parser_repairs=[],
+        required_question_ids=['work_authorization'],question_fields={k:v['selector'] for k,v in mapping['steps']['application']['controls'].items()})
+    assert review['review_authoritative'] is True, review
+    wrapper={'status':'reviewed','job_identity':op._manifest_job_identity(manifest),'review':review}
+    Path(manifest['runtime_paths']['review']).write_text(json.dumps(wrapper))
     return wrapper
 
 
@@ -620,6 +637,7 @@ def test_live_submit_reconciles_fresh_review_journals_before_one_click_and_denie
 
         def read_server_review(self):
             return {
+                "source":"server_saved_review", "server_saved":True,
                 "target_id": self.target_id,
                 "page_url": PAGE_URL,
                 "identity": self.read_only_snapshot()["identity"],
@@ -904,6 +922,7 @@ def test_live_delivery_cli_uses_injected_local_adapters_in_order_and_is_idempote
     argv = [
         "live",
         "deliver",
+        "--sync-tracker",
         "--manifest",
         str(manifest_path),
         "--submitted-date",
@@ -943,10 +962,10 @@ def test_live_status_and_resume_turn_uncertain_submit_into_confirmation_inspecti
     import production_operator
 
     manifest_path, _, manifest = _write_live_inputs(tmp_path)
+    _write_authoritative_review(manifest)
     Path(manifest["runtime_paths"]["preparation"]).write_text(
         json.dumps({"status": "prepared"})
     )
-    _write_authoritative_review(manifest)
     Path(manifest["runtime_paths"]["submit_journal"]).write_text(
         json.dumps(
             {

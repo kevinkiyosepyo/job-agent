@@ -50,6 +50,13 @@ def main() -> int:
     if a.dry_run:
         print(json.dumps({"target": a.target, "message": message}, indent=2))
         return 0
+    if a.kind == "applied":
+        print(json.dumps({
+            "status": "blocked", "notification_state": "not_started",
+            "reason": "A submitted notice requires verified portal evidence and the durable outbox",
+            "next_action": "use production_operator.py live deliver for exact Discord read-back",
+        }))
+        return 2
     proc = subprocess.run(
         ["hermes", "send", "--to", a.target, "--json", message],
         capture_output=True, text=True, timeout=60,

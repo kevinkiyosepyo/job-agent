@@ -80,7 +80,7 @@ def test_classify_rejects_non_target_season_with_explicit_reason(monkeypatch):
             "company": "Example",
             "role": "Software Engineer Intern, Winter 2027",
             "url": "https://example.com/jobs/2",
-            "location": "Remote",
+            "location": "Remote - United States",
         },
         make_profile(),
     )
@@ -115,7 +115,7 @@ def test_classify_rejects_sponsorship_required_roles_with_explicit_reason(monkey
             "company": "Example",
             "role": "Software Engineer Intern, Summer 2027",
             "url": "https://example.com/jobs/3",
-            "location": "Remote",
+            "location": "Remote - United States",
             "requires_sponsorship": True,
         },
         make_profile(),

@@ -24,7 +24,7 @@ Use when an ATS page contains CAPTCHA/reCAPTCHA/hCaptcha/Turnstile scripts, widg
 2. Confirm the visible challenge is gone or the page exposes a verified cleared/completed state. Do not read, print, or persist CAPTCHA token contents.
 3. Re-read every field on the current step; CAPTCHA widgets can rerender or reset surrounding React state.
 4. Continue from the next safe action. If Submit was not previously attempted, follow the one-shot authorization/Submit procedure. If Submit may have occurred, inspect confirmation without replay.
-5. Verify portal confirmation, tracker read-back, and Discord read-back normally.
+5. Verify portal confirmation and Discord read-back normally. Tracker read-back is required only when Kevin explicitly requested tracker synchronization for this application; otherwise do not read or write Sheets.
 
 ## Failure and Expiry Recovery
 

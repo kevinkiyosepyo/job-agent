@@ -39,6 +39,56 @@ def _identity(payload: dict) -> dict[str, str]:
     return {key: str(payload.get(key, "")) for key in ("company", "role", "requisition")}
 
 
+def _resolve_verified_mapped_coverage(
+    answer_coverage: dict, applied_answers: dict
+) -> dict:
+    """Resolve an unknown required control only after mapped browser read-back."""
+    unresolved = answer_coverage.get("human_required", [])
+    field_evidence = applied_answers.get("field_evidence", [])
+    if not isinstance(unresolved, list) or not isinstance(field_evidence, list):
+        return answer_coverage
+    verified = [
+        item
+        for item in field_evidence
+        if isinstance(item, dict)
+        and item.get("verified") is True
+        and isinstance(item.get("field"), str)
+        and isinstance(item.get("selector"), str)
+    ]
+    remaining = []
+    for blocker in unresolved:
+        question = blocker.get("question") if isinstance(blocker, dict) else None
+        match = next(
+            (
+                item
+                for item in verified
+                if isinstance(question, str)
+                and question
+                and (
+                    item["selector"].replace("\\[", "[").replace("\\]", "]") == "#" + question
+                    or (
+                        question.endswith("[]")
+                        and re.fullmatch(
+                            "#" + re.escape(question) + r"_\d+",
+                            item["selector"].replace("\\[", "[").replace("\\]", "]"),
+                        ) is not None
+                    )
+                )
+            ),
+            None,
+        )
+        if match is None:
+            remaining.append(blocker)
+            continue
+        answer_coverage.setdefault("known", []).append({
+            "question": question,
+            "question_key": match["field"],
+            "source": "verified_approved_answer",
+        })
+    answer_coverage["human_required"] = remaining
+    return answer_coverage
+
+
 def prepare_live_job(
     *,
     page: ReadOnlyLivePage,
@@ -68,6 +118,8 @@ def prepare_live_job(
         raise LivePreparationError("company, role, or requisition changed before live preparation")
     if prepared.get("submission_enabled") is not False:
         raise LivePreparationError("live preparation must remain non-submitting")
+    if prepared.get("gates") or snapshot.get("gates"):
+        raise LivePreparationError("rendered application gate blocks preparation")
 
     questions = prepared.get("questions", [])
     if not isinstance(questions, list):
@@ -81,6 +133,46 @@ def prepare_live_job(
     }
     if applied_answers.get("verified") is not True:
         raise LivePreparationError("approved answer read-back was not verified")
+    if answers:
+        fresh = page.read_only_snapshot()
+        if (fresh.get("read_only") is not True or fresh.get("target_id") != target_id
+                or fresh.get("url") != expected_url or not isinstance(fresh.get("html"), str)):
+            raise LivePreparationError("target drift after form mutation")
+        updated = prepare(html_text=fresh["html"], page_url=expected_url)
+        if _identity(updated) != expected or updated.get("submission_enabled") is not False:
+            raise LivePreparationError("application identity drift after form mutation")
+        if updated.get("gates") or fresh.get("gates"):
+            raise LivePreparationError("rendered application gate appeared after preparation")
+        questions = updated.get("questions", [])
+        if not isinstance(questions, list):
+            raise LivePreparationError("invalid fresh question inventory")
+        answer_coverage = coverage(profile=profile, questions=questions, company=identity["company"])
+    answer_coverage = _resolve_verified_mapped_coverage(
+        answer_coverage, applied_answers
+    )
+    from schonfeld_form import URL as SCHONFELD_URL
+    if expected_url == SCHONFELD_URL:
+        reader = getattr(page, "read_greenhouse_client_bound_form", None)
+        if not callable(reader):
+            raise LivePreparationError("complete learned client form inventory required")
+        observed = reader()
+        complete = observed.get("completeness", {})
+        required = complete.get("required_selectors", [])
+        applied_selectors = {item.get("selector") for item in applied_answers.get("field_evidence", []) if item.get("verified") is True}
+        bindings = observed.get("bindings", {})
+        if not (
+            observed.get("source") == "live_client_bound_form" and observed.get("server_saved") is False
+            and complete.get("verified") is True and required
+            and all(complete.get(key) == [] for key in ("unknown_controls", "invalid_controls", "gates"))
+            and set(required) <= applied_selectors
+            and all(bindings.get(selector, {}).get("bound") is True and observed.get("fields", {}).get(selector)
+                    for selector in required)
+        ):
+            raise LivePreparationError("complete approved client-bound form inventory required; unknowns fail closed")
+        # Opaque ATS question labels are resolved by exact learned controls plus
+        # actual full-form inventory, not by guessing answers from label text.
+        answer_coverage = {"known": [{"question_key": key, "source": "verified_approved_answer"} for key in answers],
+                           "human_required": [], "company_specific": [], "optional_skip": []}
     review_ready = not answer_coverage.get("human_required")
     return {
         "target_id": target_id,
@@ -121,12 +213,72 @@ def _questions_from_fields(payload: dict) -> list[dict[str, object]]:
     if not isinstance(fields, list):
         raise LivePreparationError("handler returned an invalid field inventory")
     questions: list[dict[str, object]] = []
+    grouped_radio_names: set[str] = set()
+    grouped_checkbox_names: set[str] = set()
     for field in fields:
         if not isinstance(field, dict):
             continue
         label = field.get("label") or field.get("name")
         if isinstance(label, str) and label:
-            questions.append({"label": label, "required": field.get("required") is True})
+            question = {"label": label, "required": field.get("required") is True}
+            if field.get("type") in ("combobox", "checkbox"):
+                question["type"] = field["type"]
+            if field.get("type") == "checkbox":
+                name = field.get("name")
+                if isinstance(name, str) and name in grouped_checkbox_names:
+                    continue
+                groups = payload.get("choice_groups", [])
+                matches = [group for group in groups if isinstance(group, dict)
+                           and group.get("name") == name] if isinstance(groups, list) else []
+                siblings = [other for other in fields if isinstance(other, dict) and other.get("name") == name]
+                group = matches[0] if len(matches) == 1 else None
+                options = group.get("options") if isinstance(group, dict) else None
+                if (isinstance(name, str) and name and isinstance(group, dict)
+                        and group.get("source") == "static_html" and group.get("type") == "checkbox"
+                        and group.get("bound_values_verified") is False
+                        and isinstance(group.get("label"), str) and group["label"].strip()
+                        and isinstance(group.get("required"), bool)
+                        and isinstance(options, list) and options and len(options) == len(siblings)
+                        and all(isinstance(option, dict) and isinstance(option.get("label"), str)
+                                and option["label"].strip() for option in options)
+                        and all(other.get("type") == "checkbox" and isinstance(other.get("label"), str)
+                                for other in siblings)
+                        and sorted(option["label"] for option in options) == sorted(other["label"] for other in siblings)):
+                    grouped_checkbox_names.add(name)
+                    question["label"] = group["label"]
+                    question["required"] = group["required"] or any(other.get("required") is True for other in siblings)
+                    question["native_checkbox"] = group
+                else:
+                    question["native_checkbox"] = None
+            if field.get("type") == "radio":
+                name = field.get("name")
+                groups = payload.get("choice_groups", [])
+                matches = [group for group in groups if isinstance(group, dict)
+                           and group.get("name") == name] if isinstance(groups, list) else []
+                siblings = [other for other in fields if isinstance(other, dict) and other.get("name") == name]
+                group = matches[0] if len(matches) == 1 else None
+                if (isinstance(name, str) and name and isinstance(group, dict)
+                        and group.get("source") == "static_html" and group.get("type") == "radio"
+                        and group.get("label") == field.get("label")
+                        and isinstance(group.get("options"), list) and len(group["options"]) == len(siblings)
+                        and all(other.get("type") == "radio" and other.get("label") == field.get("label")
+                                for other in siblings)):
+                    if name in grouped_radio_names:
+                        continue
+                    grouped_radio_names.add(name)
+                    question["required"] = any(other.get("required") is True for other in siblings)
+                    question["native_radio"] = group
+                else:
+                    question["native_radio"] = None
+            if field.get("type") == "select":
+                groups = payload.get("select_groups", [])
+                matches = [group for group in groups if isinstance(group, dict)
+                           and field.get("name") and group.get("name") == field["name"]
+                           and group.get("label") == field.get("label")] if isinstance(groups, list) else []
+                same_name = sum(isinstance(other, dict) and other.get("type") == "select"
+                                and other.get("name") == field.get("name") for other in fields)
+                question["native_select"] = matches[0] if len(matches) == 1 and same_name == 1 else None
+            questions.append(question)
     return questions
 
 
@@ -142,6 +294,7 @@ def _dispatch_live_html(
     page_url: str,
     expected_identity: dict[str, str],
     expected_platform: str | None = None,
+    official_posting: dict | None = None,
 ) -> dict:
     payload = prepare_saved_html(html_text=html_text, page_url=page_url)
     if expected_platform is not None and payload.get("platform") != expected_platform:
@@ -163,6 +316,21 @@ def _dispatch_live_html(
         observed = payload.get(key)
         if not observed and _has_exact_identity(identity_sources[key], expected):
             payload[key] = expected
+    if official_posting is not None:
+        from schonfeld_form import URL
+        if not (
+            page_url == URL and payload.get("platform") == "greenhouse"
+            and isinstance(official_posting, dict)
+            and official_posting.get("id") == 8171772
+            and official_posting.get("absolute_url") == page_url
+            and official_posting.get("title") == expected_identity["role"]
+            and str(official_posting.get("company_name", "")).strip() == expected_identity["company"]
+            and official_posting.get("requisition_id") == expected_identity["requisition"]
+            and all(_has_exact_identity(html_text, expected_identity[key]) for key in ("company", "role"))
+        ):
+            raise LivePreparationError("official posting identity drift")
+        payload["requisition"] = official_posting["requisition_id"]
+        payload["identity_source"] = "official_greenhouse_posting"
     payload["questions"] = _questions_from_fields(payload)
     return payload
 

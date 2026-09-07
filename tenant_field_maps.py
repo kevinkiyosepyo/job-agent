@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import cast
 from urllib.parse import urlparse
 
 import browser_actions
+from schonfeld_form import MAPPING as SCHONFELD_MAPPING
 
 
 class FieldMapError(ValueError):
@@ -20,6 +22,7 @@ def _control(selector: str, operation: str) -> dict[str, str]:
 
 
 REGISTRY: tuple[dict, ...] = (
+    SCHONFELD_MAPPING,
     {
         "version": 1,
         "platform": "greenhouse",
@@ -43,6 +46,93 @@ REGISTRY: tuple[dict, ...] = (
             },
             "review": {
                 "controls": {"submit": _control("#submit", "submit")},
+                "required_fields": [],
+                "required_conditions": ["authoritative_review"],
+                "next_step": None,
+            },
+        },
+    },
+    {
+        "version": 1,
+        "platform": "greenhouse",
+        "tenant": "thetradedesk",
+        "hostname": "job-boards.greenhouse.io",
+        "path_prefix": "/embed/job_app",
+        "query_contains": "for=thetradedesk",
+        "steps": {
+            "application": {
+                "controls": {
+                    "first_name": _control("#first_name", "replace_text"),
+                    "last_name": _control("#last_name", "replace_text"),
+                    "email": _control("#email", "replace_text"),
+                    "phone": _control("#phone", "replace_text"),
+                    "resume": _control("#resume", "cdp_upload"),
+                    "school": _control("[id^='school--']", "react_select_exact"),
+                    "degree": _control("[id^='degree--']", "react_select_exact"),
+                    "discipline": _control("[id^='discipline--']", "react_select_exact"),
+                },
+                "required_fields": [
+                    "first_name", "last_name", "email", "phone", "resume",
+                    "school", "degree", "discipline",
+                ],
+                "required_conditions": ["required_questions_verified"],
+                "next_step": "review",
+            },
+            "review": {
+                "controls": {"submit": _control("button[type='submit']", "submit")},
+                "required_fields": [],
+                "required_conditions": ["authoritative_review"],
+                "next_step": None,
+            },
+        },
+    },
+    {
+        "version": 1,
+        "platform": "greenhouse",
+        "tenant": "c3ascend",
+        "hostname": "job-boards.greenhouse.io",
+        "path_prefix": "/c3ascend/jobs/",
+        "steps": {
+            "application": {
+                "controls": {
+                    "first_name": _control("#first_name", "replace_text"),
+                    "last_name": _control("#last_name", "replace_text"),
+                    "email": _control("#email", "replace_text"),
+                    "country": _control("#country", "react_select_exact"),
+                    "phone": _control("#phone", "replace_tel_local_digits"),
+                    "location": _control("#candidate-location", "react_select_exact"),
+                    "resume": _control("#resume", "cdp_upload"),
+                    "school": _control("input[id^='school--']", "react_select_exact"),
+                    "degree": _control("input[id^='degree--']", "react_select_exact"),
+                    "discipline": _control("input[id^='discipline--']", "react_select_exact"),
+                    "education_start_month": _control("input[id^='start-month--']", "react_select_exact"),
+                    "education_start_year": _control("input[id^='start-year--']", "replace_text"),
+                    "education_end_month": _control("input[id^='end-month--']", "react_select_exact"),
+                    "education_end_year": _control("input[id^='end-year--']", "replace_text"),
+                    "career_interest": _control("#question_37929961002", "react_select_exact"),
+                    "linkedin": _control("#question_37929962002", "replace_text"),
+                    "redwood_city_onsite": _control("#question_37929963002", "react_select_exact"),
+                    "graduation": _control("#question_37929964002", "react_select_exact"),
+                    "source": _control("#question_37929965002", "react_select_exact"),
+                    "campus_referral": _control("#question_37929967002", "react_select_exact"),
+                    "referrer_name": _control("#question_37929968002", "replace_text"),
+                    "sponsorship": _control("#question_37929969002", "react_select_exact"),
+                    "privacy_accept": _control("#question_37929970002\\[\\]_252235310002", "set_checked"),
+                    "sms_consent": _control("#question_37929971002", "react_select_exact"),
+                },
+                "required_fields": [
+                    "first_name", "last_name", "email", "country", "phone", "location",
+                    "resume", "school", "degree", "discipline", "education_start_month",
+                    "education_start_year", "education_end_month", "education_end_year",
+                    "career_interest", "linkedin", "redwood_city_onsite", "graduation",
+                    "source", "campus_referral", "referrer_name", "sponsorship",
+                    "privacy_accept", "sms_consent",
+                ],
+                "required_conditions": [],
+                "next_step": "review",
+            },
+            "review": {
+                "controls": {"submit": _control("button[type='submit']", "submit")},
                 "required_fields": [],
                 "required_conditions": ["authoritative_review"],
                 "next_step": None,
@@ -233,6 +323,8 @@ def resolve_field_map(*, page_url: str, platform: str) -> dict:
         if item["platform"] == normalized_platform
         and parsed.hostname == item["hostname"]
         and parsed.path.startswith(item["path_prefix"])
+        and (not item.get("query_contains") or item["query_contains"] in parsed.query)
+        and (not item.get("exact_url") or page_url == item["exact_url"])
     ]
     if parsed.scheme != "https" or len(matches) != 1:
         raise FieldMapError("unknown exact learned tenant for platform and URL")
@@ -270,6 +362,24 @@ def build_step_actions(
         if operation == "set_checked":
             if not isinstance(value, bool):
                 raise FieldMapError(f"checked semantic field requires a boolean: {field}")
+        elif operation == "react_select_exact":
+            if (
+                not isinstance(value, dict)
+                or not isinstance(value.get("search_text"), str)
+                or not value["search_text"]
+                or not isinstance(value.get("exact_option"), str)
+                or not value["exact_option"]
+                or (
+                    "selected_option" in value
+                    and (
+                        not isinstance(value.get("selected_option"), str)
+                        or not value["selected_option"]
+                    )
+                )
+            ):
+                raise FieldMapError(
+                    f"React Select field requires search_text and exact_option: {field}"
+                )
         elif not isinstance(value, str) or not value:
             raise FieldMapError(f"semantic field requires a non-empty string: {field}")
         actions.append({
@@ -332,8 +442,19 @@ def execute_step_actions(
         value = action["value"]
         if operation == "replace_text":
             item = browser_actions.replace_text(page, selector, value)  # type: ignore[arg-type]
+        elif operation == "replace_tel_local_digits":
+            item = browser_actions.replace_tel_local_digits(page, selector, value)  # type: ignore[arg-type]
         elif operation == "native_select":
             item = browser_actions.native_select(page, selector, value)  # type: ignore[arg-type]
+        elif operation == "react_select_exact":
+            react_value = cast(dict[str, str], value)
+            item = browser_actions.react_select_exact(
+                cast(browser_actions.ReactSelectPage, page),
+                cast(str, selector),
+                react_value["search_text"],
+                react_value["exact_option"],
+                selected_option=react_value.get("selected_option"),
+            )
         elif operation == "set_checked":
             item = browser_actions.set_checked(page, selector, value)  # type: ignore[arg-type]
         elif operation == "cdp_upload":

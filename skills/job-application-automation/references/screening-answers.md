@@ -1,26 +1,30 @@
 # Common Screening Question Answers — Kevin Pyo
 
+This reference follows the current umbrella skill and canonical `~/Documents/job-agent/profile.json`; it is not independent authority. Use exact question wording and a real rendered option. Unknown material facts or conflicting current sources require clarification, never guessing. A default does not authorize inventing a different underlying fact.
+
 | Question | Answer |
 |----------|--------|
-| Are you authorized to work in the US? | Yes |
-| Will you now or in the future require sponsorship? | No |
-| Are you 18 years or older? | Yes (born Feb 19, 2006) |
-| Highest level of education | Bachelor's (in progress) |
-| Expected graduation | Spring 2028 |
+| Authorized to work in the US? | Yes |
+| Require sponsorship now or in the future? | No |
+| Age 18 or older? | Yes |
+| Degree / education status | B.S. Data Science, in progress; do not claim a completed bachelor's degree |
+| Expected graduation | May 2028 |
 | University | University of California, San Diego |
-| Major/Field of study | Data Science |
-| GPA | 3.8 |
-| Preferred start date / soonest available starting date | September 2026 |
-| Willing to relocate | Yes |
-| How did you hear about this role? | Company website / LinkedIn |
-| Veteran status | No |
+| Major / field of study | Data Science; use the ATS-specific approved directory fallback only when necessary |
+| Cumulative GPA | **3.236**, whether or not a transcript is requested |
+| Soonest available starting date | September 2026; reconcile specific role dates with approved availability |
+| Willing to relocate? | Yes |
+| Referral/source default | Social Media → Instagram; use Facebook then TikTok only as rendered-option fallbacks, per the umbrella |
+| Veteran status | Not a protected veteran |
 | Gender | Male |
-| Race/Ethnicity | Asian |
+| Race/ethnicity | Asian; Hispanic/Latino: No |
 | Disability | Decline to answer |
-| Desired salary | Open to discuss / competitive market rate |
+| Mandatory desired compensation | $20/hour or $20k annual according to the field's actual units; select a real range if required |
 
 ## Notes
-- Always answer sponsorship = No (U.S. Citizen)
-- Leave voluntary demographic fields blank when possible
-- Leave retention consent unchecked
-- For salary questions: "open to discuss" or "competitive" unless posting shows a range
+
+- Degree pursued and highest completed degree are different questions; the in-progress B.S. is not evidence of a completed B.S.
+- Preserve Kevin's approved demographic choices. Optional irrelevant fields may be skipped; do not let historical autofill replace approved disclosures.
+- Optional cover letters: skip. Optional retention consent: leave unchecked unless Kevin has directed otherwise.
+- Consult the umbrella for Honeywell/Oracle-specific legal answers; do not generalize tenant-specific legal defaults to unrelated questions.
+- Read the exact current resume/profile for employment, dates, experience, certifications, and any additional legal/availability questions.

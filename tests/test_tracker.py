@@ -54,6 +54,7 @@ def test_reconcile_reports_terminal_queue_failure_against_stale_sheet_row(tmp_pa
     assert leased is not None
     queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="failed",
         now="2026-08-25T00:00:01+00:00",
         error="Unsupported ATS",

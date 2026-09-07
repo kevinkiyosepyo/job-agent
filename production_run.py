@@ -50,17 +50,20 @@ def _orchestrator_argv(
 def _build_verification(first_payload: dict, second_payload: dict) -> dict:
     first_queue_count = first_payload.get("queue", {}).get("count")
     second_queue_count = second_payload.get("queue", {}).get("count")
-    unsupported_count = second_payload.get("plan", {}).get("counts", {}).get("unsupported", 0)
-    supported_queue_count = (
-        second_payload.get("plan", {}).get("counts", {}).get("greenhouse", 0)
-        + second_payload.get("plan", {}).get("counts", {}).get("workday", 0)
+    queued_jobs = second_payload.get("queue", {}).get("jobs", [])
+    unsupported_urls = {
+        job["url"] for job in second_payload.get("plan", {}).get("routes", {}).get("unsupported", [])
+    }
+    unsupported_not_queued = all(
+        job.get("ats_platform") in {"Greenhouse", "Workday"} and job.get("url") not in unsupported_urls
+        for job in queued_jobs
     )
     submission_enabled = bool(second_payload.get("plan", {}).get("submission_enabled"))
     return {
         "idempotent_queueing": first_queue_count == second_queue_count,
         "first_queue_count": first_queue_count,
         "second_queue_count": second_queue_count,
-        "unsupported_roles_not_queued": second_queue_count == supported_queue_count and unsupported_count >= 0,
+        "unsupported_roles_not_queued": unsupported_not_queued,
         "submission_enabled": submission_enabled,
         "external_side_effects_blocked": not submission_enabled,
     }
@@ -70,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--greenhouse", action="append", default=[], help="Greenhouse board token")
     parser.add_argument("--lever", action="append", default=[], help="Lever company token")
+    parser.add_argument("--registry", help="Versioned approved-source registry JSON path")
     parser.add_argument("--profile", default=str(BASE / "profile.json"))
     parser.add_argument("--workspace", default=str(BASE / "runtime/production-run"))
     args = parser.parse_args(argv)
@@ -89,6 +93,8 @@ def main(argv: list[str] | None = None) -> int:
     for token in args.lever:
         source_argv.extend(["--lever", token])
 
+    if args.registry:
+        source_argv.extend(["--registry", args.registry])
     source_exit_code, source_payload = _run_main(sources.main, source_argv)
 
     result = {

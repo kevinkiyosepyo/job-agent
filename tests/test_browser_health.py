@@ -12,6 +12,35 @@ sys.path.insert(0, str(ROOT))
 import browser_health
 
 
+@pytest.mark.parametrize("code", [401, 403, 404, 500])
+def test_main_returns_failure_for_http_errors(monkeypatch, code):
+    from urllib.error import HTTPError
+
+    monkeypatch.setattr(browser_health, "probe_cdp_health", lambda url:
+                        browser_health.classify_browser_error(HTTPError(url, code, "failed", {}, None)))
+    assert browser_health.main([]) == 1
+
+
+@pytest.mark.parametrize("outcome,expected", [
+    ({"status": "ready", "verified": True}, "ready"),
+    ({"status": "ready", "verified": False}, "degraded"),
+    (TimeoutError("private diagnostic"), "error"),
+    (None, "unavailable"),
+])
+def test_transport_probe_calls_actual_injected_transport(outcome, expected):
+    calls = []
+    def caller():
+        calls.append("executor transport")
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+    assert hasattr(browser_health, "probe_transport_health")
+    report = browser_health.probe_transport_health(caller=caller if outcome is not None else None)
+    assert report["status"] == expected
+    assert calls == ([] if outcome is None else ["executor transport"])
+    assert "private diagnostic" not in str(report)
+
+
 def test_probe_reports_ready_when_version_and_page_targets_exist():
     def fetch_json(url: str):
         if url.endswith("/json/version"):

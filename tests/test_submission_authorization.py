@@ -80,6 +80,7 @@ def test_authorization_is_exact_bound_stored_as_digest_consumed_once_and_rejects
 
     assert consumed == {
         "authorization_consumed": True,
+        "submission_attempt_id": consumed["submission_attempt_id"],
         "single_use": True,
         "binding": {**current_binding(review), "actor": "fixture-operator"},
         "expires_at": "2026-08-27T08:05:00+00:00",

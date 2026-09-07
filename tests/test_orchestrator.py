@@ -36,11 +36,13 @@ def test_dry_run_orchestrates_scan_route_queue_and_audit(tmp_path, monkeypatch):
                     "role": "Software Engineer Intern",
                     "url": "https://job-boards.greenhouse.io/example/jobs/1?utm_source=linkedin",
                     "salary": "$40/hr",
+                    "location": "United States",
                 },
                 {
                     "company": "Google",
                     "role": "Software Engineer Intern",
                     "url": "https://careers.google.com/jobs/results/2",
+                    "location": "United States",
                 },
             ]
         )

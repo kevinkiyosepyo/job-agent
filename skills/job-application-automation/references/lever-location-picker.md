@@ -1,0 +1,11 @@
+# Lever paired location picker
+
+Use when the saved official Lever form shows a location textbox backed by a separate location selection. Through `terminal`, run `prepare_job.py <saved-html> --page-url <exact-application-url> --output <private-json>` using the configured interpreter. This inventories public markup only; it does not fill or establish saved application state.
+
+The inspector recognizes the specific static structure: a text input named `location` with class and data-qa `location-input`, directly inside an `application-field` container with a unique input of that name, one hidden sibling named `selectedLocation`, and one sibling `dropdown-container` containing `dropdown-results`. It marks that field `type=combobox`, which the existing preparation question converter retains. IDs are reacquired from current markup, not hardcoded by the classifier. The hidden field, labels, required flags and other inventory remain unchanged.
+
+Missing or ambiguous structure retains the original inventory type. That fallback is not certified free-text behavior or permission to type-only. This is not a general autocomplete detector; inspect the actual fresh control whenever another variant appears. No option list, visibility, selection or valid hidden backing value is inferred from the static markup, even when value attributes are present.
+
+For a real connected preparation, use only the approved browser capability and supported exact control procedure: choose a genuine offered location, verify the selected display and backing state, then saved validation. Never directly invent/write `selectedLocation` or relabel the control to evade option-proof checks. Unknown canonical location facts remain unknown; the type correction does not resolve them or establish Review readiness. Shared no-replay, human-gate and single-use submission boundaries remain unchanged.
+
+Verification via `terminal`: run the guarded `run_offline_tests.py tests/test_lever_location_autocomplete.py -q`, then the full guarded suite. Replay exact saved source bytes and compare all inventory except the justified location kind; ensure unknown facts remain blocked and `submission_enabled=false`. Public replay and synthetic tests are not connected support or authoritative Review evidence.

@@ -27,7 +27,7 @@ class FakeResponse:
         return False
 
 
-def test_greenhouse_adapter_returns_active_internship_candidates_from_public_api():
+def test_greenhouse_adapter_returns_postings_for_downstream_profile_classification():
     calls: list[str] = []
 
     def fake_open(url: str, timeout: float):
@@ -65,12 +65,18 @@ def test_greenhouse_adapter_returns_active_internship_candidates_from_public_api
             "location": "San Francisco, CA",
             "source": "Greenhouse public API",
             "updated_at": "2026-08-23T18:00:00Z",
-        }
+        },
+        {
+            "company": "Example", "role": "Senior Software Engineer",
+            "url": "https://job-boards.greenhouse.io/example/jobs/102",
+            "location": "Remote", "source": "Greenhouse public API",
+            "updated_at": "2026-08-23T18:00:00Z",
+        },
     ]
 
 
 
-def test_lever_adapter_retries_transient_failures_and_returns_internships_only():
+def test_lever_adapter_retries_transient_failures_without_an_intern_only_filter():
     attempts = {"count": 0}
 
     def flaky_open(url: str, timeout: float):
@@ -108,7 +114,12 @@ def test_lever_adapter_retries_transient_failures_and_returns_internships_only()
             "team": "Data",
             "source": "Lever public API",
             "created_at": 1787517600000,
-        }
+        },
+        {
+            "company": "Example", "role": "Senior Data Scientist",
+            "url": "https://jobs.lever.co/example/2", "location": "Remote",
+            "team": "Data", "source": "Lever public API", "created_at": 1787517600000,
+        },
     ]
 
 
@@ -437,7 +448,7 @@ def test_main_signals_zero_candidates_when_sources_return_no_internships(tmp_pat
             "error": [],
         },
         "output": str(output),
-        "warning": "Configured source tokens returned zero internship candidates",
+        "warning": "Configured source tokens returned zero job postings",
         "stale_result": True,
     }
 

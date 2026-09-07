@@ -1,8 +1,10 @@
 """Exact-target learned confirmation and Candidate Home readers.
 
-No reader navigates or selects a target.  The caller supplies one exact bound
-page.  Tenants without a verified Candidate Home seam produce stable
-human-required evidence instead of inferred submission state.
+No reader navigates or selects a target. The caller supplies one exact bound
+page. Account-backed flows require the verified Candidate Home seam; an explicit
+Greenhouse guest context instead requires the canonical original one-shot intent
+and a trusted same-tab observation of actual rendered success. A URL or journal
+entry alone never qualifies; missing attribution is inspection-only, no replay.
 """
 from __future__ import annotations
 
@@ -79,14 +81,48 @@ def read_and_reconcile(
     target_id: str,
     expected_url: str,
     expected_identity: dict[str, str],
+    guest_submission: dict | None = None,
 ) -> dict:
-    """Read confirmation plus one exact submitted Candidate Home record."""
+    """Read exact portal evidence, or explicitly opted-in guest submit evidence."""
     normalized_platform = platform.strip().casefold()
     if not all(
         isinstance(expected_identity.get(key), str) and expected_identity[key]
         for key in ("company", "role", "requisition")
     ):
         raise LiveConfirmationReadError("exact job identity is required")
+    if guest_submission is not None:
+        from greenhouse_guest_confirmation import GuestConfirmationError, validate_provenance
+
+        try:
+            if normalized_platform != "greenhouse" or not isinstance(guest_submission, dict):
+                raise LiveConfirmationReadError("guest_confirmation_requires_greenhouse_context")
+            transition = guest_submission.get("transition", {})
+            if not isinstance(transition, dict):
+                raise LiveConfirmationReadError("guest_transition_missing")
+            snapshot = _snapshot(page, target_id=target_id, expected_url=transition.get("to_url"))
+            result = confirmation_reconciliation.reconcile_greenhouse_guest(
+                snapshot=snapshot, expected_identity=expected_identity, tenant=tenant,
+                target_id=target_id, origin_url=expected_url, guest_submission=guest_submission,
+            )
+            validate_provenance(
+                snapshot=_snapshot(page, target_id=target_id, expected_url=snapshot["url"]),
+                expected_identity=expected_identity, target_id=target_id,
+                origin_url=expected_url, guest_submission=guest_submission,
+            )
+            return result
+        except (ValueError, RuntimeError, OSError) as exc:
+            reason = (
+                str(exc) if isinstance(exc, (GuestConfirmationError, LiveConfirmationReadError,
+                                             confirmation_reconciliation.ConfirmationEvidenceError))
+                else "guest_confirmation_observation_failed"
+            )
+            result = _blocked(
+                platform=normalized_platform, tenant=tenant, identity=expected_identity,
+                blocker_type="greenhouse_guest_confirmation_unverified", reason=reason,
+            )
+            result["replay_allowed"] = False
+            result["next_action"] = "inspect_confirmation_without_replay"
+            return result
     snapshot = _snapshot(page, target_id=target_id, expected_url=expected_url)
     try:
         confirmation = confirmation_reconciliation.extract_confirmation(

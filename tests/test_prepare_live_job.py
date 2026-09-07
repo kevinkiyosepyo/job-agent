@@ -69,6 +69,58 @@ def test_prepare_live_job_binds_exact_target_verifies_identity_and_stays_non_sub
     }
 
 
+def test_prepare_live_job_resolves_required_question_covered_by_verified_mapped_control():
+    import prepare_live_job
+
+    result = prepare_live_job.prepare_live_job(
+        page=FakeLivePage(),
+        target_id="page-42",
+        expected_url="https://job-boards.greenhouse.io/example/jobs/123",
+        expected_identity={
+            "company": "Example Inc",
+            "role": "Software Engineer Intern",
+            "requisition": "123",
+        },
+        profile={},
+        prepare=lambda **kwargs: {
+            "platform": "greenhouse",
+            "company": "Example Inc",
+            "role": "Software Engineer Intern",
+            "requisition": "123",
+            "questions": [{"label": "question_37929970002[]", "required": True}],
+            "submission_enabled": False,
+        },
+        coverage=lambda **kwargs: {
+            "known": [],
+            "company_specific": [],
+            "optional_skip": [],
+            "human_required": [{
+                "question": "question_37929970002[]",
+                "question_key": "unknown",
+                "reason": "unknown_question",
+            }],
+        },
+        approved_answers={"privacy_accept": True},
+        apply_known=lambda answers: {
+            "action": "apply_learned_step",
+            "field_evidence": [{
+                "field": "privacy_accept",
+                "selector": "#question_37929970002\\[\\]_252235310002",
+                "verified": answers["privacy_accept"] is True,
+            }],
+            "verified": True,
+        },
+    )
+
+    assert result["review_ready"] is True
+    assert result["answer_coverage"]["human_required"] == []
+    assert result["answer_coverage"]["known"] == [{
+        "question": "question_37929970002[]",
+        "question_key": "privacy_accept",
+        "source": "verified_approved_answer",
+    }]
+
+
 def test_prepare_live_job_rejects_target_or_identity_drift_before_handler_dispatch():
     import prepare_live_job
 
@@ -173,7 +225,7 @@ def test_cli_fresh_binds_applies_explicit_answers_and_persists_sanitized_evidenc
 
     assert exit_code == 0
     assert bindings == [("http://127.0.0.1:9222", "page-42")]
-    assert dispatched == [{"html_text": "<html>sanitized fixture</html>", "page_url": page_url}]
+    assert dispatched == [{"html_text": "<html>sanitized fixture</html>", "page_url": page_url}] * 2
     assert page.operations == [("replace_text", "#first-name", "Kevin")]
     assert page.closed is True
     persisted_text = output_path.read_text()

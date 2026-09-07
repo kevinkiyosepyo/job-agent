@@ -9,6 +9,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 from pipeline import validate_confirmation_evidence
+from browser_actions import inventory_form_fields
 
 
 class _NjoynHTMLParser(HTMLParser):
@@ -133,6 +134,7 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
     """Inventory a sanitized Njoyn surface without performing mutations."""
     parser = _NjoynHTMLParser()
     parser.feed(html_text)
+    parser.fields = inventory_form_fields(html_text)
     confirmation_text = None
     confirmation_reference_id = None
     page_type = "application"

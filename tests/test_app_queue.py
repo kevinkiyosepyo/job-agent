@@ -86,10 +86,11 @@ def test_finish_lease_retry_applies_backoff_and_preserves_error_detail(tmp_path)
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
 
     retried = queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="retry",
         now="2026-08-24T17:21:00+00:00",
         retry_seconds=600,
@@ -131,9 +132,10 @@ def test_pending_approval_job_can_be_requeued_for_a_new_attempt(tmp_path):
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
     blocked = queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_approval",
         now="2026-08-24T17:21:00+00:00",
         error="awaiting Discord approval",

@@ -6,6 +6,7 @@ idempotency marker through an authenticated read-back API.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import urllib.parse
@@ -38,6 +39,8 @@ class SheetsBackend(Protocol):
 
 
 class DiscordClient(Protocol):
+    def get_message_authenticated(self, channel_id: str, message_id: str) -> dict: ...
+
     def list_messages_authenticated(self, channel_id: str, *, limit: int) -> list[dict]: ...
 
     def send_message_authenticated(
@@ -123,8 +126,10 @@ class DiscordRESTClient:
         *,
         token_provider: Callable[[], str],
         base_url: str = "https://discord.com/api/v10",
+        opener: Callable = urllib.request.urlopen,
     ) -> None:
         self.token_provider = token_provider
+        self.opener = opener
         self.base_url = base_url.rstrip("/")
 
     def _request(self, method: str, path: str, payload: dict | None = None) -> object:
@@ -142,8 +147,17 @@ class DiscordRESTClient:
                 "User-Agent": "job-agent-live-operator/1",
             },
         )
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with self.opener(request, timeout=30) as response:
             return json.loads(response.read().decode("utf-8"))
+
+    def get_message_authenticated(self, channel_id: str, message_id: str) -> dict:
+        payload = self._request(
+            "GET", f"/channels/{urllib.parse.quote(channel_id, safe='')}/messages/"
+            f"{urllib.parse.quote(message_id, safe='')}",
+        )
+        if not isinstance(payload, dict):
+            raise RuntimeError("Discord exact read-back was not a message")
+        return payload
 
     def list_messages_authenticated(self, channel_id: str, *, limit: int) -> list[dict]:
         payload = self._request(
@@ -160,7 +174,8 @@ class DiscordRESTClient:
         payload = self._request(
             "POST",
             f"/channels/{urllib.parse.quote(channel_id, safe='')}/messages",
-            {"content": content, "nonce": nonce, "enforce_nonce": True},
+            {"content": content, "nonce": nonce, "enforce_nonce": True,
+             "allowed_mentions": {"parse": []}},
         )
         if not isinstance(payload, dict):
             raise RuntimeError("Discord send did not return a message")
@@ -179,30 +194,44 @@ class DiscordTransactionAdapter:
         self.channel_id = channel_id
         self.client = client
 
-    def read_back(self, *, transaction_id: str) -> dict | None:
+    def read_back(self, *, transaction_id: str, receipt_id: str | None = None) -> dict | None:
         _require_commit(self.commit_mode)
         prefix = f"job-agent-transaction={transaction_id};message_sha256="
-        for item in self.client.list_messages_authenticated(self.channel_id, limit=100):
+        matches = []
+        items = ([self.client.get_message_authenticated(self.channel_id, receipt_id)]
+                 if receipt_id else self.client.list_messages_authenticated(self.channel_id, limit=100))
+        expected_receipt = receipt_id
+        for item in items:
             content = item.get("content", "")
             if not isinstance(content, str) or prefix not in content:
                 continue
-            match = MARKER_PATTERN.search(content)
-            if match is None or match.group(1) != transaction_id:
-                continue
+            body, separator, marker = content.rpartition("\n")
+            match = MARKER_PATTERN.fullmatch(marker)
             receipt_id = item.get("id")
-            return {
+            if (not separator or match is None or match.group(1) != transaction_id
+                    or hashlib.sha256(body.encode("utf-8")).hexdigest() != match.group(2)
+                    or not isinstance(receipt_id, str) or not receipt_id
+                    or (expected_receipt is not None and receipt_id != expected_receipt)
+                    or item.get("channel_id", self.channel_id) != self.channel_id
+                    or item.get("nonce", transaction_id[:25]) != transaction_id[:25]):
+                raise ValueError("Discord exact read-back conflict")
+            matches.append({
                 "verified": True,
                 "transaction_id": transaction_id,
                 "message_sha256": match.group(2),
-                "receipt_id": receipt_id if isinstance(receipt_id, str) else "",
+                "receipt_id": receipt_id,
                 "readback_source": "authenticated_discord_api",
-            }
-        return None
+            })
+        if len(matches) > 1:
+            raise ValueError("Discord exact read-back conflict: duplicate messages")
+        return matches[0] if matches else None
 
-    def send(self, *, transaction_id: str, message: str, message_sha256: str) -> None:
+    def send(self, *, transaction_id: str, message: str, message_sha256: str) -> dict:
         _require_commit(self.commit_mode)
         if not isinstance(message, str) or not message:
             raise ValueError("Discord transaction message is required")
+        if hashlib.sha256(message.encode("utf-8")).hexdigest() != message_sha256:
+            raise ValueError("Discord message hash does not match exact content")
         marker = _marker(
             transaction_id=transaction_id, digest=message_sha256, kind="message"
         )
@@ -210,9 +239,13 @@ class DiscordTransactionAdapter:
         if existing is not None:
             if existing.get("message_sha256") != message_sha256:
                 raise ValueError("Discord idempotency key exists with different message")
-            return
-        self.client.send_message_authenticated(
+            return existing
+        receipt = self.client.send_message_authenticated(
             self.channel_id,
             content=f"{message}\n{marker}",
             nonce=transaction_id[:25],
         )
+        receipt_id = receipt.get("id")
+        if not isinstance(receipt_id, str) or not receipt_id:
+            raise ValueError("Discord send receipt ID is unavailable")
+        return {"receipt_id": receipt_id}

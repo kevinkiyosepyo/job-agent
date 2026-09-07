@@ -14,6 +14,8 @@ sys.path.insert(0, str(ROOT))
     "platform,page_url,tenant,field_key,selector",
     [
         ("greenhouse", "https://job-boards.greenhouse.io/fixture/jobs/123", "fixture", "first_name", "#first_name"),
+        ("greenhouse", "https://job-boards.greenhouse.io/embed/job_app?for=thetradedesk&token=5187605007", "thetradedesk", "school", "[id^='school--']"),
+        ("greenhouse", "https://job-boards.greenhouse.io/c3ascend/jobs/8739036002", "c3ascend", "school", "input[id^='school--']"),
         ("workday", "https://fixture.wd1.myworkdayjobs.com/job/123", "fixture", "email", "#wd_email"),
         ("lever", "https://jobs.lever.co/fixture/123/apply", "fixture", "full_name", "#name"),
         ("oracle", "https://careers.example.test/job/123/apply", "example", "first_name", "#first_name"),
@@ -60,6 +62,131 @@ def test_mapped_actions_reject_raw_selector_or_observed_control_drift():
             approved_answers={"first_name": "Fixture"},
             observed_selectors={"#different"},
         )
+
+
+def test_trade_desk_field_map_exposes_generic_react_select_contract():
+    import tenant_field_maps
+
+    mapping = tenant_field_maps.resolve_field_map(
+        page_url="https://job-boards.greenhouse.io/embed/job_app?for=thetradedesk&token=5187605007",
+        platform="greenhouse",
+    )
+
+    actions = tenant_field_maps.build_step_actions(
+        mapping=mapping,
+        step="application",
+        approved_answers={
+            "school": {
+                "search_text": "San Diego",
+                "exact_option": "University of California - San Diego",
+            }
+        },
+        observed_selectors={"[id^='school--']"},
+    )
+
+    assert actions == [{
+        "field": "school",
+        "operation": "react_select_exact",
+        "selector": "[id^='school--']",
+        "value": {
+            "search_text": "San Diego",
+            "exact_option": "University of California - San Diego",
+        },
+    }]
+
+
+def test_c3_ascend_map_covers_required_application_and_consent_fields():
+    import tenant_field_maps
+
+    mapping = tenant_field_maps.resolve_field_map(
+        page_url="https://job-boards.greenhouse.io/c3ascend/jobs/8739036002",
+        platform="greenhouse",
+    )
+
+    controls = mapping["steps"]["application"]["controls"]
+    assert controls["phone"] == {
+        "selector": "#phone",
+        "operation": "replace_tel_local_digits",
+    }
+    assert controls["location"] == {
+        "selector": "#candidate-location",
+        "operation": "react_select_exact",
+    }
+    assert controls["school"] == {
+        "selector": "input[id^='school--']",
+        "operation": "react_select_exact",
+    }
+    assert controls["privacy_accept"] == {
+        "selector": "#question_37929970002\\[\\]_252235310002",
+        "operation": "set_checked",
+    }
+    assert controls["sms_consent"] == {
+        "selector": "#question_37929971002",
+        "operation": "react_select_exact",
+    }
+
+    country_action = tenant_field_maps.build_step_actions(
+        mapping=mapping,
+        step="application",
+        approved_answers={
+            "country": {
+                "search_text": "United States",
+                "exact_option": "United States +1",
+                "selected_option": "+1",
+            }
+        },
+    )[0]
+    assert country_action["value"] == {
+        "search_text": "United States",
+        "exact_option": "United States +1",
+        "selected_option": "+1",
+    }
+
+
+def test_execute_react_select_action_uses_exact_option_contract():
+    import tenant_field_maps
+
+    class Page:
+        def __init__(self):
+            self.selected = ""
+            self.operations = []
+
+        def read_only_snapshot(self):
+            return {
+                "read_only": True,
+                "target_id": "page-42",
+                "url": "https://job-boards.greenhouse.io/fixture/jobs/123",
+            }
+
+        def react_select_exact(self, selector, search_text, exact_option):
+            self.operations.append((selector, search_text, exact_option))
+            self.selected = exact_option
+
+        def read_react_selected_option(self, selector):
+            return self.selected
+
+    page = Page()
+    result = tenant_field_maps.execute_step_actions(
+        page=page,
+        target_id="page-42",
+        expected_url="https://job-boards.greenhouse.io/fixture/jobs/123",
+        actions=[{
+            "field": "school",
+            "operation": "react_select_exact",
+            "selector": "[id^='school--']",
+            "value": {
+                "search_text": "San Diego",
+                "exact_option": "University of California - San Diego",
+            },
+        }],
+    )
+
+    assert page.operations == [(
+        "[id^='school--']",
+        "San Diego",
+        "University of California - San Diego",
+    )]
+    assert result["verified"] is True
 
 
 def test_conditional_steps_advance_only_after_required_actions_and_parser_evidence():

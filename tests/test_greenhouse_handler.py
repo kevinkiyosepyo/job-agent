@@ -201,3 +201,62 @@ def test_inspect_html_fails_closed_when_greenhouse_asks_to_verify_identity():
         "type": "identity_verification",
         "detail": "Identity verification detected",
     }
+
+
+def test_inspect_html_ignores_invisible_recaptcha_plumbing_without_visible_challenge():
+    result = greenhouse_handler.inspect_html(
+        "<h1>Software Engineer Intern</h1>"
+        "<input id='first_name'>"
+        "<textarea name='g-recaptcha-response' hidden></textarea>"
+        "<script>window.ENV = {GOOGLE_RECAPTCHA_INVISIBLE_KEY: 'fixture'};</script>",
+        page_url="https://job-boards.greenhouse.io/example/jobs/123",
+    )
+
+    assert result["page_type"] == "application"
+    assert result["manual_gate"] is None
+    assert result["safe_to_prepare"] is True
+
+
+def test_inspect_html_reports_prefilled_controls_and_dynamic_education_selectors():
+    result = greenhouse_handler.inspect_html(
+        "<h1>Software Engineer Intern</h1>"
+        "<input id='first_name' value='Kevin'>"
+        "<input id='school--1' value=''>"
+        "<input id='degree--1' value=''>"
+        "<input id='discipline--1' value=''>"
+        "<input id='start-month--1' value=''>"
+        "<input id='start-year--1' value='2024'>"
+        "<input id='end-month--1' value=''>"
+        "<input id='end-year--1' value='2028'>"
+        "<input id='office-choice' type='checkbox' value='open-to-all'>",
+        page_url="https://job-boards.greenhouse.io/example/jobs/123",
+    )
+
+    assert result["control_hints"] == {
+        "prefilled_ids": ["end-year--1", "first_name", "start-year--1"],
+        "education_groups": [{
+            "index": 1,
+            "selectors": {
+                "school": "#school--1",
+                "degree": "#degree--1",
+                "discipline": "#discipline--1",
+                "start_month": "#start-month--1",
+                "start_year": "#start-year--1",
+                "end_month": "#end-month--1",
+                "end_year": "#end-year--1",
+            },
+        }],
+    }
+
+
+def test_inspect_html_prefers_modern_greenhouse_document_title_for_company():
+    result = greenhouse_handler.inspect_html(
+        "<title>Job Application for Software Engineer - Intern (Summer 2027) "
+        "at C3 AI Ascend Internship Program: Summer 2027</title>"
+        "<h1>Software Engineer - Intern (Summer 2027)</h1>"
+        "<p>Join our teams — shipping code that matters.</p>"
+        "<input id='first_name'>",
+        page_url="https://job-boards.greenhouse.io/c3ascend/jobs/8739036002",
+    )
+
+    assert result["company"] == "C3 AI Ascend Internship Program: Summer 2027"

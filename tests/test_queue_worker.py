@@ -101,6 +101,7 @@ def test_prepare_next_job_retry_uses_attempt_specific_plan_path(tmp_path):
     assert first_lease is not None
     queue.finish_lease(
         first_lease.id,
+        lease_token=first_lease.lease_token,
         outcome="retry",
         now="2026-08-25T07:36:00+00:00",
         retry_seconds=60,

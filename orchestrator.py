@@ -42,9 +42,11 @@ class RunLock:
         self._handle = None
 
 
-def build_scan(candidates: list[dict], profile: dict) -> dict:
+def build_scan(candidates: list[dict], profile: dict, *, known_urls=(), duplicate_checker=None, use_tracker: bool = False) -> dict:
     jobs = scanner.unique_jobs(candidates)
-    results = [scanner.classify(job, profile) for job in jobs]
+    known_urls = tuple(known_urls)
+    results = [scanner.classify(job, profile, known_urls=known_urls,
+                                duplicate_checker=duplicate_checker, use_tracker=use_tracker) for job in jobs]
     new = [job for job in results if job["relevant"] and not job["duplicate"]]
     manual = [job for job in new if job["manual_only"]]
     queue = [job for job in new if not job["manual_only"]]
@@ -54,6 +56,7 @@ def build_scan(candidates: list[dict], profile: dict) -> dict:
         "manual_only": manual,
         "auto_apply_queue": queue,
         "all_results": results,
+        "needs_verification": [job for job in results if job["eligibility_status"] == "needs_verification"],
     }
 
 
@@ -411,7 +414,8 @@ def run(
     source_report = load_source_report(source_report_path)
 
     candidates = json.loads(candidates_path.read_text())
-    scan = build_scan(candidates, profile)
+    known_urls = scanner.known_urls_from_queue(queue_db)
+    scan = build_scan(candidates, profile, known_urls=known_urls)
     plan = {
         "mode": "plan_only",
         "submission_enabled": False,

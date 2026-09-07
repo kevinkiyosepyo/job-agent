@@ -81,6 +81,20 @@ def test_manifest_loads_only_closed_versioned_exact_identity_contract(tmp_path):
     assert loaded == payload
 
 
+def test_manifest_accepts_profile_selected_pdf_basename_instead_of_forcing_generic_name(
+    tmp_path,
+):
+    import live_run_manifest
+
+    payload = _manifest(tmp_path, mode="production_live")
+    payload["resume"]["path"] = str(tmp_path / "Resume 2027 SWE.pdf")
+    payload["resume"]["basename"] = "Resume 2027 SWE.pdf"
+
+    assert live_run_manifest.validate_manifest(
+        payload, production_enabled=True
+    ) == payload
+
+
 def test_manifest_rejects_unknown_fields_production_without_enablement_and_identity_drift(
     tmp_path,
 ):

@@ -24,6 +24,13 @@ cron_candidates_*.json
 cron_scan_*.json
 cron_scan_recheck_*.json
 ocr_jobs_*.json
+candidates*.json
+candidates-*.json
+scan-results-*.json
+runtime-*.json
+runtime-*.html
+*.sqlite3
+*.sqlite
 sheet-api-test-append.json
 discord-target.json
 *.log

@@ -46,7 +46,7 @@ def test_main_runs_sources_then_orchestrator_and_persists_all_artifacts(tmp_path
                 "company": "Example",
                 "role": "Software Engineer Intern, Summer 2027",
                 "url": "https://job-boards.greenhouse.io/example/jobs/123?utm_source=linkedin",
-                "location": "Remote",
+                "location": "Remote - United States",
                 "source": "Greenhouse public API",
                 "updated_at": "2026-08-23T00:00:00Z",
             }
@@ -77,7 +77,7 @@ def test_main_runs_sources_then_orchestrator_and_persists_all_artifacts(tmp_path
             "company": "Example",
             "role": "Software Engineer Intern, Summer 2027",
             "url": "https://job-boards.greenhouse.io/example/jobs/123",
-            "location": "Remote",
+            "location": "Remote - United States",
             "source": "Greenhouse public API",
             "updated_at": "2026-08-23T00:00:00Z",
         }
@@ -103,7 +103,7 @@ def test_main_proves_idempotent_dry_run_and_keeps_unsupported_roles_out_of_queue
                 "company": "Example",
                 "role": "Software Engineer Intern, Summer 2027",
                 "url": "https://job-boards.greenhouse.io/example/jobs/123?utm_source=linkedin",
-                "location": "Remote",
+                "location": "Remote - United States",
                 "source": "Greenhouse public API",
                 "updated_at": "2026-08-23T00:00:00Z",
             },
@@ -111,7 +111,7 @@ def test_main_proves_idempotent_dry_run_and_keeps_unsupported_roles_out_of_queue
                 "company": "Example",
                 "role": "Business Analyst Intern, Summer 2027",
                 "url": "https://careers.example.com/jobs/456?utm_source=linkedin",
-                "location": "Remote",
+                "location": "Remote - United States",
                 "source": "Greenhouse public API",
                 "updated_at": "2026-08-23T00:00:00Z",
             },
@@ -148,3 +148,19 @@ def test_main_proves_idempotent_dry_run_and_keeps_unsupported_roles_out_of_queue
 
     audit_lines = (workspace / "audit.jsonl").read_text().strip().splitlines()
     assert len(audit_lines) == 2
+
+
+def test_production_dry_run_accepts_registry_without_touching_sheets(tmp_path, monkeypatch, capsys):
+    profile_path = _write_profile(tmp_path)
+    def tracker_forbidden(*args):
+        raise AssertionError("Sheets access is forbidden by default")
+    monkeypatch.setattr(orchestrator.scanner, "tracker_duplicate", tracker_forbidden)
+    monkeypatch.setattr(sources, "fetch_greenhouse_jobs", lambda *args, **kwargs: [])
+    registry = tmp_path / "registry.json"
+    registry.write_text(json.dumps({"version": 1, "sources": [
+        {"platform": "greenhouse", "token": "example", "approved": True}]}))
+    assert production_run.main(["--registry", str(registry), "--profile", str(profile_path),
+                                "--workspace", str(tmp_path / "run")]) == 3
+    result = json.loads(capsys.readouterr().out)
+    assert result["source"]["greenhouse_tokens"] == ["example"]
+    assert "orchestrator" not in result

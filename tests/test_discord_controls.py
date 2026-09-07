@@ -22,9 +22,10 @@ def test_approve_control_requeues_matching_pending_approval_job(tmp_path):
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
     queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_approval",
         now="2026-08-24T17:21:00+00:00",
         error="awaiting Discord approval",
@@ -49,9 +50,10 @@ def test_reject_control_marks_matching_pending_approval_job_failed(tmp_path):
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
     queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_approval",
         now="2026-08-24T17:21:00+00:00",
         error="awaiting Discord approval",
@@ -75,9 +77,10 @@ def test_retry_control_requeues_matching_pending_question_job(tmp_path):
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
     queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_question",
         now="2026-08-24T17:21:00+00:00",
         error="need answer about start month",
@@ -101,9 +104,10 @@ def test_skip_control_marks_matching_pending_captcha_job_failed(tmp_path):
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
     queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_captcha",
         now="2026-08-24T17:21:00+00:00",
         error="manual CAPTCHA required",
@@ -143,9 +147,10 @@ def test_controls_for_job_returns_only_actions_valid_for_its_state(tmp_path):
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
     blocked = queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_question",
         now="2026-08-24T17:21:00+00:00",
         error="need answer about start month",
@@ -168,9 +173,10 @@ def test_main_emits_machine_readable_json_for_control_action(tmp_path, capsys):
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-24T17:20:00+00:00", lease_seconds=300)
     queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_approval",
         now="2026-08-24T17:21:00+00:00",
         error="awaiting Discord approval",
@@ -199,9 +205,10 @@ def test_handle_control_authorizes_actor_and_writes_audit_event(tmp_path):
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-25T10:00:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-25T10:00:00+00:00", lease_seconds=300)
     queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_approval",
         now="2026-08-25T10:01:00+00:00",
         error="awaiting Discord approval",
@@ -236,9 +243,10 @@ def test_handle_control_denies_unauthorized_actor_without_transition_and_audits_
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-25T10:00:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-25T10:00:00+00:00", lease_seconds=300)
     queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_approval",
         now="2026-08-25T10:01:00+00:00",
         error="awaiting Discord approval",
@@ -272,9 +280,10 @@ def test_handle_control_accepts_single_use_token_once_and_rejects_replay(tmp_pat
         url="https://jobs.example.com/123",
         ats_platform="Greenhouse",
     )
-    queue.lease_next(now="2026-08-25T10:00:00+00:00", lease_seconds=300)
+    leased = queue.lease_next(now="2026-08-25T10:00:00+00:00", lease_seconds=300)
     queue.finish_lease(
         job.id,
+        lease_token=leased.lease_token,
         outcome="pending_approval",
         now="2026-08-25T10:01:00+00:00",
         error="awaiting Discord approval",

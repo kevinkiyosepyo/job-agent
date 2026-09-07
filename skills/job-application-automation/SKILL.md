@@ -1,7 +1,7 @@
 ---
 name: job-application-automation
 description: "Use when auto-applying to jobs via browser ATS forms."
-version: 2.2.0
+version: 2.2.4
 author: Kevin Pyo, Hermes Agent
 license: MIT
 platforms: [macos]
@@ -40,6 +40,7 @@ Umbrella skill for Kevin Pyo's end-to-end job discovery, preparation, submission
 | Workday | `myworkdayjobs.com`, `myworkdaysite.com` | `workday-auto-apply` and `workday-ats-filling` |
 | Lever | `jobs.lever.co`, `lever.co` | `lever-auto-apply` |
 | Oracle Recruiting | `oraclecloud.com`, Oracle Candidate Experience | `oracle-auto-apply` |
+| Ashby | `jobs.ashbyhq.com` | `custom-job-application-forms` plus this skill's `references/ashby-application-forms.md` before any form interaction |
 | Custom/embedded form | no supported ATS contract | `custom-job-application-forms` |
 
 These are persistent sibling skills linked to this umbrella, not files embedded inside one SKILL.md. In every chat under the same Hermes profile, the skills remain available. The umbrella's job is to enforce shared policy and route to the specialized procedure.
@@ -51,25 +52,27 @@ These are persistent sibling skills linked to this umbrella, not files embedded 
 3. Application knowledge Google Doc ID: `1zqr26fQKzwAgPMbdyYPoTDAcLKjGoQ4PKxMLug4hr-k`
 4. Resume wins conflicts unless Kevin explicitly confirms a newer fact.
 
+The application knowledge Doc can contain plaintext credentials mixed with historical application text. Never return or log its entire contents. Filter locally/in-page to the specific non-secret question and a narrow answer window before tool output, and redact credential-bearing lines. Credential use belongs to the approved Keychain workflow, not values found in this Doc. Historical autofill errors are not confirmed facts.
+
 Never use a path listed in `resume.do_not_use_for_applications`. Require the final Review page to display the exact basename from `resume.primary`.
 
 ## Global Pipeline
 
-1. Verify the official listing is active and extract company, role, location, requisition, compensation, and ATS.
-2. Check the live tracker for duplicate URL and normalized company/role.
+1. Verify the official listing is active and extract company, role, location, requisition, compensation, and ATS. If extracted qualification headings lack their bullet lists or the page is only a shell, read `references/public-qualification-source-completeness.md`; recover the full official body before eligibility filtering. Neither API/Markdown retrieval nor sparse HTML proves rendered application state.
+2. Do not open or query the Google Sheets tracker for duplicate checking. Avoid duplicates using the live candidate portal/current application state and the exact URL already present in the current task; inspect the tracker only when Kevin explicitly requests tracker synchronization.
 3. Enforce MAANGO approval before mutation.
 4. Load the ATS child skill and its executable handler/preflight.
-5. Inventory all fields, current values, selected chips, dynamic control IDs, uploads, and manual gates before filling. For Greenhouse, consume `greenhouse_handler.py -> control_hints`: never assume education index `--0`, and never write into a prefilled control before deciding whether to preserve or replace it.
-6. Use the tenant account/identity flow defined by the child and `secure-login-and-2fa`. Prefer a verified existing authenticated session, then any indexed tenant-specific Keychain service for the exact hostname. Otherwise create the account for `kevinkpyo@gmail.com` with Keychain service `hermes-job-agent-universal` (Workday alias `hermes-job-agent-workday-universal`), then sign in and verify the exact tenant/job route. If sign-in rejects the value or the account already exists, use Forgot Password once, read only the newest exact tenant reset link/code from Kevin's authorized Gmail, reset using Keychain service `hermes-job-agent-reset-universal`, verify explicit reset success, sign in, and save the verified current value under `hermes-job-agent-tenant-<exact-hostname>` for future runs. Never guess a service name or read/store plaintext in Markdown, memory, Discord, tracker rows, logs, or Git. CAPTCHA, assessments, passkeys, identity verification, and device-security prompts remain human gates.
+5. Inventory the entire form—not only the currently highlighted step—including current values, selected chips, dynamic control IDs, uploads, conditional sections, and manual gates. Run browser-native validity checks and enumerate invalid controls before advancing. Preserve exact correct values, replace incorrect values atomically, and never assume a control's index remains stable after parsing or rerendering.
+6. Use the tenant account/identity flow defined by the child and `secure-login-and-2fa`. Prefer a verified existing authenticated session, then any indexed tenant-specific Keychain service for the exact hostname. Otherwise create the account for `kevinkpyo@gmail.com` with Keychain service `hermes-job-agent-universal` (Workday alias `hermes-job-agent-workday-universal`), then sign in and verify the exact tenant/job route. If sign-in rejects the value or the account already exists, use Forgot Password once, read only the newest exact tenant reset link/code from Kevin's authorized Gmail, reset using Keychain service `hermes-job-agent-reset-universal`, verify explicit reset success, sign in, and save the verified current value under `hermes-job-agent-tenant-<exact-hostname>` for future runs. Never guess a service name or read/store plaintext in Markdown, memory, Discord, tracker rows, logs, or Git. An ordinary email/password login or account-creation page is not a human/security gate under this authorized protocol: do not hand it off to Kevin and do not stop after promising to follow the protocol—execute it in the same run and continue the application. CAPTCHA, assessments, passkeys, identity verification, MFA approval, and device-security prompts remain human gates.
 7. Upload only `profile.json -> resume.primary`; verify browser file object, rendered upload success, and final Review filename.
 8. Fill truthful facts from profile/resume. Unknown material facts fail closed. Distinguish explicit required qualifications from preferred/bonus qualifications: a missing bonus qualification is not a blocker and must not be treated as a required application question.
-9. Treat dropdowns, multiselects, chips, salary ranges, school, country, source, and dates as stateful option-backed controls. Select real rendered options and verify bound state. For Greenhouse React Select controls, call the learned `react_select_exact` operation with separate filter text and exact option label; never type-only or use a stale education index. For school/university fields, load `education-school-picker`: search `University of California` once, select the exact San Diego campus, and fall back to a real `Other` option after 30 seconds.
+9. Treat dropdowns, multiselects, chips, salary ranges, school, country, source, and dates as stateful option-backed controls on every ATS. Use the routed child skill's exact control strategy, select one real rendered option, and verify the bound value. Never type-only, reuse a stale index, or infer that one ATS implementation applies to another. For school/university controls, route to `education-school-picker`.
 10. Save each step and read back server-rendered values. DOM-visible text alone is not proof.
-11. Persist through recoverable ATS failures: stale React state, disabled buttons, expired sessions, delayed email, target drift, and transient "Something went wrong" pages are debugging signals—not automatic handoff points. Reacquire the live control, reopen the canonical application route, or resume the server-side draft. For CAPTCHA indicators, follow `references/captcha-handoff-recovery.md`: ignore dormant scripts, but preserve and hand off any genuine visible checkbox/challenge to Kevin, then resume automatically after he clears it. Hand off only for a genuine human/security gate or an unavailable material fact.
+11. Persist through recoverable ATS failures: stale React state, disabled buttons, expired sessions, delayed email, target drift, and transient "Something went wrong" pages are debugging signals—not automatic handoff points. Reacquire the live control, reopen the canonical application route, or resume the server-side draft. For CAPTCHA indicators, follow `references/captcha-handoff-recovery.md`: automatically ignore dormant scripts, hidden containers, and inactive integrations; continue through ordinary ATS controls without asking Kevin; and hand off only when a genuine rendered CAPTCHA/“I'm not a robot” checkbox, managed challenge, CAPTCHA-owned Verify action, or required challenge token actually blocks progress. Preserve the exact tab during that human/security gate, then detect clearance and resume automatically without requiring Kevin to repeat application instructions. Hand off only for a genuine human/security gate or an unavailable material fact.
 12. Review every section against the profile/resume and resolve all validation errors.
 13. Click Submit once only when authorized, complete, and free of manual gates.
 14. Require explicit confirmation page/text, reference number, or candidate-home application entry.
-15. Append the eight-column tracker row and verify it through authenticated Sheets API read-back.
+15. Do not update, open, or reconcile the Google Sheets job tracker by default. Workday/ATS confirmation plus the Discord result notification are sufficient. Only write or read back the tracker when Kevin explicitly asks for tracker synchronization for that specific application.
 16. Send the Discord result and read back the exact delivered message.
 
 ## Kevin Defaults
@@ -78,7 +81,7 @@ Never use a path listed in `resume.do_not_use_for_applications`. Require the fin
 - Sponsorship: No
 - Age 18+: Yes
 - Relocation: Yes
-- Education: UC San Diego, B.S. Data Science, Sep 2024-May 2028, GPA 3.8
+- Education: UC San Diego, B.S. Data Science, Sep 2024-May 2028, cumulative GPA **3.236** (explicitly confirmed for submission). Use the same accurate GPA whether or not a transcript upload is requested; re-confirm any future conflict rather than reviving older 3.8 defaults.
 - Permanent application address: Fairfax, Virginia profile address
 - Driver's-license answer: California
 - Outside business activities: No
@@ -90,6 +93,7 @@ Never use a path listed in `resume.do_not_use_for_applications`. Require the fin
 - Disability: Decline to answer
 - Compensation when mandatory: $20/hour or $20k annual, choosing a real dropdown range when applicable
 - Soonest available starting date: **September 2026**
+- Winter/full-time internships are acceptable; do not assume Kevin wants summer-only opportunities or reject a role solely because its dates overlap school terms. Use his explicit approval for the role's dates when answering availability questions; do not invent a school-schedule conflict.
 
 ### Referral Source: Mandatory Two-Step Selection
 
@@ -134,7 +138,20 @@ Repository: `~/Documents/job-agent`
 - `production_operator.py` — sanitized local end-to-end proof and read-only final audit
 - `tracker.py`, `notifier.py` — verified external reconciliation
 
+### Unattended-run readiness
+
+Installed/available skill status and passing fixture tests are not proof that applications will run unattended. Before claiming overnight readiness:
+
+1. Read `references/hourly-new-job-pacing.md`. Inspect the actual application schedule/service, enabled state, resolved cron model/provider, delivery target, and recent run outcomes. A monitor, completed engineering sprint, or scheduler `ok` result is not a verified application.
+2. Verify the approved normal-Chrome transport actually used by the executor, not merely an HTTP health endpoint. Check the configured interpreter/dependencies and host power/session prerequisites without opening another browser or approving security prompts.
+3. Reconcile the installed umbrella, linked references, repo-vendored skills, canonical profile, and executable behavior. No-Sheets-by-default and the exact current resume must hold in code as well as prose. Do not run a legacy tracker-dependent command to work around a policy conflict.
+4. Require a passing connected prepare → supported Review evidence → authorization → one-shot submit → ATS confirmation path for each enabled form family. Label isolated adapters, fixture-only flows, and verification-only bridges accurately. Review must compare facts independently to canonical profile/user approval, bind actual normalized answer values and resume bytes in a private content commitment, and require explicit evidence provenance. Equality to an agent-created answer file, a hash of only `verified` booleans, or a filename alone is not sufficient evidence. Never use missing Review source metadata as a more permissive fallback.
+5. Preserve one-shot uncertainty across restarts and concurrent workers. Park genuine human-gated candidates without blocking unrelated eligible candidates before submit intent; do not replay or advance to a second application in a run after uncertain submit intent.
+6. Report confirmed submission, notification delivery, and optional tracker sync as separate states. Retrying notification must never repeat submission. Health reporting must detect dependency failures and distinguish zero eligible leads from an execution failure.
+
 ### Production operator status
+
+For the guarded unattended controller, also read [`references/unattended-controller.md`](references/unattended-controller.md) and the repository's `autonomous_operation.md`. Scope, legacy-history reconciliation, verified live capability, and explicit service enablement are separate from passing unit tests. The manual `production_operator.py live` interface below remains available; do not confuse a controller's policy-scoped authorization with an unbounded permission to apply anywhere.
 
 The repository now exposes a unified, guarded `production_operator.py live` command family. Before using any live subcommand, read [`references/unified-live-production-cli.md`](references/unified-live-production-cli.md) completely and follow its command order, approval boundaries, no-replay recovery, health checks, and release-audit contract.
 
@@ -154,7 +171,7 @@ python production_operator.py audit \
 
 A passing report does not authorize a real application. Do not manufacture live evidence from the local fixture or substitute child-skill browser actions for the unified CLI's exact-target and single-use gates.
 
-Run `python -m pytest tests -q` after code changes.
+After code changes, inspect test side effects before running the suite. Prefer the repository's `python run_offline_tests.py` when present. Otherwise exclude `tests/test_local_cdp_operator.py`, `tests/test_production_operator_live_chrome.py`, and `tests/test_production_operator.py::test_cli_runs_and_audits_full_sanitized_learned_ats_operator_under_targets`: these can launch isolated Chrome, which is not authorized by ordinary application/build requests. Report excluded browser coverage explicitly; fixture-only success is not live readiness.
 
 ## LandedHQ Reconciliation
 
@@ -176,7 +193,7 @@ A completed application must have all of:
 - Exact current resume basename from `profile.json -> resume.primary` displayed
 - No unresolved validation/manual gate
 - Explicit confirmation or Candidate Home entry
-- Tracker status `Submitted - Pending Response` verified by Sheets API
+- If Kevin explicitly requested tracker synchronization for this application, the tracker status `Submitted - Pending Response` was verified by exact read-back; otherwise tracker work is intentionally omitted.
 - Discord success message verified by Discord read-back
 
 If any element is missing, report the exact pending/failed state instead of Applied.
@@ -185,6 +202,10 @@ If any element is missing, report the exact pending/failed state instead of Appl
 
 - `references/kevin-profile.md`
 - `references/screening-answers.md`
+- `references/kevin-application-writing-voice.md`
 - `references/click-type-select.md`
 - `references/captcha-handoff-recovery.md`
 - `references/ats-and-pipeline.md`
+- `references/ashby-public-discovery.md` — explicit public discovery and non-live saved-snapshot replay; not connected application support.
+- `references/greenhouse-fieldset-inspection.md` — static checkbox questions and exact options; no saved-state authority.
+- `references/lever-location-picker.md` — paired location control kind, not selected location or connected support.

@@ -17,7 +17,10 @@ def run_canary(platform: str, surface: dict[str, object]) -> dict[str, str | boo
         (surface.get("target_current") is not True, "stale_focus"),
         (surface.get("control_visible") is not True, "hidden_control"),
         (surface.get("overlay_present") is not False, "overlay_present"),
-        (surface.get("native_window_detected") is not False, "unexpected_native_window"),
+        (surface.get("native_window_detected") is not False and not (
+            surface.get("observation_source") == "live_page_dom"
+            and surface.get("activation_route") == "direct_dom"
+        ), "unexpected_native_window"),
     )
     for blocked, reason in checks:
         if blocked:

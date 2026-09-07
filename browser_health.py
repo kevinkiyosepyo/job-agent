@@ -91,6 +91,27 @@ def probe_cdp_health(base_url: str, *, fetch_json: JsonFetcher = fetch_json) -> 
     }
 
 
+def probe_transport_health(*, caller: Callable[[], dict] | None = None) -> dict:
+    """Probe the executor's read-only transport, never infer it from an HTTP port.
+
+    The operator supplies a closure exercising its actual transport and exact
+    binding, returning status=ready and verified=True only after a successful
+    read. No caller means unverified, not permission to open another browser.
+    """
+    if caller is None:
+        return {"status": "unavailable", "verified": False,
+                "error_code": "executor_transport_not_probed"}
+    try:
+        result = caller()
+    except Exception as exc:
+        return {"status": "error", "verified": False,
+                "error_code": type(exc).__name__.casefold()}
+    verified = (isinstance(result, dict) and result.get("status") == "ready"
+                and result.get("verified") is True)
+    return {"status": "ready" if verified else "degraded", "verified": verified,
+            "scope": "executor_transport"}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:9222")
@@ -98,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
 
     payload = probe_cdp_health(args.base_url)
     print(json.dumps(payload, indent=2))
-    return 1 if payload.get("recoverable") else 0
+    return 0 if payload.get("status") == "ready" else 1
 
 
 if __name__ == "__main__":

@@ -156,7 +156,9 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         pass
     if page_type == "application" and not parser.fields and parser.entrypoint.get("apply_label"):
         page_type = "listing"
-    return {
+    if page_type == "application" and not parser.fields:
+        page_type = "unknown"
+    result = {
         "page_type": page_type,
         "page_url": page_url,
         "role": parser.role,
@@ -169,6 +171,9 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         "issues": parser.issues,
         "confirmation_text": confirmation_text,
     }
+    if page_type == "unknown":
+        result["safe_to_prepare"] = False
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:

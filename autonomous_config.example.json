@@ -1,0 +1,14 @@
+{
+  "production_enabled": false,
+  "runtime_dir": "/Users/kevinpoopz/Documents/job-agent/runtime/autonomous-controller",
+  "profile_path": "/Users/kevinpoopz/Documents/job-agent/profile.json",
+  "registry_path": "/Users/kevinpoopz/Documents/job-agent/runtime/autonomous-sources.json",
+  "worker_socket": "/Users/kevinpoopz/.hermes/cache/random-job-20260904/browser.sock",
+  "notifications_enabled": true,
+  "discord_channel_id": "937013921028644927",
+  "discord_token_env": "DISCORD_BOT_TOKEN",
+  "max_candidates": 5,
+  "lease_seconds": 300,
+  "heartbeat_seconds": 10,
+  "poll_seconds": 60
+}

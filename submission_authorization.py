@@ -5,9 +5,11 @@ import hashlib
 import json
 import secrets
 import sqlite3
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+import submission_ledger
 
 
 BINDING_KEYS = (
@@ -20,10 +22,7 @@ BINDING_KEYS = (
 
 
 def _parse_timestamp(value: str | datetime) -> datetime:
-    parsed = value if isinstance(value, datetime) else datetime.fromisoformat(value)
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC)
+    return submission_ledger.parse_timestamp(value)
 
 
 def _isoformat(value: str | datetime) -> str:
@@ -78,10 +77,13 @@ def _review_binding(review_evidence: dict, *, job_id: int) -> dict[str, object]:
 class SubmissionAuthorizationStore:
     """Issue and atomically consume exact-bound submission authorizations."""
 
-    def __init__(self, path: Path | str) -> None:
-        self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as connection:
+    def __init__(self, path: Path | str, *, ledger_path: Path | str | None = None,
+                 production: bool = False) -> None:
+        # Tokens and reservations share ONE physical database/transaction.
+        self.path = Path(ledger_path if ledger_path is not None else path)
+        self.ledger = submission_ledger.SubmissionLedger(self.path, production=production)
+        self.path = self.ledger.path
+        with self.ledger.transaction() as connection:
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS submission_authorizations (
@@ -96,13 +98,38 @@ class SubmissionAuthorizationStore:
                     expires_at TEXT NOT NULL,
                     used_at TEXT,
                     invalidated_at TEXT,
-                    invalidation_reason TEXT
+                    invalidation_reason TEXT,
+                    application_key TEXT,
+                    submission_attempt_id TEXT
                 )
                 """
             )
 
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(submission_authorizations)")}
+            if "application_key" not in columns:
+                connection.execute("ALTER TABLE submission_authorizations ADD COLUMN application_key TEXT")
+            if "submission_attempt_id" not in columns:
+                connection.execute("ALTER TABLE submission_authorizations ADD COLUMN submission_attempt_id TEXT")
+            # Old used tokens may represent a click. Preserve that uncertainty,
+            # including several tokens for one application, in this transaction.
+            legacy = connection.execute("""SELECT token_digest, job_id, requisition, used_at, application_key
+                FROM submission_authorizations WHERE used_at IS NOT NULL AND submission_attempt_id IS NULL""").fetchall()
+            for row in legacy:
+                key = row[4] or submission_ledger.application_key(job_id=row[1], requisition=row[2])
+                existing = connection.execute("""SELECT submission_attempt_id FROM submission_attempts
+                    WHERE application_key = ? AND state != 'released'""", (key,)).fetchone()
+                attempt_id = existing[0] if existing else secrets.token_hex(16)
+                if existing is None:
+                    timestamp = _isoformat(row[3])
+                    connection.execute("""INSERT INTO submission_attempts
+                        (submission_attempt_id, application_key, state, reserved_at, dispatched_at)
+                        VALUES (?, ?, 'unknown', ?, ?)""", (attempt_id, key, timestamp, timestamp))
+                connection.execute("""UPDATE submission_authorizations
+                    SET application_key = ?, submission_attempt_id = ? WHERE token_digest = ?""",
+                    (key, attempt_id, row[0]))
+
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.path)
+        return self.ledger.connect()
 
     def issue(
         self,
@@ -112,8 +139,14 @@ class SubmissionAuthorizationStore:
         actor: str,
         issued_at: str | datetime,
         expires_at: str | datetime,
+        account_id: str | None = None,
+        tenant: str | None = None,
     ) -> dict[str, Any]:
         binding = _review_binding(review_evidence, job_id=job_id)
+        key = self.ledger.application_key(
+            job_id=job_id, requisition=cast(str, binding["requisition"]),
+            account_id=account_id, tenant=tenant,
+        )
         if not isinstance(actor, str) or not actor:
             raise ValueError("authorization actor is required")
         issued = _parse_timestamp(issued_at)
@@ -123,13 +156,14 @@ class SubmissionAuthorizationStore:
 
         token = secrets.token_urlsafe(32)
         digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
-        with self._connect() as connection:
+        with self.ledger.transaction() as connection:
+            submission_ledger.assert_application_available(connection, key)
             connection.execute(
                 """
                 INSERT INTO submission_authorizations (
                     token_digest, job_id, target_id, page_url, requisition,
-                    review_evidence_sha256, actor, issued_at, expires_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    review_evidence_sha256, actor, issued_at, expires_at, application_key
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     digest,
@@ -141,6 +175,7 @@ class SubmissionAuthorizationStore:
                     actor,
                     issued.isoformat(),
                     expires.isoformat(),
+                    key,
                 ),
             )
         return {
@@ -158,6 +193,8 @@ class SubmissionAuthorizationStore:
         current_binding: dict,
         actor: str,
         now: str | datetime,
+        account_id: str | None = None,
+        tenant: str | None = None,
     ) -> dict[str, Any]:
         if not isinstance(token, str) or not token:
             raise PermissionError("submission authorization is invalid")
@@ -172,7 +209,7 @@ class SubmissionAuthorizationStore:
                 """
                 SELECT job_id, target_id, page_url, requisition,
                        review_evidence_sha256, actor, expires_at, used_at,
-                       invalidated_at
+                       invalidated_at, application_key, issued_at
                 FROM submission_authorizations
                 WHERE token_digest = ?
                 """,
@@ -187,6 +224,8 @@ class SubmissionAuthorizationStore:
             if row[8] is not None:
                 connection.rollback()
                 raise PermissionError("submission authorization was invalidated")
+            if _parse_timestamp(row[10]) > current_time:
+                raise PermissionError("submission authorization is not yet valid")
             if _parse_timestamp(row[6]) <= current_time:
                 connection.rollback()
                 raise PermissionError("submission authorization has expired")
@@ -205,13 +244,25 @@ class SubmissionAuthorizationStore:
                 connection.commit()
                 raise PermissionError("submission authorization binding drift detected")
 
+            key = self.ledger.application_key(
+                job_id=row[0], requisition=row[3], account_id=account_id, tenant=tenant,
+            )
+            expected_key = row[9] or submission_ledger.application_key(job_id=row[0], requisition=row[3])
+            if key != expected_key:
+                connection.execute("""UPDATE submission_authorizations
+                    SET invalidated_at = ?, invalidation_reason = 'application_identity_drift'
+                    WHERE token_digest = ? AND used_at IS NULL AND invalidated_at IS NULL""",
+                    (current_time.isoformat(), digest))
+                connection.commit()
+                raise PermissionError("submission authorization application identity drift detected")
+            attempt_id = submission_ledger.reserve(connection, key=key, now=current_time.isoformat())
             updated = connection.execute(
                 """
                 UPDATE submission_authorizations
-                SET used_at = ?
+                SET used_at = ?, submission_attempt_id = ?
                 WHERE token_digest = ? AND used_at IS NULL AND invalidated_at IS NULL
                 """,
-                (current_time.isoformat(), digest),
+                (current_time.isoformat(), attempt_id, digest),
             )
             if updated.rowcount != 1:
                 connection.rollback()
@@ -219,6 +270,7 @@ class SubmissionAuthorizationStore:
             connection.commit()
             return {
                 "authorization_consumed": True,
+                "submission_attempt_id": attempt_id,
                 "single_use": True,
                 "binding": {**expected_binding, "actor": actor},
                 "expires_at": _isoformat(row[6]),

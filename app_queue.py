@@ -22,7 +22,12 @@ class QueueJob:
     available_at: str | None = None
     lease_expires_at: str | None = None
     last_error: str | None = None
+    lease_token: str | None = None
+    checkpoint_after_attempt: int = 0
 
+
+PARKED_STATES = ("blocked_security", "blocked_fact", "blocked_approval",
+                 "pending_captcha", "pending_question", "pending_approval", "submission_uncertain")
 
 VALID_STATES = (
     "discovered",
@@ -33,18 +38,24 @@ VALID_STATES = (
     "pending_approval",
     "failed",
     "applied",
+    "blocked_security", "blocked_fact", "blocked_approval", "submission_uncertain",
 )
 ALLOWED_TRANSITIONS = {
     "discovered": {"prepared"},
+    "blocked_security": {"discovered", "failed"},
+    "blocked_fact": {"discovered", "failed"},
+    "blocked_approval": {"discovered", "failed"},
+    "submission_uncertain": {"applied"},
     "leased": {"discovered", "prepared", "pending_question", "pending_captcha", "pending_approval", "failed", "applied"},
     "prepared": {"applied"},
-    "pending_question": {"discovered", "prepared", "failed"},
-    "pending_captcha": {"discovered", "prepared", "failed"},
-    "pending_approval": {"discovered", "prepared", "failed"},
+    "pending_question": {"discovered", "failed"},
+    "pending_captcha": {"discovered", "failed"},
+    "pending_approval": {"discovered", "failed"},
     "failed": set(),
     "applied": set(),
 }
 LEASE_OUTCOMES = {
+    **{state: state for state in PARKED_STATES},
     "retry": "discovered",
     "prepared": "prepared",
     "pending_question": "pending_question",
@@ -66,7 +77,7 @@ def _parse_timestamp(value: str | datetime) -> datetime:
 
 
 def _isoformat(dt: datetime) -> str:
-    return dt.isoformat()
+    return dt.astimezone(UTC).isoformat()
 
 
 def normalize_url(url: str) -> str:
@@ -80,8 +91,13 @@ def normalize_url(url: str) -> str:
     return urlunsplit((parts.scheme.casefold(), parts.netloc.casefold(), parts.path.rstrip("/"), urlencode(keep), ""))
 
 
+class LeaseLostError(ValueError):
+    """Ownership was lost or expired; never retry using a replacement token."""
+
+
 class ApplicationQueue:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, *, retry_budget: int = 3):
+        self.retry_budget = max(1, retry_budget)
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
@@ -91,6 +107,7 @@ class ApplicationQueue:
 
     def _init_db(self) -> None:
         with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS application_queue (
@@ -113,9 +130,14 @@ class ApplicationQueue:
                 ("available_at", "ALTER TABLE application_queue ADD COLUMN available_at TEXT"),
                 ("lease_expires_at", "ALTER TABLE application_queue ADD COLUMN lease_expires_at TEXT"),
                 ("last_error", "ALTER TABLE application_queue ADD COLUMN last_error TEXT"),
+                ("lease_token", "ALTER TABLE application_queue ADD COLUMN lease_token TEXT"),
+                ("checkpoint_after_attempt", "ALTER TABLE application_queue ADD COLUMN checkpoint_after_attempt INTEGER NOT NULL DEFAULT 0"),
             ):
                 if name not in columns:
                     conn.execute(ddl)
+            conn.execute("""UPDATE application_queue SET state = 'submission_uncertain',
+                         lease_expires_at = NULL, last_error = 'Legacy unfenced lease: inspect before recovery'
+                         WHERE state = 'leased' AND lease_token IS NULL""")
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS discord_control_tokens (
@@ -137,7 +159,7 @@ class ApplicationQueue:
                     company, role, normalized_url, ats_platform, state
                 ) VALUES (?, ?, ?, ?, ?)
                 """,
-                (company.strip(), role.strip(), normalized_url, ats_platform.strip(), VALID_STATES[0]),
+                (company.strip(), role.strip(), normalized_url, ats_platform.strip(), "discovered"),
             )
             row = self._fetch_row(conn, normalized_url=normalized_url)
         assert row is not None
@@ -148,16 +170,20 @@ class ApplicationQueue:
         if target not in VALID_STATES:
             raise ValueError(f"Unknown state: {state}")
         with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             row = self._fetch_row(conn, job_id=job_id)
             if row is None:
                 raise KeyError(job_id)
             job = QueueJob(*row)
+            if job.state == "leased":
+                raise ValueError("Use finish_lease with the current lease token")
             if job.state == target:
                 return job
             if target not in ALLOWED_TRANSITIONS[job.state]:
                 raise ValueError(f"Invalid transition: {job.state} -> {target}")
             conn.execute(
-                "UPDATE application_queue SET state = ?, available_at = NULL, lease_expires_at = NULL WHERE id = ?",
+                """UPDATE application_queue SET state = ?, available_at = NULL, lease_expires_at = NULL,
+                   lease_token = NULL, checkpoint_after_attempt = attempt_count WHERE id = ?""",
                 (target, job_id),
             )
             updated = self._fetch_row(conn, job_id=job_id)
@@ -179,18 +205,19 @@ class ApplicationQueue:
         if excluded:
             exclusions = " AND lower(ats_platform) NOT IN (" + ", ".join("?" for _ in excluded) + ")"
         with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             row = conn.execute(
                 """
                 SELECT id, company, role, normalized_url, ats_platform, state,
-                       attempt_count, available_at, lease_expires_at, last_error
+                       attempt_count, available_at, lease_expires_at, last_error, lease_token, checkpoint_after_attempt
                 FROM application_queue
                 WHERE (
                         state = 'discovered'
-                        OR (state = 'leased' AND lease_expires_at IS NOT NULL AND lease_expires_at <= ?)
+                        OR (state = 'leased' AND lease_expires_at IS NOT NULL AND julianday(lease_expires_at) <= julianday(?))
                       )
-                  AND (available_at IS NULL OR available_at <= ?)
+                  AND (available_at IS NULL OR julianday(available_at) <= julianday(?))
                 """ + exclusions + """
-                ORDER BY id
+                ORDER BY attempt_count, id
                 LIMIT 1
                 """,
                 (now_iso, now_iso, *excluded),
@@ -204,19 +231,56 @@ class ApplicationQueue:
                 SET state = 'leased',
                     attempt_count = attempt_count + 1,
                     lease_expires_at = ?,
+                    lease_token = ?,
                     last_error = NULL
                 WHERE id = ?
                 """,
-                (lease_expires_at, job_id),
+                (lease_expires_at, secrets.token_urlsafe(32), job_id),
             )
             updated = self._fetch_row(conn, job_id=job_id)
         assert updated is not None
+        return QueueJob(*updated)
+
+    def validate_lease(self, job_id: int, *, lease_token: str, now: str | datetime) -> QueueJob:
+        """Read-only ownership check, not a lock covering subsequent external work."""
+        with self._connect() as conn:
+            row = self._fetch_row(conn, job_id=job_id)
+        if row is None:
+            raise KeyError(job_id)
+        job = QueueJob(*row)
+        if (job.state != "leased" or not lease_token or job.lease_token != lease_token
+                or job.lease_expires_at is None
+                or _parse_timestamp(job.lease_expires_at) <= _parse_timestamp(now)):
+            raise LeaseLostError(f"Invalid or expired lease for job {job_id}")
+        return job
+
+    def heartbeat(
+        self, job_id: int, *, lease_token: str, now: str | datetime, lease_seconds: int,
+    ) -> QueueJob:
+        """Renew a current capability; an expired lease cannot be resurrected."""
+        current = _parse_timestamp(now)
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = self._fetch_row(conn, job_id=job_id)
+            if row is None:
+                raise KeyError(job_id)
+            job = QueueJob(*row)
+            if (job.state != "leased" or not lease_token or job.lease_token != lease_token
+                    or job.lease_expires_at is None
+                    or _parse_timestamp(job.lease_expires_at) <= current):
+                raise LeaseLostError(f"Invalid or expired lease for job {job_id}")
+            expires = max(_parse_timestamp(job.lease_expires_at),
+                          current + timedelta(seconds=max(1, lease_seconds)))
+            conn.execute("UPDATE application_queue SET lease_expires_at = ? WHERE id = ?",
+                         (_isoformat(expires), job_id))
+            updated = self._fetch_row(conn, job_id=job_id)
         return QueueJob(*updated)
 
     def finish_lease(
         self,
         job_id: int,
         *,
+        lease_token: str,
         outcome: str,
         now: str | datetime,
         retry_seconds: int = 0,
@@ -227,21 +291,30 @@ class ApplicationQueue:
             raise ValueError(f"Unknown lease outcome: {outcome}")
         completed_at = _parse_timestamp(now)
         available_at = None
-        if target == "discovered":
-            available_at = _isoformat(completed_at + timedelta(seconds=max(0, retry_seconds)))
         with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             row = self._fetch_row(conn, job_id=job_id)
             if row is None:
                 raise KeyError(job_id)
             job = QueueJob(*row)
-            if job.state != "leased":
-                raise ValueError(f"Job {job_id} is not currently leased")
+            if (job.state != "leased" or not lease_token or job.lease_token != lease_token
+                    or job.lease_expires_at is None
+                    or _parse_timestamp(job.lease_expires_at) <= completed_at):
+                raise LeaseLostError(f"Invalid or expired lease for job {job_id}")
+            if target == "discovered" and job.attempt_count >= self.retry_budget:
+                target = "failed"
+                error = error or "Per-job retry budget exhausted"
+            if target == "discovered":
+                backoff = min(3600, 30 * 2 ** min(max(0, job.attempt_count - 1), 7))
+                delay = min(3600, max(backoff, retry_seconds))
+                available_at = _isoformat(completed_at + timedelta(seconds=delay))
             conn.execute(
                 """
                 UPDATE application_queue
                 SET state = ?,
                     available_at = ?,
                     lease_expires_at = NULL,
+                    lease_token = NULL,
                     last_error = ?
                 WHERE id = ?
                 """,
@@ -251,12 +324,44 @@ class ApplicationQueue:
         assert updated is not None
         return QueueJob(*updated)
 
+    def recover_checkpoint(self, job_id: int, *, lease_token: str, checkpoint_phase: str,
+                           outcome: str, now: str | datetime, error: str | None = None) -> QueueJob:
+        """Consume an exact expired lease into a checkpoint-supported terminal state.
+
+        Never renew or return a usable capability. A replacement owner (even an
+        expired replacement) and any changed state are untouchable. Confirmed
+        checkpoints are written only after independent positive ATS observation;
+        uncertain intent can never become retryable through this operation.
+        """
+        allowed = ({'applied'} if checkpoint_phase == 'confirmed' else
+                   {'submission_uncertain'} if checkpoint_phase in {'submitting','submission_uncertain'} else
+                   {'blocked_fact','blocked_security','blocked_approval','failed'}
+                   if checkpoint_phase in {'preparing','opening_target','reviewing','authorizing'} else set())
+        if outcome not in allowed:
+            raise ValueError('checkpoint does not support recovery outcome')
+        with self._connect() as conn:
+            conn.execute('BEGIN IMMEDIATE')
+            row = self._fetch_row(conn, job_id=job_id)
+            if row is None:
+                raise LeaseLostError(f'Checkpoint job {job_id} is unavailable')
+            job = QueueJob(*row)
+            if (job.state != 'leased' or not lease_token or job.lease_token != lease_token
+                or job.lease_expires_at is None
+                or _parse_timestamp(job.lease_expires_at) > _parse_timestamp(now)):
+                raise LeaseLostError(f'Checkpoint ownership changed or still live for job {job_id}')
+            conn.execute("""UPDATE application_queue SET state = ?, available_at = NULL,
+                            lease_expires_at = NULL, lease_token = NULL, last_error = ?
+                            WHERE id = ? AND state = 'leased' AND lease_token = ?""",
+                         (outcome, error, job_id, lease_token))
+            updated = self._fetch_row(conn, job_id=job_id)
+        return QueueJob(*updated)
+
     def _fetch_row(self, conn: sqlite3.Connection, *, normalized_url: str | None = None, job_id: int | None = None):
         if normalized_url is not None:
             return conn.execute(
                 """
                 SELECT id, company, role, normalized_url, ats_platform, state
-                       , attempt_count, available_at, lease_expires_at, last_error
+                       , attempt_count, available_at, lease_expires_at, last_error, lease_token, checkpoint_after_attempt
                 FROM application_queue
                 WHERE normalized_url = ?
                 """,
@@ -265,7 +370,7 @@ class ApplicationQueue:
         return conn.execute(
             """
             SELECT id, company, role, normalized_url, ats_platform, state,
-                   attempt_count, available_at, lease_expires_at, last_error
+                   attempt_count, available_at, lease_expires_at, last_error, lease_token, checkpoint_after_attempt
             FROM application_queue
             WHERE id = ?
             """,
@@ -277,12 +382,19 @@ class ApplicationQueue:
             rows = conn.execute(
                 """
                 SELECT id, company, role, normalized_url, ats_platform, state,
-                       attempt_count, available_at, lease_expires_at, last_error
+                       attempt_count, available_at, lease_expires_at, last_error, lease_token, checkpoint_after_attempt
                 FROM application_queue
                 ORDER BY id
                 """
             ).fetchall()
         return [QueueJob(*row) for row in rows]
+
+    def inspect_candidates(self, *, states: tuple[str, ...] | None = None) -> list[QueueJob]:
+        """Read-only parked/uncertain inspection; never release a human gate."""
+        selected = PARKED_STATES if states is None else states
+        if any(state not in VALID_STATES for state in selected):
+            raise ValueError("Unknown inspection state")
+        return [job for job in self.list_jobs() if job.state in selected]
 
     def issue_discord_control_token(
         self,

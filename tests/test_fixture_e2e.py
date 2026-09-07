@@ -151,7 +151,8 @@ def test_run_njoyn_fixture_flow_prepares_resume_plan_and_parser_review_evidence(
     )
 
     assert result["submission_enabled"] is False
-    assert result["queue_job"]["state"] == "prepared"
+    assert result["queue_job"]["state"] == "blocked_fact"
+    assert result["plan"]["safe_to_prepare"] is False
     assert result["plan"]["platform"] == "njoyn"
     assert result["plan"]["uploaded_resume_verified"] is True
     assert result["parser_review"]["page_type"] == "parsed_profile"

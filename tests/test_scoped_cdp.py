@@ -1,12 +1,38 @@
 from __future__ import annotations
 
 import sys
+import types
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+
+def test_websocket_connection_suppresses_origin_for_loopback_chrome(monkeypatch):
+    import scoped_cdp
+
+    calls = []
+
+    class Socket:
+        def close(self):
+            pass
+
+    fake_websocket = types.SimpleNamespace(
+        create_connection=lambda url, **kwargs: calls.append((url, kwargs)) or Socket()
+    )
+    monkeypatch.setitem(sys.modules, "websocket", fake_websocket)
+
+    connection = scoped_cdp.WebSocketCDPConnection(
+        "ws://127.0.0.1:18800/devtools/page/page-42"
+    )
+    connection.close()
+
+    assert calls == [(
+        "ws://127.0.0.1:18800/devtools/page/page-42",
+        {"timeout": 20, "suppress_origin": True},
+    )]
 
 
 def test_bind_exact_page_target_and_capture_read_only_snapshot():

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import io
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -172,10 +175,10 @@ def fetch_greenhouse_jobs(board_token: str, *, opener: OpenUrl = _default_open, 
     payload = _load_json(url, opener=opener, attempts=attempts)
 
     jobs: list[dict] = []
-    for job in payload.get("jobs", []):
+    if not isinstance(payload, dict) or not isinstance(payload.get("jobs"), list):
+        raise ValueError("Invalid Greenhouse feed: expected a jobs list")
+    for job in payload["jobs"]:
         role = (job.get("title") or "").strip()
-        if "intern" not in role.casefold():
-            continue
         jobs.append(
             {
                 "company": _company_name(board_token),
@@ -196,8 +199,6 @@ def fetch_lever_jobs(company_token: str, *, opener: OpenUrl = _default_open, att
     jobs: list[dict] = []
     for job in payload:
         role = (job.get("text") or "").strip()
-        if "intern" not in role.casefold():
-            continue
         categories = job.get("categories") or {}
         jobs.append(
             {
@@ -213,24 +214,158 @@ def fetch_lever_jobs(company_token: str, *, opener: OpenUrl = _default_open, att
     return jobs
 
 
+def fetch_ashby_jobs(board_token: str, *, opener: OpenUrl = _default_open, attempts: int = DEFAULT_ATTEMPTS) -> list[dict]:
+    """Preserve official listing evidence; do not infer internship eligibility."""
+    if not isinstance(board_token, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", board_token):
+        raise ValueError("Ashby token must be an exact board identifier, not a URL or path")
+    url = f"https://api.ashbyhq.com/posting-api/job-board/{board_token}"
+    payload = _load_json(url, opener=opener, attempts=attempts)
+    if not isinstance(payload, dict) or not isinstance(payload.get("jobs"), list):
+        raise ValueError("Invalid Ashby feed: expected a jobs list")
+    jobs = []
+    for job in payload["jobs"]:
+        if job.get("isListed") is not True:
+            continue
+        if any(not isinstance(job.get(key), str) or not job[key].strip()
+               for key in ("id", "title", "jobUrl")):
+            raise ValueError("Invalid Ashby feed: listed job needs id, title and jobUrl")
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", job["id"]):
+            raise ValueError("Invalid Ashby feed: posting id must be a single path segment of ASCII letters, digits, _ or -")
+        try:
+            posting_url = urlsplit(job["jobUrl"])
+            if (posting_url.scheme != "https" or posting_url.netloc != "jobs.ashbyhq.com"
+                    or posting_url.path.rstrip("/") != f"/{board_token}/{job['id']}"):
+                raise ValueError("expected exact board/posting identity")
+        except ValueError as exc:
+            raise ValueError("Invalid Ashby feed: jobUrl must match its official HTTPS board and posting id") from exc
+        secondary = job.get("secondaryLocations") or []
+        locations = [job.get("location") or ""] + [item.get("location") or "" for item in secondary]
+        jobs.append({
+            "company": _company_name(board_token), "role": job.get("title") or "",
+            "posting_id": job.get("id"), "url": job.get("jobUrl") or "",
+            "location": "; ".join(dict.fromkeys(value for value in locations if value)),
+            "address": job.get("address"), "secondary_locations": secondary,
+            "employment_type": job.get("employmentType"), "is_listed": job.get("isListed"),
+            "description_plain": job.get("descriptionPlain") or "",
+            "description_html": job.get("descriptionHtml") or "",
+            "created_at": job.get("publishedAt"), "source": "Ashby public API",
+        })
+    return jobs
+
+
+def discover_jobs(*, greenhouse=(), lever=(), ashby=(), registry_path: str | Path | None = None,
+                  opener: OpenUrl | None = None,
+                  attempts: int = DEFAULT_ATTEMPTS) -> dict[str, Any]:
+    """Fetch official public feeds without browser, accounts, Sheets, or output files.
+
+    Returns {jobs, report, exit_code}; jobs are normalized source postings, NOT
+    verified eligibility, current application state, or submission permission.
+    Call orchestrator.build_scan(jobs, profile, known_urls=...) next. Errors,
+    empty feeds, and unknown/stale timestamps are retained in report. Inject
+    opener(url, timeout) to replay offline snapshots; no synthetic fallback.
+    """
+    jobs: list[dict] = []
+    failures: list[dict] = []
+    source_runs: list[dict] = []
+    greenhouse, lever, ashby = list(greenhouse), list(lever), list(ashby)
+    if registry_path is not None:
+        if greenhouse or lever or ashby:
+            raise ValueError("registry_path cannot be combined with explicit source tokens")
+        registry = load_registry(registry_path)
+        greenhouse = [entry["token"] for entry in registry["sources"] if entry["platform"] == "greenhouse"]
+        lever = [entry["token"] for entry in registry["sources"] if entry["platform"] == "lever"]
+    for platform, tokens, fetcher in (("greenhouse", greenhouse, fetch_greenhouse_jobs),
+                                      ("lever", lever, fetch_lever_jobs),
+                                      ("ashby", ashby, fetch_ashby_jobs)):
+        for token in tokens:
+            try:
+                kwargs: dict[str, Any] = {"attempts": attempts}
+                if opener is not None:
+                    kwargs["opener"] = opener
+                token_jobs = fetcher(token, **kwargs)
+                latest = _latest_posting_at(token_jobs)
+                run = {"source": platform, "token": token, "status": "ok", "candidates": len(token_jobs)}
+                if latest is not None:
+                    run["latest_posting_at"] = latest
+                    warning = _stale_warning(latest)
+                    if warning:
+                        run.update(warning=warning, stale_result=True)
+                else:
+                    warning = _missing_timestamp_warning(token_jobs)
+                    if warning:
+                        run.update(warning=warning, freshness_unknown=True)
+                jobs.extend(token_jobs)
+                source_runs.append(run)
+            except Exception as exc:
+                failure = {"source": platform, "token": token, "error": str(exc)}
+                failures.append(failure)
+                source_runs.append({**failure, "status": "error", "candidates": 0})
+
+    unique_jobs = _dedupe_jobs(jobs)
+    latest = _latest_posting_at(unique_jobs)
+    report = {
+        "greenhouse_tokens": greenhouse, "lever_tokens": lever,
+        **({"ashby_tokens": ashby} if ashby else {}),
+        "candidates": len(unique_jobs), "failures": failures, "source_runs": source_runs,
+        "source_health_status": _source_health_status(failures=failures, source_runs=source_runs,
+                                                       candidate_count=len(unique_jobs)),
+        "freshness_summary": _freshness_summary(source_runs),
+        "freshness_buckets": _freshness_buckets(source_runs),
+    }
+    if not greenhouse and not lever and not ashby:
+        report.update(source_health_status="partial_error",
+                      error="At least one --greenhouse or --lever token is required")
+        return {"jobs": [], "report": report, "exit_code": 2}
+    if latest is not None:
+        report["latest_posting_at"] = latest
+    if not failures and not unique_jobs:
+        report.update(warning="Configured source tokens returned zero job postings", stale_result=True)
+    elif not failures:
+        warning = _aggregate_missing_timestamp_warning(source_runs)
+        if warning:
+            report.update(freshness_unknown=True, warning=warning, stale_result=True)
+        elif latest is not None:
+            warning = _stale_warning(latest)
+            if warning:
+                report.update(warning=warning, stale_result=True)
+    return {"jobs": unique_jobs, "report": report,
+            "exit_code": 1 if failures else 3 if report.get("stale_result") else 0}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--greenhouse", action="append", default=[], help="Greenhouse board token")
     parser.add_argument("--lever", action="append", default=[], help="Lever company token")
+    parser.add_argument("--ashby", action="append", default=[], help="Ashby public job-board token (explicit sources only)")
+    parser.add_argument("--ashby-snapshot", help="Replay saved Ashby public JSON without network or live verification")
     parser.add_argument("--registry", help="Versioned approved-source registry JSON path")
     parser.add_argument("--output", required=True, help="Output JSON array path")
     parser.add_argument("--report", help="Optional machine-readable source health report path")
     args = parser.parse_args(argv)
 
+    snapshot_requested = args.ashby_snapshot is not None
+    if snapshot_requested and args.ashby_snapshot == "":
+        parser.error("--ashby-snapshot requires a nonempty file path")
+    if snapshot_requested and (len(args.ashby) != 1 or args.greenhouse or args.lever or args.registry):
+        parser.error("--ashby-snapshot requires exactly one --ashby and no other sources or registry")
+    if snapshot_requested:
+        snapshot = Path(args.ashby_snapshot)
+        for value in (args.output, args.report):
+            if value:
+                destination = Path(value)
+                if (destination.resolve() == snapshot.resolve()
+                        or (destination.exists() and snapshot.exists() and destination.samefile(snapshot))):
+                    parser.error("snapshot input must not be an output or report destination")
+
     if args.registry:
-        if args.greenhouse or args.lever:
+        if args.greenhouse or args.lever or args.ashby:
             parser.error("--registry cannot be combined with --greenhouse or --lever")
         registry = load_registry(args.registry)
         args.greenhouse = [entry["token"] for entry in registry["sources"] if entry["platform"] == "greenhouse"]
         args.lever = [entry["token"] for entry in registry["sources"] if entry["platform"] == "lever"]
 
     output_path = Path(args.output)
-    if not args.greenhouse and not args.lever:
+    if not args.greenhouse and not args.lever and not args.ashby:
         result = {
             "greenhouse_tokens": args.greenhouse,
             "lever_tokens": args.lever,
@@ -248,95 +383,28 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result))
         return 2
 
-    jobs: list[dict] = []
-    failures: list[dict[str, str]] = []
-    source_runs: list[dict[str, str | int]] = []
-    for token in args.greenhouse:
-        try:
-            token_jobs = fetch_greenhouse_jobs(token)
-            jobs.extend(token_jobs)
-            run = {"source": "greenhouse", "token": token, "status": "ok", "candidates": len(token_jobs)}
-            latest_posting_at = _latest_posting_at(token_jobs)
-            if latest_posting_at is not None:
-                run["latest_posting_at"] = latest_posting_at
-                warning = _stale_warning(latest_posting_at)
-                if warning is not None:
-                    run["warning"] = warning
-                    run["stale_result"] = True
-            else:
-                warning = _missing_timestamp_warning(token_jobs)
-                if warning is not None:
-                    run["warning"] = warning
-                    run["freshness_unknown"] = True
-            source_runs.append(run)
-        except Exception as exc:
-            failures.append({"source": "greenhouse", "token": token, "error": str(exc)})
-            source_runs.append({"source": "greenhouse", "token": token, "status": "error", "error": str(exc), "candidates": 0})
-    for token in args.lever:
-        try:
-            token_jobs = fetch_lever_jobs(token)
-            jobs.extend(token_jobs)
-            run = {"source": "lever", "token": token, "status": "ok", "candidates": len(token_jobs)}
-            latest_posting_at = _latest_posting_at(token_jobs)
-            if latest_posting_at is not None:
-                run["latest_posting_at"] = latest_posting_at
-                warning = _stale_warning(latest_posting_at)
-                if warning is not None:
-                    run["warning"] = warning
-                    run["stale_result"] = True
-            else:
-                warning = _missing_timestamp_warning(token_jobs)
-                if warning is not None:
-                    run["warning"] = warning
-                    run["freshness_unknown"] = True
-            source_runs.append(run)
-        except Exception as exc:
-            failures.append({"source": "lever", "token": token, "error": str(exc)})
-            source_runs.append({"source": "lever", "token": token, "status": "error", "error": str(exc), "candidates": 0})
-
-    unique_jobs = _dedupe_jobs(jobs)
-    output_path.write_text(json.dumps(unique_jobs, indent=2) + "\n")
-    latest_posting_at = _latest_posting_at(unique_jobs)
-
-    result = {
-        "greenhouse_tokens": args.greenhouse,
-        "lever_tokens": args.lever,
-        "candidates": len(unique_jobs),
-        "failures": failures,
-        "source_runs": source_runs,
-        "source_health_status": _source_health_status(failures=failures, source_runs=source_runs, candidate_count=len(unique_jobs)),
-        "freshness_summary": _freshness_summary(source_runs),
-        "freshness_buckets": _freshness_buckets(source_runs),
-        "output": str(output_path),
-    }
+    snapshot_evidence = None
+    opener: OpenUrl | None = None
+    if snapshot_requested:
+        snapshot_evidence = {"kind": "saved_public_snapshot", "path": args.ashby_snapshot,
+                             "sha256": None, "live_verified": False}
+        def open_snapshot(url, timeout):
+            raw = Path(args.ashby_snapshot).read_bytes()
+            snapshot_evidence["sha256"] = hashlib.sha256(raw).hexdigest()
+            return io.BytesIO(raw)
+        opener = open_snapshot
+    discovery = discover_jobs(greenhouse=args.greenhouse, lever=args.lever, ashby=args.ashby, opener=opener)
+    if snapshot_evidence is not None:
+        discovery["report"]["source_evidence"] = snapshot_evidence
+        for job in discovery["jobs"]:
+            job.update(source="Ashby saved public snapshot", source_live_verified=False)
+    output_path.write_text(json.dumps(discovery["jobs"], indent=2) + "\n")
+    result = {**discovery["report"], "output": str(output_path)}
     if args.report:
         result["report"] = args.report
-    if latest_posting_at is not None:
-        result["latest_posting_at"] = latest_posting_at
-    if not failures and not unique_jobs:
-        result["warning"] = "Configured source tokens returned zero internship candidates"
-        result["stale_result"] = True
-    elif not failures:
-        warning = _aggregate_missing_timestamp_warning(source_runs)
-        if warning is not None:
-            result["freshness_unknown"] = True
-            result["warning"] = warning
-            result["stale_result"] = True
-        elif latest_posting_at is not None:
-            warning = _stale_warning(latest_posting_at)
-            if warning is not None:
-                result["warning"] = warning
-                result["stale_result"] = True
-
-    if args.report:
         Path(args.report).write_text(json.dumps(result, indent=2) + "\n")
-
     print(json.dumps(result))
-    if failures:
-        return 1
-    if result.get("stale_result"):
-        return 3
-    return 0
+    return discovery["exit_code"]
 
 
 if __name__ == "__main__":

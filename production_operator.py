@@ -698,10 +698,45 @@ def _verify_manifest_file(path: Path | str, expected_sha256: str, *, label: str)
         raise OperatorBlockedError(f"{label} evidence drift detected")
 
 
+def _authorization_store(manifest: dict):
+    """Production cannot choose a fresh per-job database to evade fencing."""
+    production = manifest["mode"] == "production_live"
+    if production:
+        return submission_authorization.SubmissionAuthorizationStore(
+            Path.home() / "Documents/job-agent/runtime/submission-ledger.sqlite3",
+            production=True,
+        )
+    return submission_authorization.SubmissionAuthorizationStore(
+        manifest["runtime_paths"]["authorization_db"]
+    )
+
+
+def _verify_employer_approval(manifest: dict) -> None:
+    """Recompute restricted-employer membership, not a caller's boolean."""
+    from scanner import maango_company
+    restricted = bool(maango_company(manifest["identity"]["company"], manifest["target"]["url"]))
+    gate = manifest["manual_gate"]
+    if restricted and (gate.get("maango") is not True or gate.get("maango_approved") is not True):
+        raise OperatorBlockedError("exact MAANGO employer approval is required before mutation")
+
+
+def _authorization_identity(manifest: dict, profile: dict) -> dict:
+    if manifest["mode"] != "production_live":
+        return {}
+    email = profile.get("contact", {}).get("email")
+    if not isinstance(email, str) or not email.strip():
+        raise OperatorBlockedError("canonical application account identity is missing")
+    return {"account_id": email.strip().casefold(),
+            "tenant": manifest["identity"]["platform"] + ":" + manifest["identity"]["tenant"]}
+
+
 def _verified_profile_resume(manifest: dict) -> tuple[dict, dict]:
     profile_binding = manifest["profile"]
     resume_binding = manifest["resume"]
     profile_path = Path(profile_binding["path"])
+    if (manifest["mode"] == "production_live"
+            and profile_path.resolve() != (Path.home() / "Documents/job-agent/profile.json").resolve()):
+        raise OperatorBlockedError("production requires the approved canonical profile path")
     _verify_manifest_file(profile_path, profile_binding["sha256"], label="profile")
     profile = _load_runtime_object(profile_path, label="profile")
     try:
@@ -727,6 +762,35 @@ def _verified_profile_resume(manifest: dict) -> tuple[dict, dict]:
     return profile, evidence
 
 
+def _canary_selectors_for_actions(
+    *, page: object, actions: list[dict[str, object]], expected_resume_basename: str
+) -> list[str]:
+    """Require visible controls except an already verified exact resume slot.
+
+    Greenhouse replaces its file input after a successful upload.  The replacement
+    view can still render the exact application resume filename, but has no file
+    control to inspect or overwrite.  Preserve that verified slot; every other
+    action remains part of the strict visible-control canary.
+    """
+    selectors: list[str] = []
+    reader = getattr(page, "read_uploaded_filename", None)
+    for action in actions:
+        selector = action.get("selector")
+        if not isinstance(selector, str) or not selector:
+            raise OperatorBlockedError("learned action selector is invalid")
+        if action.get("operation") == "cdp_upload" and callable(reader):
+            try:
+                existing = reader(selector)
+            except (KeyError, OSError, ValueError, RuntimeError):
+                existing = ""
+            if existing == expected_resume_basename:
+                continue
+        selectors.append(selector)
+    if not selectors:
+        raise OperatorBlockedError("live preparation requires at least one visible learned control")
+    return selectors
+
+
 def run_live_prepare(
     *,
     manifest_path: Path,
@@ -743,6 +807,7 @@ def run_live_prepare(
     manifest = live_run_manifest.load_manifest(
         manifest_path, production_enabled=production_enabled
     )
+    _verify_employer_approval(manifest)
     profile, resume = _verified_profile_resume(manifest)
     approved_answers = _load_runtime_object(
         approved_answers_path, label="approved answers"
@@ -753,6 +818,12 @@ def run_live_prepare(
     ).resolve():
         raise OperatorBlockedError("approved resume differs from profile-selected Resume.pdf")
     approved_answers["resume"] = str(Path(resume["path"]).resolve())
+    from schonfeld_form import URL as CLIENT_FORM_URL, verify_profile_answers
+    if manifest["target"]["url"] == CLIENT_FORM_URL:
+        verify_profile_answers(profile, approved_answers)
+    else:
+        from canonical_answers import verify_profile_answers as verify_canonical_answers
+        verify_canonical_answers(profile, approved_answers, tenant=manifest["identity"]["tenant"])
 
     identity = manifest["identity"]
     target = manifest["target"]
@@ -790,7 +861,11 @@ def run_live_prepare(
             or snapshot.get("url") != target["url"]
         ):
             raise OperatorBlockedError("exact target binding drift detected")
-        selectors = [str(action["selector"]) for action in actions]
+        selectors = _canary_selectors_for_actions(
+            page=page,
+            actions=actions,
+            expected_resume_basename=str(resume["basename"]),
+        )
         surface_reader = getattr(page, "inspect_safety_surface", None)
         if not callable(surface_reader):
             raise OperatorBlockedError("exact-page browser canary evidence is unavailable")
@@ -817,6 +892,7 @@ def run_live_prepare(
                 **kwargs,
                 expected_identity=expected_identity,
                 expected_platform=identity["platform"],
+                official_posting=snapshot.get("official_posting"),
             )
 
         prepared = prepare_live_job.prepare_live_job(
@@ -863,14 +939,44 @@ def run_live_prepare(
             "exact_target_bound": True,
         },
         "learned_map": {"version": mapping["version"], "tenant": mapping["tenant"]},
-        "resume": {"basename": "Resume.pdf", "verified": True},
+        "resume": {"basename": resume["basename"], "verified": True},
     }
+    from schonfeld_form import URL as SCHONFELD_URL
+    if target["url"] == SCHONFELD_URL:
+        sanitized["evidence"]["input_binding"] = _client_input_binding(manifest, approved_answers)
+        sanitized["evidence"]["prepared_at"] = datetime.now(timezone.utc).isoformat()
     output = Path(manifest["runtime_paths"]["preparation"])
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(sanitized, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return sanitized
+
+
+def _client_input_binding(manifest: dict, answers: dict) -> dict:
+    return {
+        "profile_sha256": manifest["profile"]["sha256"],
+        "resume_sha256": manifest["resume"]["sha256"],
+        "approved_answers_sha256": hashlib.sha256(
+            json.dumps(answers, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest(),
+    }
+
+
+def _check_client_inputs(manifest: dict, preparation: dict, answers: dict) -> None:
+    from schonfeld_form import URL
+    if manifest["target"]["url"] != URL:
+        return
+    evidence = preparation.get("evidence", {})
+    if evidence.get("input_binding") != _client_input_binding(manifest, answers):
+        raise OperatorBlockedError("client profile/resume/approved input binding drift")
+    try:
+        observed = datetime.fromisoformat(evidence.get("prepared_at", ""))
+        fresh = observed.tzinfo is not None and 0 <= (datetime.now(timezone.utc) - observed).total_seconds() <= 600
+    except (TypeError, ValueError):
+        fresh = False
+    if not fresh:
+        raise OperatorBlockedError("fresh one-page preparation required (maximum 600 seconds)")
 
 
 def _manifest_job_identity(manifest: dict) -> dict[str, object]:
@@ -899,6 +1005,46 @@ def _review_summary(wrapper: dict) -> dict[str, object]:
     }
 
 
+def _independent_review_fields(profile: dict, mapping: dict, step: str, observed: dict) -> dict:
+    """All populated and required controls are grounded without action values."""
+    from canonical_answers import canonical_review_fields
+    spec = mapping["steps"][step]
+    controls = spec["controls"]
+    # Canonical phone facts are digits; normalize only allowed presentation punctuation.
+    phone = controls.get("phone", {}).get("selector")
+    phone_value = observed.get("fields", {}).get(phone)
+    if isinstance(phone_value, str) and all((c.isascii() and c.isdigit()) or c in '+(). -' for c in phone_value):
+        observed["fields"][phone] = ''.join(c for c in phone_value if c.isdigit())
+    selectors = set()
+    for field in spec.get("required_fields", []):
+        control = controls[field]
+        if control.get("operation") not in ("cdp_upload", "submit"):
+            selectors.add(control["selector"])
+    for selector, evidence in observed.get("fields", {}).items():
+        value = evidence.get("value") if isinstance(evidence, dict) else evidence
+        if value is not None and str(value).strip():
+            selectors.add(selector)
+    return canonical_review_fields(profile, controls, selectors=sorted(selectors), tenant=mapping["tenant"])
+
+
+def _review_profile_fields(actions: list[dict]) -> dict[str, object]:
+    """Build exact expected Review values from semantic browser actions."""
+    fields: dict[str, object] = {}
+    for action in actions:
+        operation = action.get("operation")
+        selector = action.get("selector")
+        value = action.get("value")
+        if not isinstance(selector, str) or operation == "cdp_upload":
+            continue
+        if operation == "react_select_exact" and isinstance(value, dict):
+            fields[selector] = value.get("selected_option") or value.get("exact_option")
+        elif operation == "replace_tel_local_digits" and isinstance(value, str):
+            fields[selector] = "".join(character for character in value if character.isdigit())
+        else:
+            fields[selector] = value
+    return fields
+
+
 def run_live_review(
     *,
     manifest_path: Path,
@@ -916,7 +1062,7 @@ def run_live_review(
     manifest = live_run_manifest.load_manifest(
         manifest_path, production_enabled=production_enabled
     )
-    _, resume = _verified_profile_resume(manifest)
+    profile, resume = _verified_profile_resume(manifest)
     preparation = _load_runtime_object(
         manifest["runtime_paths"]["preparation"], label="preparation evidence"
     )
@@ -951,14 +1097,17 @@ def run_live_review(
     ).resolve():
         raise OperatorBlockedError("approved resume differs from profile-selected Resume.pdf")
     approved_answers["resume"] = str(Path(resume["path"]).resolve())
+    from schonfeld_form import URL as CLIENT_FORM_URL, verify_profile_answers
+    if manifest["target"]["url"] == CLIENT_FORM_URL:
+        verify_profile_answers(profile, approved_answers)
+    else:
+        from canonical_answers import verify_profile_answers as verify_canonical_answers
+        verify_canonical_answers(profile, approved_answers, tenant=manifest["identity"]["tenant"])
     actions = tenant_field_maps.build_step_actions(
         mapping=mapping, step=step, approved_answers=approved_answers
     )
-    profile_fields = {
-        str(action["selector"]): action["value"]
-        for action in actions
-        if action.get("operation") != "cdp_upload"
-    }
+    _check_client_inputs(manifest, preparation, approved_answers)
+    profile_fields = _review_profile_fields(actions)
 
     health = health_probe(cdp_base_url)
     if not isinstance(health, dict) or health.get("status") != "ready":
@@ -977,6 +1126,7 @@ def run_live_review(
             page_url=target["url"],
             expected_identity=expected_identity,
             expected_platform=identity["platform"],
+            official_posting=snapshot.get("official_posting"),
         )
         live_run_manifest.validate_manifest(
             manifest,
@@ -1001,8 +1151,11 @@ def run_live_review(
             required_question_ids=required_question_ids,
         )
 
+    if target["url"] != CLIENT_FORM_URL:
+        profile_fields = _independent_review_fields(profile, mapping, step, server_review)
     authoritative = review_reconciler.reconcile_review(
         preparation_evidence=preparation,
+        question_fields={name: control["selector"] for name, control in mapping["steps"][step]["controls"].items()},
         server_review=server_review,
         expected_target={
             "target_id": target["id"],
@@ -1064,6 +1217,34 @@ def run_live_authorize(
     manifest = live_run_manifest.load_manifest(
         manifest_path, production_enabled=production_enabled
     )
+    journal = Path(manifest["runtime_paths"]["submit_journal"])
+    if journal.exists():
+        raise OperatorBlockedError("existing submit intent journal forbids authorization replay")
+    if manifest["mode"] == "production_live":
+        from legacy_submission_migration import migrate_registered_history
+        profile, _ = _verified_profile_resume(manifest)
+        identity = _authorization_identity(manifest, profile)
+        store = _authorization_store(manifest)
+        key = store.ledger.application_key(**identity, job_id=manifest["job_id"],
+                                           requisition=manifest["identity"]["requisition"])
+        with store.ledger.transaction() as connection:
+            # Legacy consumed tokens may predate account/tenant keys. They are
+            # not proof of a new pre-intent attempt even with a missing journal.
+            if connection.execute("""SELECT 1 FROM submission_authorizations
+                    WHERE used_at IS NOT NULL AND (application_key = ? OR job_id = ?)""",
+                    (key, manifest["job_id"])).fetchone():
+                raise OperatorBlockedError("consumed authorization forbids authorization replay")
+        history = migrate_registered_history(
+            runtime_root=Path.home() / "Documents/job-agent/runtime",
+            profile_path=manifest["profile"]["path"],
+            account_id=identity["account_id"],
+            ledger=store.ledger,
+            current_pre_intent=(Path(manifest_path).absolute(), manifest),
+        )
+        if history["status"] == "blocked":
+            raise OperatorBlockedError("registered historical evidence requires reconciliation before authorization")
+        if _load_runtime_object(manifest_path, label="current pre-intent manifest") != manifest:
+            raise OperatorBlockedError("current pre-intent manifest changed after validation")
     if not isinstance(actor, str) or not actor.strip():
         raise OperatorBlockedError("explicit authorization actor is required")
     if (
@@ -1072,6 +1253,7 @@ def run_live_authorize(
         or not 1 <= expires_in_seconds <= 600
     ):
         raise OperatorBlockedError("authorization expiry must be between 1 and 600 seconds")
+    _verify_employer_approval(manifest)
     gate_state = manifest["manual_gate"]
     if gate_state["gates"]:
         raise OperatorBlockedError("manual gates must be cleared before authorization")
@@ -1114,10 +1296,10 @@ def run_live_authorize(
     handoff_path = Path(manifest["runtime_paths"]["authorization_handoff"])
     if handoff_path.exists():
         raise OperatorBlockedError("authorization handoff already exists")
-    store = submission_authorization.SubmissionAuthorizationStore(
-        manifest["runtime_paths"]["authorization_db"]
-    )
+    store = _authorization_store(manifest)
+    profile, _ = _verified_profile_resume(manifest)
     issued = store.issue(
+        **_authorization_identity(manifest, profile),
         job_id=manifest["job_id"],
         review_evidence=review,
         actor=actor.strip(),
@@ -1207,6 +1389,7 @@ class _ManifestSubmitPage:
             page_url=self.manifest["target"]["url"],
             expected_identity=expected_identity,
             expected_platform=identity["platform"],
+            official_posting=snapshot.get("official_posting"),
         )
         live_run_manifest.validate_manifest(
             self.manifest,
@@ -1231,7 +1414,42 @@ class _ManifestSubmitPage:
         return self.page.inspect_submit_control(selector)  # type: ignore[attr-defined]
 
     def click_submit_once(self, selector: str) -> None:
-        self.page.click_submit_once(selector)  # type: ignore[attr-defined]
+        from schonfeld_form import URL
+        after_reader = getattr(self.page, "read_after_submit_snapshot", None)
+        if self.manifest["target"]["url"] != URL or not callable(after_reader):
+            self.page.click_submit_once(selector)  # type: ignore[attr-defined]
+            return
+        # This capture exists only INSIDE the canonical invocation after intent.
+        before = self.page.read_only_snapshot()
+        intent = _require_submit_inspection_evidence(Path(self.manifest["runtime_paths"]["submit_journal"]), self.manifest)
+        if intent.get("status") != "intent_recorded":
+            raise OperatorBlockedError("original one-shot intent required for transition")
+        try:
+            self.page.click_submit_once(selector)
+        finally:
+            try:
+                after = after_reader()
+                if before.get("target_id") != after.get("target_id") or before.get("url") != URL:
+                    raise ValueError("same-tab transition binding drift")
+                transition = {
+                    "source": "one_shot_same_tab_observation", "trusted": True,
+                    "target_id": before["target_id"], "from_url": before["url"], "to_url": after["url"],
+                    "intent_sha256": hashlib.sha256(json.dumps(intent,sort_keys=True,separators=(",", ":")).encode()).hexdigest(),
+                    "before_html_sha256": hashlib.sha256(before["html"].encode()).hexdigest(),
+                    "after_html_sha256": hashlib.sha256(after["html"].encode()).hexdigest(),
+                    "after_body_text_sha256": hashlib.sha256(after["body_text"].encode()).hexdigest(),
+                }
+                path = Path(self.manifest["runtime_paths"]["confirmation"] + ".transition.json")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                try:
+                    os.write(descriptor, json.dumps(transition,sort_keys=True).encode())
+                    os.fsync(descriptor)
+                finally:
+                    os.close(descriptor)
+            except (OSError, ValueError, KeyError, TypeError):
+                # Missing provenance is uncertain, never reconstructed from a URL.
+                pass
 
     def inspect_confirmation(self) -> dict:
         return self.page.inspect_confirmation()  # type: ignore[attr-defined]
@@ -1257,7 +1475,8 @@ def run_live_submit(
     manifest = live_run_manifest.load_manifest(
         manifest_path, production_enabled=production_enabled
     )
-    _, resume = _verified_profile_resume(manifest)
+    _verify_employer_approval(manifest)
+    profile, resume = _verified_profile_resume(manifest)
     preparation = _load_runtime_object(
         manifest["runtime_paths"]["preparation"], label="preparation evidence"
     )
@@ -1298,14 +1517,17 @@ def run_live_submit(
     ).resolve():
         raise OperatorBlockedError("approved resume differs from profile-selected Resume.pdf")
     approved_answers["resume"] = str(Path(resume["path"]).resolve())
+    from schonfeld_form import URL as CLIENT_FORM_URL, verify_profile_answers
+    if manifest["target"]["url"] == CLIENT_FORM_URL:
+        verify_profile_answers(profile, approved_answers)
+    else:
+        from canonical_answers import verify_profile_answers as verify_canonical_answers
+        verify_canonical_answers(profile, approved_answers, tenant=manifest["identity"]["tenant"])
     actions = tenant_field_maps.build_step_actions(
         mapping=mapping, step=step, approved_answers=approved_answers
     )
-    profile_fields = {
-        str(action["selector"]): action["value"]
-        for action in actions
-        if action.get("operation") != "cdp_upload"
-    }
+    _check_client_inputs(manifest, preparation, approved_answers)
+    profile_fields = _review_profile_fields(actions)
     review_step = mapping.get("steps", {}).get("review", {})
     submit_control = review_step.get("controls", {}).get("submit", {})
     if (
@@ -1345,8 +1567,11 @@ def run_live_submit(
             required_parser_repairs=required_parser_repairs,
             required_question_ids=required_question_ids,
         )
+        if target["url"] != CLIENT_FORM_URL:
+            profile_fields = _independent_review_fields(profile, mapping, step, server_review)
         fresh_review = review_reconciler.reconcile_review(
             preparation_evidence=preparation,
+            question_fields={name: control["selector"] for name, control in mapping["steps"][step]["controls"].items()},
             server_review=server_review,
             expected_target={
                 "target_id": target["id"],
@@ -1368,10 +1593,10 @@ def run_live_submit(
             )
         ):
             raise OperatorBlockedError("fresh authoritative Review hash drift detected")
-        store = submission_authorization.SubmissionAuthorizationStore(
-            manifest["runtime_paths"]["authorization_db"]
-        )
+        store = _authorization_store(manifest)
         submitted = one_shot_submit.execute_one_shot_submit(
+            **_authorization_identity(manifest, profile),
+            clock=clock,
             authorization_store=store,
             token=handoff["token"],
             page=submit_page,
@@ -1444,6 +1669,7 @@ def run_live_confirmation(
     production_enabled: bool,
     transport_factory: LiveTransportFactory,
     health_probe: LiveHealthProbe,
+    clock: LiveClock | None = None,
 ) -> tuple[dict, dict]:
     """Inspect confirmation and Candidate Home without navigating or replaying."""
     prepare_live_job._validate_local_cdp_base_url(cdp_base_url)
@@ -1460,7 +1686,18 @@ def run_live_confirmation(
     identity = manifest["identity"]
     transport = transport_factory(cdp_base_url)
     with transport.bind_mutable_page_target(target["id"]) as page:  # type: ignore[attr-defined]
+        from schonfeld_form import URL
+        context = {}
+        if target["url"] == URL:
+            review = _load_runtime_object(manifest["runtime_paths"]["review"], label="original Review")
+            transition_path = Path(manifest["runtime_paths"]["confirmation"] + ".transition.json")
+            transition = _load_runtime_object(transition_path, label="one-shot transition") if transition_path.exists() else {}
+            context["guest_submission"] = {
+                "job_id": manifest["job_id"], "journal_path": manifest["runtime_paths"]["submit_journal"],
+                "review_evidence": review.get("review"), "transition": transition,
+            }
         portal = live_confirmation_reader.read_and_reconcile(
+            **context,
             page=page,
             platform=identity["platform"],
             tenant=identity["tenant"],
@@ -1476,8 +1713,17 @@ def run_live_confirmation(
         "portal": portal,
     }
     output = Path(manifest["runtime_paths"]["confirmation"])
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(wrapper, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    from autonomous_controller import atomic_json
+    atomic_json(output, wrapper)
+    if portal.get("portal_confirmed") is True and portal.get("safe_for_post_submit") is True:
+        store = _authorization_store(manifest)
+        profile = _load_runtime_object(manifest["profile"]["path"], label="canonical account profile")
+        attempt = store.ledger.attempt_for_application(
+            job_id=manifest["job_id"], requisition=identity["requisition"],
+            **_authorization_identity(manifest, profile))
+        if attempt is not None:
+            store.ledger.confirm(attempt["submission_attempt_id"], confirmed=True,
+                                 now=(clock or _utc_now)())
     summary = {
         "status": wrapper["status"],
         "portal_confirmed": portal.get("portal_confirmed") is True,
@@ -1502,8 +1748,9 @@ def run_live_delivery(
     discord_token_env: str,
     tracker_adapter: object | None,
     discord_adapter: object | None,
+    tracker_sync: bool = False,
 ) -> dict[str, object]:
-    """Run portal → tracker/read-back → Discord/read-back under explicit mode."""
+    """Persist confirmed outcome and notify; Sheets is an explicit opt-in."""
     manifest = live_run_manifest.load_manifest(
         manifest_path, production_enabled=production_enabled
     )
@@ -1522,10 +1769,12 @@ def run_live_delivery(
     ):
         raise OperatorBlockedError("exact portal-confirmed artifact is required")
 
+    if tracker_adapter is not None and tracker_sync is not True:
+        raise OperatorBlockedError("explicit tracker synchronization opt-in is required")
     if manifest["mode"] == "production_live":
         if commit_external is not True:
             raise OperatorBlockedError("explicit external commit mode is required")
-        if tracker_adapter is None:
+        if tracker_sync is True and tracker_adapter is None:
             tracker_adapter = live_delivery_adapters.GoogleSheetsTransactionAdapter(
                 commit_mode=live_delivery_adapters.COMMIT_EXTERNAL
             )
@@ -1546,7 +1795,8 @@ def run_live_delivery(
     else:
         if commit_external is True:
             raise OperatorBlockedError("external commit is forbidden for sanitized manifests")
-        tracker_adapter = tracker_adapter or _TimedLocalTracker()
+        if tracker_sync is True:
+            tracker_adapter = tracker_adapter or _TimedLocalTracker()
         discord_adapter = discord_adapter or _TimedLocalDiscord()
         delivery_mode = "sanitized_local"
 
@@ -1575,7 +1825,7 @@ def run_live_delivery(
     ).run(
         job_id=manifest["job_id"],
         portal_evidence=confirmation["portal"],
-        tracker_payload=tracker_payload,
+        tracker_payload=tracker_payload if tracker_sync is True else None,
         discord_message=discord_message,
     )
     return {**transaction, "delivery_mode": delivery_mode}
@@ -1759,6 +2009,7 @@ def run_normal_chrome_preflight(
         page_url=target["url"],
         expected_identity=expected_identity,
         expected_platform=identity["platform"],
+        official_posting=before.get("official_posting"),
     )
     live_run_manifest.validate_manifest(
         manifest,
@@ -1795,6 +2046,7 @@ def run_live_resume(
     health_probe: LiveHealthProbe,
     tracker_adapter: object | None,
     discord_adapter: object | None,
+    tracker_sync: bool = False,
 ) -> dict[str, object]:
     """Resume only confirmation inspection or claimed downstream read-back."""
     manifest = live_run_manifest.load_manifest(
@@ -1826,6 +2078,7 @@ def run_live_resume(
             discord_token_env=discord_token_env,
             tracker_adapter=tracker_adapter,
             discord_adapter=discord_adapter,
+            tracker_sync=tracker_sync,
         )
         return {
             **delivery,
@@ -1905,6 +2158,7 @@ def main(
     live_deliver.add_argument("--manifest", required=True)
     live_deliver.add_argument("--submitted-date", required=True)
     live_deliver.add_argument("--commit-external", action="store_true")
+    live_deliver.add_argument("--sync-tracker", action="store_true")
     live_deliver.add_argument("--discord-channel-id")
     live_deliver.add_argument("--discord-token-env", default="JOB_AGENT_DISCORD_BOT_TOKEN")
     live_deliver.add_argument("--enable-production-live", action="store_true")
@@ -1916,6 +2170,7 @@ def main(
     live_resume.add_argument("--submitted-date")
     live_resume.add_argument("--cdp-base-url", default="http://127.0.0.1:9222")
     live_resume.add_argument("--commit-external", action="store_true")
+    live_resume.add_argument("--sync-tracker", action="store_true")
     live_resume.add_argument("--discord-channel-id")
     live_resume.add_argument("--discord-token-env", default="JOB_AGENT_DISCORD_BOT_TOKEN")
     live_resume.add_argument("--enable-production-live", action="store_true")
@@ -2000,6 +2255,7 @@ def main(
                     discord_token_env=args.discord_token_env,
                     tracker_adapter=live_tracker_adapter,
                     discord_adapter=live_discord_adapter,
+                    tracker_sync=args.sync_tracker,
                 )
                 exit_code = 0 if result.get("status") == "complete" else 1
             elif args.live_command == "status":
@@ -2021,6 +2277,7 @@ def main(
                     health_probe=live_health_probe,
                     tracker_adapter=live_tracker_adapter,
                     discord_adapter=live_discord_adapter,
+                    tracker_sync=args.sync_tracker,
                 )
                 exit_code = 1 if result.get("status") == "partial" else 0
             elif args.live_command == "preflight":

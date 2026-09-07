@@ -11,6 +11,14 @@ Read this reference before any `production_operator.py live` command. Repository
 - `--commit-external` is valid only for production delivery after exact portal confirmation. It does not authorize submission and must be paired with an exact Discord channel ID plus authenticated tracker and Discord read-back.
 - `live release-audit` is read-only and never enables production, external commit, or a real application.
 
+## Compatibility check before live preparation
+
+Check the actual tenant's Review semantics before spending time on a transport adapter. A one-page Greenhouse form may have no server-saved Review page before submission. DOM values and read-only React-bound selections are useful preparation evidence, but must not be mislabeled server-persisted evidence to satisfy the existing server-only reconciler. Supporting that surface requires an explicit, tested provenance-aware workflow change that retains validation, exact-target binding, review freshness, user authorization, and one-shot intent/replay protection; a transport shim alone does not solve it.
+
+`worker_operator.py` in the job-agent repository reuses the already-approved private Unix browser worker through existing dependency-injection seams. Following explicit user approval, the exact Schonfeld 8171772 guest form now has a tested `live_client_bound_form` Review source with `server_saved:false`, canonical accepted-profile comparisons, actual browser File hashing, full required-control inventory, fresh-state/input commitments and the existing one-shot authorizer/journal. Read `worker_operator.md` for accepted-profile/answer schemas and runnable stage arguments, including `--posting-evidence` for official metadata absent from body text. Never relabel client evidence server-persisted. The source-aware direct-DOM canary preserves native-window state as unknown (not observed false). Missing real binding/upload provenance still fails closed.
+
+Guest confirmation is source-aware too: the trusted canonical invocation captures same-target before/after hashes, and the confirmation stage validates original intent/Review plus actual rendered success without inventing Candidate Home. Only receipt-bound learned same-tenant routes may be read after a redirect. Missing transition stays uncertain/no replay. For the Unix worker's default 64-KiB request-line limit, generate one shared control-reader function and test the fully serialized review and atomic-submit requests; do not restart the browser to compensate for oversized scripts. A hidden, nonrequired `iti-N__search-input` is a non-answer only when it belongs to the exact `.iti` phone widget; do not blanket-ignore hidden required controls.
+
 ## Exact command order
 
 Use the same reviewed manifest, approved-answer file, semantic step, required repairs/questions, and operator identity throughout. Replace placeholders deliberately; never auto-select a target or discover selectors live.

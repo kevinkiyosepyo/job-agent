@@ -47,8 +47,8 @@ def test_inspect_html_inventories_njoyn_account_controls_and_fails_closed():
     assert result["page_type"] == "account"
     assert result["surface"] == "account"
     assert result["fields"] == [
-        {"name": "email", "type": "email", "label": "Email address"},
-        {"name": "password", "type": "password", "label": "Password"},
+        {"name": "email", "type": "email", "label": "Email address", "required": False},
+        {"name": "password", "type": "password", "label": "Password", "required": False},
     ]
     assert result["entrypoint"] == {"create_profile_label": "Create a profile"}
     assert result["manual_gate"] == {
@@ -74,6 +74,7 @@ def test_inspect_html_inventories_njoyn_privacy_surface_and_fails_closed():
             "name": "privacy_acknowledged",
             "type": "checkbox",
             "label": "I acknowledge the notice",
+            "required": False,
         }
     ]
     assert result["manual_gate"] == {
@@ -95,10 +96,10 @@ def test_inspect_html_inventories_njoyn_disclosures_and_fails_closed():
     assert result["surface"] == "disclosures"
     assert result["role"] == "Employment disclosures"
     assert result["fields"] == [
-        {"name": "authorized", "type": "radio", "label": "Yes"},
-        {"name": "authorized", "type": "radio", "label": "No"},
-        {"name": "sponsorship", "type": "radio", "label": "Yes"},
-        {"name": "sponsorship", "type": "radio", "label": "No"},
+        {"name": "authorized", "type": "radio", "label": "Yes", "required": False},
+        {"name": "authorized", "type": "radio", "label": "No", "required": False},
+        {"name": "sponsorship", "type": "radio", "label": "Yes", "required": False},
+        {"name": "sponsorship", "type": "radio", "label": "No", "required": False},
     ]
     assert result["manual_gate"] == {
         "type": "employment_disclosures",
@@ -122,7 +123,8 @@ def test_inspect_html_inventories_njoyn_disability_surface_and_fails_closed():
         {
             "name": "disability",
             "type": "select",
-            "label": "Voluntary Self-Identification of Disability",
+            "label": "",  # No associated label; never substitute a page heading.
+            "required": False,
         }
     ]
     assert result["manual_gate"] == {
@@ -145,7 +147,7 @@ def test_inspect_html_inventories_njoyn_resume_upload_and_verifies_attached_file
     assert result["surface"] == "resume-upload"
     assert result["role"] == "Resume upload"
     assert result["fields"] == [
-        {"name": "resume", "type": "file", "label": "Resume"},
+        {"name": "resume", "type": "file", "label": "Resume", "required": False},
     ]
     assert result["uploaded_resume_verified"] is True
     assert result["manual_gate"] is None
@@ -167,7 +169,7 @@ def test_inspect_html_reports_explicit_njoyn_parsed_profile_mismatches_for_corre
     assert result["page_type"] == "parsed_profile"
     assert result["surface"] == "parsed-profile"
     assert result["fields"] == [
-        {"name": "school", "type": "text", "label": "School"},
+        {"name": "school", "type": "text", "label": "School", "required": False},
     ]
     assert result["parser_correction_required"] is True
     assert result["parser_mismatches"] == ["school"]
@@ -188,8 +190,8 @@ def test_inspect_html_requires_real_two_step_njoyn_referral_selection_state():
 
     assert result["page_type"] == "referral"
     assert result["fields"] == [
-        {"name": "source", "type": "select", "label": "How did you hear about us?"},
-        {"name": "source_detail", "type": "select", "label": "How did you hear about us?"},
+        {"name": "source", "type": "select", "label": "", "required": False},
+        {"name": "source_detail", "type": "select", "label": "", "required": False},
     ]
     assert result["referral_selection"] == {
         "parent": None,
@@ -214,8 +216,8 @@ def test_inspect_html_inventories_njoyn_questionnaire_and_fails_closed_on_requir
     assert result["page_type"] == "questionnaire"
     assert result["surface"] == "questionnaire"
     assert result["fields"] == [
-        {"name": "age", "type": "select", "label": "Application questionnaire"},
-        {"name": "compensation", "type": "text", "label": "Desired hourly compensation"},
+        {"name": "age", "type": "select", "label": "Are you at least 18 years old?", "required": False},
+        {"name": "compensation", "type": "text", "label": "Desired hourly compensation", "required": False},
     ]
     assert result["manual_gate"] == {
         "type": "unknown_required_questions",

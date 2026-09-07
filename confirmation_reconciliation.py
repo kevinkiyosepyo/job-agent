@@ -50,6 +50,45 @@ def extract_confirmation(*, platform: str, html_text: str, page_url: str) -> dic
     }
 
 
+def reconcile_greenhouse_guest(
+    *, snapshot: dict, expected_identity: dict[str, str], tenant: str,
+    target_id: str, origin_url: str, guest_submission: dict,
+) -> dict:
+    """Reconcile explicit guest success without inventing an account record."""
+    from greenhouse_guest_confirmation import (
+        extract_observed_success, is_permitted_confirmation_url, validate_provenance,
+    )
+
+    if not is_permitted_confirmation_url(origin_url=origin_url, page_url=snapshot.get("url"), tenant=tenant):
+        raise ConfirmationEvidenceError("guest_confirmation_route_not_permitted")
+    provenance = validate_provenance(
+        snapshot=snapshot, expected_identity=expected_identity, target_id=target_id,
+        origin_url=origin_url, guest_submission=guest_submission,
+    )
+    confirmation = extract_observed_success(snapshot)
+    return {
+        "portal_confirmed": True,
+        "safe_for_post_submit": True,
+        "platform": "greenhouse",
+        "identity": dict(expected_identity),
+        "confirmation_basis": "greenhouse_guest_one_shot",
+        "confirmation": {
+            "url": confirmation["confirmation_url"],
+            "reference_id": confirmation["reference_id"],
+            "submitted": True,
+            "text_sha256": confirmation["text_sha256"],
+        },
+        "portal_readback": {
+            "matched_application_count": 0, "state": "", "submitted": False,
+            "verified": False, "applicable": False,
+        },
+        "human_required": [],
+        "evidence": {"sanitized": True, "two_source_reconciliation": False, "provenance": provenance},
+        "replay_allowed": False,
+        "reader": {"platform": "greenhouse", "tenant": tenant, "verified": True, "mode": "guest_one_shot"},
+    }
+
+
 def _contains_exact(text: str, value: str) -> bool:
     return re.search(r"(?<![A-Za-z0-9_-])" + re.escape(value) + r"(?![A-Za-z0-9_-])", text) is not None
 

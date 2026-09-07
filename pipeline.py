@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-import html
+from html.parser import HTMLParser
 import json
 import re
 from datetime import date
@@ -30,9 +30,32 @@ def route_candidates(scan: dict) -> dict[str, list[dict]]:
     return routed
 
 
+class _ConfirmationTextParser(HTMLParser):
+    """Extract message text, never bootstrapped future-success script strings."""
+
+    def __init__(self):
+        super().__init__()
+        self.in_script = False
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "script":
+            self.in_script = True
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.in_script = False
+
+    def handle_data(self, data):
+        if not self.in_script:
+            self.parts.append(data)
+
+
 def normalize_confirmation_text(text: str) -> str:
-    cleaned = re.sub(r"<[^>]+>", " ", text or " ")
-    cleaned = html.unescape(cleaned)
+    parser = _ConfirmationTextParser()
+    parser.feed(text or " ")
+    parser.close()
+    cleaned = " ".join(parser.parts)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned
 

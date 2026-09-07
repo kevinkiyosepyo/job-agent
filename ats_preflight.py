@@ -11,6 +11,7 @@ from typing import Callable
 import lever_handler
 import oracle_handler
 import workday_handler
+from greenhouse_handler import _has_only_site_search, _modern_job_location
 from pipeline import validate_confirmation_evidence
 
 
@@ -147,14 +148,21 @@ def inspect_greenhouse_html(html_text: str, *, page_url: str) -> dict:
         page_type = "confirmation"
     except ValueError:
         pass
+    search_only = _has_only_site_search(html_text)
+    modern_location = _modern_job_location(html_text)
+    location = parser.location if modern_location is None else modern_location
+    if page_type == "application" and search_only:
+        page_type = "listing"
     return {
         "platform": "greenhouse",
         "page_url": page_url,
         "page_type": page_type,
-        "company": parser.company,
+        "company": parser.company if not search_only else "",
         "role": parser.role,
-        "location": parser.location,
+        "location": location if not search_only else "",
         "required_fields": parser.required_fields,
+        **({"form_evidence": {"source": "static_html", "status": "search_only",
+                              "rendering_verified": False}} if search_only else {}),
         "manual_gate": None,
         "confirmation_text": confirmation_text,
     }
@@ -172,6 +180,8 @@ def inspect_workday_html(html_text: str, *, page_url: str) -> dict:
         pass
     if page_type == "application" and not parser.fields and parser.entrypoint.get("apply_label"):
         page_type = "listing"
+    if page_type == "application" and not parser.fields:
+        page_type = "unknown"
     return {
         "platform": "workday",
         "page_url": page_url,

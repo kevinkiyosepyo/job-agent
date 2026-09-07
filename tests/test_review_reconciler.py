@@ -47,6 +47,8 @@ def prepared_review() -> dict:
 
 def server_review() -> dict:
     return {
+        "source": "server_saved_review",
+        "server_saved": True,
         "target_id": "page-42",
         "page_url": PAGE_URL,
         "identity": {
@@ -57,8 +59,9 @@ def server_review() -> dict:
         "fields": {
             "#first-name": "Fixture Person",
             "#school": "Fixture University",
+            "work_authorization": "Yes",
         },
-        "resume": {"basename": "Resume.pdf", "sha256": "fixture-resume-sha256"},
+        "resume": {"basename": "Resume.pdf", "sha256": "a" * 64},
         "parser_repairs": [{"field": "#school", "verified": True}],
         "questions": [
             {
@@ -81,11 +84,12 @@ def test_reconciler_makes_exact_server_review_authoritative_without_persisting_v
         profile_fields={
             "#first-name": "Fixture Person",
             "#school": "Fixture University",
+            "work_authorization": "Yes",
         },
         resume_preflight={
             "basename": "Resume.pdf",
             "content_type": "application/pdf",
-            "sha256": "fixture-resume-sha256",
+            "sha256": "a" * 64,
             "verified": True,
         },
         required_parser_repairs=["#school"],
@@ -98,6 +102,7 @@ def test_reconciler_makes_exact_server_review_authoritative_without_persisting_v
     assert result["fields"] == [
         {"field": "#first-name", "verified": True},
         {"field": "#school", "verified": True},
+        {"field": "work_authorization", "verified": True},
     ]
     assert result["resume"] == {"basename": "Resume.pdf", "verified": True}
     assert result["parser_repairs"] == [{"field": "#school", "verified": True}]
@@ -109,7 +114,73 @@ def test_reconciler_makes_exact_server_review_authoritative_without_persisting_v
     serialized = json.dumps(result)
     assert "Fixture Person" not in serialized
     assert "Fixture University" not in serialized
-    assert "fixture-resume-sha256" not in serialized
+    assert "a" * 64 not in serialized
+
+
+def test_reconciler_accepts_exact_profile_selected_resume_basename():
+    import review_reconciler
+
+    rendered = server_review()
+    rendered["resume"]["basename"] = "Resume 2027 SWE.pdf"
+    result = review_reconciler.reconcile_review(
+        preparation_evidence=prepared_review(),
+        server_review=rendered,
+        expected_target=EXPECTED_TARGET,
+        profile_fields={
+            "#first-name": "Fixture Person",
+            "#school": "Fixture University",
+            "work_authorization": "Yes",
+        },
+        resume_preflight={
+            "basename": "Resume 2027 SWE.pdf",
+            "content_type": "application/pdf",
+            "sha256": "a" * 64,
+            "verified": True,
+        },
+        required_parser_repairs=["#school"],
+        required_question_ids=["work_authorization"],
+    )
+
+    assert result["review_authoritative"] is True
+    assert result["resume"] == {
+        "basename": "Resume 2027 SWE.pdf",
+        "verified": True,
+    }
+
+
+def test_reconciler_rejects_filename_only_resume_even_when_marked_verified():
+    import review_reconciler
+
+    rendered = server_review()
+    rendered["resume"] = {
+        "basename": "Resume 2027 SWE.pdf",
+        "sha256": "",
+        "verified": True,
+    }
+    result = review_reconciler.reconcile_review(
+        preparation_evidence=prepared_review(),
+        server_review=rendered,
+        expected_target=EXPECTED_TARGET,
+        profile_fields={
+            "#first-name": "Fixture Person",
+            "#school": "Fixture University",
+            "work_authorization": "Yes",
+        },
+        resume_preflight={
+            "basename": "Resume 2027 SWE.pdf",
+            "content_type": "application/pdf",
+            "sha256": "a" * 64,
+            "verified": True,
+        },
+        required_parser_repairs=["#school"],
+        required_question_ids=["work_authorization"],
+    )
+
+    assert result["review_authoritative"] is False
+    assert result["resume"] == {
+        "basename": "Resume 2027 SWE.pdf",
+        "verified": False,
+    }
 
 
 def test_reconciler_keeps_every_unresolved_review_difference_human_required():
@@ -129,11 +200,12 @@ def test_reconciler_keeps_every_unresolved_review_difference_human_required():
         profile_fields={
             "#first-name": "Fixture Person",
             "#school": "Fixture University",
+            "work_authorization": "Yes",
         },
         resume_preflight={
             "basename": "Resume.pdf",
             "content_type": "application/pdf",
-            "sha256": "fixture-resume-sha256",
+            "sha256": "a" * 64,
             "verified": True,
         },
         required_parser_repairs=["#school"],

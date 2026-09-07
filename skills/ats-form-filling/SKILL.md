@@ -47,6 +47,7 @@ Preferred order:
 
 Pitfall:
 - A typed string can remain visible while the underlying selected value is still empty, causing the form to reject the field on submit.
+- For `type=combobox` answer coverage, read `job-application-automation` → `references/combobox-option-coverage.md`. A known canonical fact is not verified option availability. Preserve `combobox_options_unverified` until the separate supported browser option/saved-state procedure provides its required evidence; never relabel the control as free text to clear a blocker.
 
 ### 2) School / university picker: 30-second fast path
 

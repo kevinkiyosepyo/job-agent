@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from pipeline import validate_confirmation_evidence
+from browser_actions import inventory_form_fields
 
 
 class _WorkdayHTMLParser(HTMLParser):
@@ -146,6 +147,7 @@ def _manual_gates(text_chunks: list[str]) -> list[dict[str, str]]:
 def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str | None = None) -> dict:
     parser = _WorkdayHTMLParser()
     parser.feed(html_text)
+    parser.fields = inventory_form_fields(html_text)
     confirmation_text = None
     page_type = "application"
     try:
@@ -160,6 +162,8 @@ def inspect_html(html_text: str, *, page_url: str, expected_resume_basename: str
         page_type = "listing"
     if page_type == "application" and not parser.fields and parser.start_actions:
         page_type = "application_start"
+    if page_type == "application" and not parser.fields:
+        page_type = "unknown"
     role = parser.role
     if (not role or role.casefold().startswith("start your application")) and parser.document_title:
         role = parser.document_title

@@ -146,12 +146,17 @@ def validate_manifest(
     _sha256(resume.get("sha256"), label="resume evidence hash")
     if profile.get("verified") is not True:
         raise ManifestError("profile evidence must be independently verified")
+    resume_basename = resume.get("basename")
     if (
         resume.get("verified") is not True
-        or resume.get("basename") != "Resume.pdf"
+        or not isinstance(resume_basename, str)
+        or Path(resume["path"]).name != resume_basename
+        or Path(resume_basename).suffix.casefold() != ".pdf"
         or resume.get("content_type") != "application/pdf"
     ):
-        raise ManifestError("resume evidence must bind an exact verified Resume.pdf")
+        raise ManifestError(
+            "resume evidence must bind the exact verified profile-selected PDF basename"
+        )
 
     gates = manual_gate.get("gates")
     if (
