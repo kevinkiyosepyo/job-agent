@@ -36,4 +36,4 @@ The candidate flow can resume cleanly once the top-right signed-in state is pres
 - compensation target: `$20/hour` or `$20k annual` when required
 - source default: `Social Media`, then concrete platform `Instagram` or `Facebook` when required
 - education timing: `B.S. Data Science`, `Sep 2024 - May 2028`
-- application address: `10256 Eagle Nest Ct, Fairfax, VA 22032`
+- application address: read `profile.json -> contact.location` (never hardcode the street address; this repo is public)

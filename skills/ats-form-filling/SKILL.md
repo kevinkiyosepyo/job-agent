@@ -1,7 +1,7 @@
 ---
 name: ats-form-filling
 description: "Use when filling ATS job forms in a browser reliably."
-version: 1.0.0
+version: 1.1.0
 author: Hermes Agent
 license: MIT
 platforms: [macos]
@@ -60,13 +60,19 @@ Some ATS forms use a parent category and a child option. Kevin's required flow i
 - wait for the dependent picker;
 - click `Instagram`, with `Facebook` then `TikTok` as fallbacks.
 
-Typing the parent label is only filtering and never satisfies the field. Verify both selected option states before continuing.
+Typing the parent label is only filtering and never satisfies the field. Verify both selected option states before continuing. A profile default is not usable when the actual native select lacks that option; do not invent another referral. Read `job-application-automation` → `references/native-option-coverage.md` for the installed fail-closed static coverage check. Its known entries are only option availability, never saved-answer or Review proof.
 
-### 4) Salary fields may be dropdown-backed even when they look text-like
+### 4) Combined sponsorship wording needs both timeframes
+
+Read `job-application-automation` → `references/combined-sponsorship.md` for the recognized whole prompts. `Now or in the future` is not future-only: independently resolve current and future sponsorship facts, require both valid, then Yes if either is Yes. Missing/conflicting facts remain blocked; never infer legal answers from required Yes/No options. Verify the actual option and final Review.
+
+### 5) Salary fields may be dropdown-backed even when they look text-like
 
 For compensation questions, first check whether the field is a real dropdown or prompt. If it is, select a real option instead of typing a number.
 
-### 5) Date widgets may require more than visible MM/YYYY text
+### 6) Date widgets may require more than visible MM/YYYY text
+
+Read `job-application-automation` → `references/experience-date-scope.md` before resolving short date labels. A generic education or availability `Start date month` is not an employment-start question. Require the correct section/record, not a company acronym appearing as a substring; repeated records remain ambiguous. The engine's exact employer-scoped mapping does not bind a widget or verify a saved date.
 
 Even if month/year text appears on screen, the ATS may still consider the field empty until one of these happens:
 - focus/blur cycle completes
@@ -76,7 +82,7 @@ Even if month/year text appears on screen, the ATS may still consider the field 
 Verification rule:
 - If the page still reports `The field From is required` or similar, do not trust the visible date. Re-open the control and bind the date through the widget, not just by text injection.
 
-### 6) Resume upload must be verified twice
+### 7) Resume upload must be verified twice
 
 For required resume fields:
 1. Set the file through the actual file input.
@@ -85,7 +91,19 @@ For required resume fields:
 
 Do not assume an earlier autofill upload satisfies a later application-specific resume requirement.
 
-### 7) Use candidate-home verification after submit
+### 8) React-backed controls can look native
+
+Some custom ATS pages render ordinary `<select>` and `<textarea>` elements while React stores separate application and validation state. Visible DOM values or `innerText` option lists are not proof of a bound answer.
+
+Reliable sequence:
+1. Reacquire the live control after every rerender.
+2. Use the control type's native prototype setter.
+3. Dispatch the exact bubbling input/change event expected by the control.
+4. Wait for rerender before changing another field.
+5. For required textareas, complete a real focus/blur cycle or invoke the live field-level blur handler when documented by the ATS child.
+6. Verify selected index/value, framework backing state when observable, error clearance, and actual step/URL transition.
+
+### 9) Use candidate-home verification after submit
 
 For Workday- or Oracle-style portals, submission can often be verified from:
 - candidate home
@@ -103,7 +121,7 @@ Use these only when the live question matches and the user has not overridden th
 - Desired pay: `$20/hour` or `$20k annual` when the application requires a compensation answer
 - Source / how heard: default to `Social Media`, then pick `Instagram` or `Facebook` if the form requires a concrete platform
 - Education timing: `B.S. Data Science`, `Sep 2024 - May 2028`
-- Address to use for applications: `10256 Eagle Nest Ct, Fairfax, VA 22032`
+- Address to use for applications: read `profile.json -> contact.location` (street, city, state, zip). Never hardcode the street address in a skill file — this repo is public.
 
 ## Verification Checklist
 

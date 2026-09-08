@@ -2,6 +2,29 @@
 
 Use when extending `~/Documents/job-agent` or deciding whether the automation is actually complete.
 
+## Unattended-operation boundary
+
+The current repository is not an autonomous application service merely because the guarded live CLI exists:
+
+- `production_run.py` is dry-run discovery/queueing only.
+- `queue_worker.py` prepares caller-supplied saved HTML; it does not navigate a live job, authenticate, or drive the live submit stages.
+- The live CLI requires a caller-supplied exact target and per-job Review/actor authorization.
+- Most `live_confirmation_reader.VERIFIED_READERS` entries are fixture/example tenants, not production tenant contracts.
+- `credential_adapter.py` checks Keychain metadata only; executable login/create/reset flows still need a separately tested runtime adapter.
+
+Do not schedule unattended submissions until one durable runner composes discovery, exact-target navigation, authentication, preparation, Review, policy authorization, one-shot submit, confirmation, and notification with crash-safe state and rate limits.
+
+## Known P0 live-safety blockers
+
+Until the repository fixes and regression-tests all of these, automatic live submission must remain disabled:
+
+- A fresh authorization can currently reach a second Submit click for the same job after an earlier uncertain submit intent; uniqueness is token-scoped rather than durable job/requisition-intent-scoped.
+- The mapped Review fallback can treat mutated DOM presentation as authoritative without proving framework/server persistence, and required-question reconciliation uses unsafe selector-substring matching.
+- Greenhouse text-only gate detection can miss rendered reCAPTCHA, hCaptcha, or Turnstile iframe/widget surfaces.
+- Production confirmation/Candidate Home readers are unavailable for most real tenants and the strict original-URL binding does not yet model legitimate post-submit redirect/target lineage.
+- Queue leasing lacks owner/fencing identity and an atomic conditional claim; queue `applied` state is not evidence-bound to Review, submit intent, and portal confirmation.
+- Runtime profile, answer, manifest, Review, journal, and authorization artifacts must be private (`0700` directories, `0600` files), and audit logs must use an allowlist rather than retaining unrecognized personal fields.
+
 ## Definition of done
 
 Do not equate any one of these with production completion:
@@ -24,6 +47,10 @@ When Kevin says `continue rn`, `one shot`, or says periodic cycles are too slow:
 4. Give the process the ordered queue, strict TDD contract, safety boundaries, final verification commands, and instruction not to stop after one commit.
 5. Monitor actual Git/test state, not just the child agent's narrative.
 6. If the process exits mid-queue, resume the exact session or start from the exact recorded next slice immediately.
+
+## Release evidence freshness
+
+`production_operator.py live release-audit` currently validates the supplied JSON schema and booleans; it does not independently rerun tests, inspect Git, or prove the evidence belongs to the current checkout. Never certify a release from an existing `runtime/live-release-audit.json`. First run the checks against the current worktree, regenerate the value-free evidence with the current test count and commit identity, and compare it to live `git status`/test output. If the JSON says clean/passing while the live checkout is dirty or failing, the live result wins and the release is not ready. A production hardening task should replace self-asserted evidence with an audit command that executes or cryptographically binds the checks to the current commit and toolchain.
 
 ## Child-agent claims are not evidence
 

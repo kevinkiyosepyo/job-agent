@@ -2,6 +2,14 @@
 
 Use when an ATS page contains CAPTCHA/reCAPTCHA/hCaptcha/Turnstile scripts, widgets, checkboxes, challenges, or validation errors. This reference does not authorize clicking, solving, outsourcing, or bypassing a CAPTCHA.
 
+## Maximum Hands-Off Boundary
+
+- Do not interrupt Kevin merely because CAPTCHA-related scripts, site keys, hidden response fields, badges, or empty containers exist. Inspect whether a rendered security challenge actually blocks progress.
+- Automatically continue through ordinary ATS controls, validation fixes, Save Draft, Next, Continue, and Review actions when they are not owned by or part of a CAPTCHA challenge.
+- If Kevin has already cleared a challenge, detect that state and resume the application automatically; do not ask him to repeat the application instructions.
+- A visible `I'm not a robot` checkbox, image/audio puzzle, managed challenge, CAPTCHA-owned Verify button, or control whose purpose is obtaining a CAPTCHA token is the non-automatable boundary. Preserve it for human completion rather than clicking it.
+- A nearby control may be automated only when inspection establishes that it belongs to the ATS application flow rather than the challenge and the CAPTCHA already reports a cleared/nonblocking state.
+
 ## Distinguish Dormant Code from a Real Gate
 
 1. Inspect the rendered page, not script names alone.

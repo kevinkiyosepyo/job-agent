@@ -27,6 +27,7 @@ Do not use for free-text-only education fields; enter the canonical school name 
 
 - Preferred rendered value: `University of California, San Diego`
 - Acceptable exact variant when it is the directory's official entry: `University of California San Diego`
+- Acceptable exact official directory variant: `University of California - San Diego`. This spelling is present in a public Lever native-select directory; it is not a cached option ID or live saved-selection proof.
 - Acceptable short official variant: `UC San Diego`
 - Never substitute `San Diego State University`, another University of California campus, UCSD Extension, UC San Diego Health, or an approximate school.
 
@@ -45,7 +46,7 @@ Do not use for free-text-only education fields; enter the canonical school name 
 
 ### Native select
 
-Read all option labels in one DOM pass. Select the exact canonical/accepted label by option value, dispatch the required input/change events, and read `selectedOptions` back.
+Read all option labels in one DOM pass. The installed question engine recognizes the exact `Name of School` prompt, but that alias does not normalize a directory entry; read `job-application-automation` → `references/exact-school-prompts.md`. Keep an unsupported option mapping blocked rather than editing the canonical school fact. Select the exact canonical/accepted label by option value, dispatch the required input/change events, and read `selectedOptions` back.
 
 ### Custom combobox/autocomplete
 
