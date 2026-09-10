@@ -1,6 +1,6 @@
 # Job Agent
 
-**A bot that fills out job applications for you, from creating accounts to submitting the application.**
+**A bot that fills out job applications for you while you sleep, from creating accounts to submitting the application.**
 
 ![Job Agent filling a sanitized Greenhouse application, verifying every field by read-back, and stopping before submit to wait for a human](docs/demo.gif)
 
