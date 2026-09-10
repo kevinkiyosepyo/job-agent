@@ -1,6 +1,6 @@
 # Job Agent
 
-**A robot that fills out job applications for you — but never presses "Submit" without permission.**
+**A bot that fills out job applications for you, from creating accounts to submitting the application **
 
 Applying to internships means typing the same name, school, and phone number into hundreds of nearly identical forms. This project automates that typing. It finds job postings, opens the application form in a real Chrome browser, fills in the answers, and stops so a human can check the work before anything is sent.
 
