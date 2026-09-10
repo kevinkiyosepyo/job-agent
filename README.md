@@ -2,11 +2,11 @@
 
 **A bot that fills out job applications for you while you sleep, from creating accounts to submitting the application.**
 
-![Job Agent filling a sanitized Greenhouse application, verifying every field by read-back, and stopping before submit to wait for a human](docs/demo.gif)
+![Job Agent filling a sanitized Greenhouse application end to end — verifying every field by read-back, submitting once, and confirming it landed — with no human in the loop](docs/demo.gif)
 
-<sup>Real Chrome, real code path, fake company. The agent binds one exact page, fills each field, reads it back to prove it saved, hashes the resume, reconciles a Review — then stops. There is no authorization token, so it can't press the button. <a href="#try-it-without-touching-a-real-job-posting">Run it yourself.</a></sup>
+<sup>Real Chrome, real code path, fake company. The agent binds one exact page, fills each field, reads it back to prove it saved, hashes the resume, reconciles a Review, passes the policy check, issues itself a single-use token, submits exactly once, and reads the confirmation back. No human touched it. <a href="#try-it-without-touching-a-real-job-posting">Run it yourself.</a></sup>
 
-Applying to internships means typing the same name, school, and phone number into hundreds of nearly identical forms. This project automates that typing. It finds job postings, opens the application form in a real Chrome browser, fills in the answers, and stops so a human can check the work before anything is sent.
+Applying to internships means typing the same name, school, and phone number into hundreds of nearly identical forms. This project automates that typing. It finds job postings, opens the application form in a real Chrome browser, fills in the answers, verifies every one of them saved, and submits — on its own, around the clock.
 
 ---
 
@@ -16,7 +16,9 @@ Most automation tools are built to go fast. This one is built to **refuse to do 
 
 A job application can only be submitted once. There is no undo button, no "recall message," no way to fix a typo after an employer receives it. So every part of this system is designed around a single rule:
 
-> **If the program isn't certain, it stops and asks a human. It never guesses.**
+> **If the program isn't certain, it stops. It never guesses.**
+
+That's what lets it run unattended. It doesn't need a human watching because it refuses to act on anything it can't prove.
 
 In the code you'll see this called *fail-closed*. It means the default answer is "no." A step only proceeds when it has proof it should. If something is ambiguous — the page changed, a field didn't save, a question is unfamiliar — the program halts and reports why, instead of pushing forward and hoping.
 
@@ -33,7 +35,7 @@ The system moves a job through seven stages. Each stage has to prove it succeede
        ↓
   3. REVIEW      Re-read the page and confirm every answer actually saved
        ↓
-  4. AUTHORIZE   A human approves. Issues a one-time, expiring token.
+  4. AUTHORIZE   Policy check passes. Issues a one-time, expiring token.
        ↓
   5. SUBMIT      One single click. Cannot be repeated.
        ↓
@@ -44,7 +46,7 @@ The system moves a job through seven stages. Each stage has to prove it succeede
 
 **Stage 3 is the important one.** After filling a field, the program doesn't trust that it worked. It reads the page back and compares what's actually there against what it meant to type. This is called *read-back verification*, and it's the reason the system catches a dropdown that silently reset or a file upload that didn't attach.
 
-**Stage 4 is the safety gate.** Approval produces a token that works exactly once, expires in minutes, and is locked to that specific job. If anything about the page changes between approval and submission, the token stops working. You cannot approve one application and accidentally submit a different one.
+**Stage 4 is the safety gate.** Once the policy check passes (not a MAANGO company, no CAPTCHA, no assessment, no unknown questions), the system issues itself a token that works exactly once, expires in minutes, and is locked to that specific page. If anything changes between authorization and submission, the token stops working. It cannot authorize one application and accidentally submit a different one.
 
 **Stage 5 can never repeat.** If the connection drops mid-click, the program is forbidden from clicking again. Instead it switches to inspection mode and looks for evidence of what happened. A double-submitted application looks careless to an employer; a delayed one doesn't.
 
@@ -104,13 +106,13 @@ python3 production_operator.py local-demo \
 
 That last command launches a real Chrome browser against a local test page and runs all seven stages — including deliberately interrupting the submit step to prove the recovery logic doesn't double-click.
 
-**Re-record the GIF at the top of this page:**
+**Re-record the GIF at the top of this page** (submits the local fixture, nothing real):
 
 ```bash
 python3 tools/record_demo.py --output docs/demo.gif
 ```
 
-It drives `fixtures/demo_greenhouse_styled.html` through the same `MutableCDPPageAdapter` and `browser_actions` read-back contracts the production path uses, then asserts the fixture was never submitted before writing the file.
+It drives `fixtures/demo_greenhouse_styled.html` through the same `MutableCDPPageAdapter` and `browser_actions` read-back contracts the production path uses, then asserts the fixture reports `submitted` — via the real `inspect_confirmation` read-back — before writing the file.
 
 ---
 

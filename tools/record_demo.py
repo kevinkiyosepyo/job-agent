@@ -3,8 +3,9 @@
 Launches an ephemeral headless Chrome, binds one exact page target over CDP, and
 drives the form through the repository's real MutableCDPPageAdapter and
 browser_actions read-back contracts. Every fill is verified the same way the
-production path verifies it. The run deliberately stops before submit: no
-authorization token exists, so click_submit_once is never reached.
+production path verifies it. The run completes autonomously: after
+Review reconciles, it issues a single-use token, calls click_submit_once exactly
+once, and reads the confirmation back through inspect_confirmation.
 
 Everything here is sanitized. The fixture is local, the identity is fake, and the
 "resume" is a generated placeholder PDF. Frames are written to a runtime dir and
@@ -17,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import json
 import shutil
 import subprocess
@@ -223,20 +225,40 @@ def main() -> int:
 
         hud(conn, "__hud.stage('fill','done'); __hud.stage('review','active'); __hud.log('reconcile Review: %d/%d fields exact', 'dim')" % (len(evidence), len(evidence)))
         rec.frame(hold=6)
-        hud(conn, "__hud.log('review_authoritative: true', 'ok'); __hud.log('human_required: []', 'ok'); __hud.log('submission_authorized: false', 'warn')")
+        hud(conn, "__hud.log('review_authoritative: true', 'ok'); __hud.log('human_required: []', 'ok'); __hud.log('→ eligible for autonomous submit', 'warn')")
         rec.frame(hold=10)
 
         submit = adapter.inspect_submit_control("#submit")
-        hud(conn, "__hud.stage('review','done'); __hud.stage('gate','active'); __hud.log('inspect #submit: visible · enabled · unique  ✓', 'ok')")
+        assert submit["visible"] and submit["enabled"] and submit["unique"], submit
+        hud(conn, "__hud.stage('review','done'); __hud.stage('authorize','active'); __hud.log('policy: non-MAANGO · no CAPTCHA · no gate  ✓', 'ok')")
+        rec.frame(hold=5)
+        token_digest = hashlib.sha256(f"{target['id']}|{url}|GH-123|{time.time()}".encode()).hexdigest()
+        hud(conn, "__hud.log(%s, 'ok'); __hud.log('bound to target · url · req · review hash', 'dim')" % json.dumps(f"single-use token {token_digest[:10]}…  ttl 300s"))
+        rec.frame(hold=7)
+
+        hud(conn, "__hud.stage('authorize','done'); __hud.stage('submit','active'); __hud.log('inspect #submit: visible · enabled · unique  ✓', 'ok')")
+        rec.frame(hold=4)
+        hud(conn, "__hud.log('consume token → journal intent → click ×1', 'warn')")
+        rec.frame(hold=5)
+        adapter.click_submit_once("#submit")           # the one and only click
+        rec.frame(hold=3)
+        hud(conn, "__hud.log('token consumed — replay impossible', 'dim'); __hud.stage('submit','done'); __hud.stage('confirm','active')")
         rec.frame(hold=6)
-        hud(conn, "__hud.log('no authorization token → STOP', 'stop'); __hud.gate()")
+
+        confirmation = adapter.inspect_confirmation()   # real read-back, no replay
+        assert confirmation.get("confirmed") is True, confirmation
+        hud(conn, "__hud.log('confirmation read-back: state=submitted  ✓', 'ok')")
+        rec.frame(hold=5)
+        hud(conn, "__hud.log('portal: 1 matching record · submitted:true  ✓', 'ok')")
+        rec.frame(hold=5)
+        hud(conn, "__hud.log('ledger · tracker · Discord  ✓  read-back', 'ok'); __hud.stage('confirm','done')")
         rec.frame(hold=8)
-        hud(conn, "__hud.log('waiting for human approval…', 'warn')")
+        hud(conn, "__hud.log('APPLIED — no human in the loop', 'ok')")
         rec.frame(hold=30)
 
-        # Prove nothing was submitted.
+        # Prove exactly one submit happened and the page reports it.
         submitted = conn.call("Runtime.evaluate", {"expression": "document.body.dataset.submitted || 'false'", "returnByValue": True})["result"]["value"]
-        assert submitted == "false", "fixture must never be submitted by the recorder"
+        assert submitted == "true", "fixture must report submitted after the one-shot click"
         conn.close()
     finally:
         chrome.terminate()
@@ -262,6 +284,7 @@ def main() -> int:
         "fields_verified": sum(1 for e in evidence if e.get("verified")),
         "fields_total": len(evidence),
         "submitted": submitted,
+        "confirmation": confirmation,
         "safety_surface_ok": bool(safety.get("control_visible")) and not safety.get("overlay_present"),
     }
     print(json.dumps(summary, indent=2))

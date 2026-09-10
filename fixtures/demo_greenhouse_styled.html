@@ -51,6 +51,12 @@
   .hud .line.warn { color: #fbbf24; }
   .hud .line.dim { color: #64748b; }
   .hud .line.stop { color: #f87171; font-weight: 700; }
+  .confirm { display: none; text-align: center; padding: 48px 24px 32px; }
+  .confirm.show { display: block; }
+  .confirm .tick { width: 72px; height: 72px; border-radius: 50%; background: #1f9d5a; color: #fff; font-size: 38px; line-height: 72px; margin: 0 auto 18px; }
+  .confirm h2 { margin: 0 0 8px; font-size: 26px; }
+  .confirm p { margin: 4px 0; color: #5f6b7a; font-size: 15px; }
+  .confirm .ref { display: inline-block; margin-top: 16px; padding: 8px 14px; border-radius: 6px; background: #f2fbf6; border: 1px solid #1f9d5a; font: 13px "SF Mono", Menlo, monospace; color: #1f2933; }
   .banner { display: none; margin-top: 16px; padding: 14px 16px; border-radius: 8px; background: #fef3c7; border: 1px solid #f59e0b; color: #78350f; font-size: 13px; line-height: 1.5; }
   .banner.show { display: block; }
   .banner b { display: block; margin-bottom: 4px; }
@@ -95,11 +101,17 @@
 
       <div class="actions">
         <button id="submit" type="submit">Submit application</button>
-        <span class="hint" id="submit-hint">Requires human authorization</span>
+        <span class="hint" id="submit-hint"></span>
       </div>
     </form>
 
-    <div class="banner" id="banner"><b>⏸ Stopped before submit — waiting for a human.</b>Every field verified by read-back. The agent cannot press this button on its own: submission requires a one-time, expiring authorization token bound to this exact page.</div>
+    <div class="confirm" id="confirm" data-submission-state="submitted" style="display:none">
+      <div class="tick">✓</div>
+      <h2>Application submitted</h2>
+      <p>Fixture Company received your application for <b>Software Engineer Intern</b>.</p>
+      <p>A confirmation has been sent to sam.fixture@example.test.</p>
+      <div class="ref">Reference GH-123-7A4C2E</div>
+    </div>
   </div>
 
   <aside class="hud">
@@ -109,7 +121,9 @@
     <div class="stage" data-stage="fill"><span class="dot"></span>Fill + read-back verify</div>
     <div class="stage" data-stage="upload"><span class="dot"></span>Attach resume + hash check</div>
     <div class="stage" data-stage="review"><span class="dot"></span>Authoritative Review</div>
-    <div class="stage" data-stage="gate"><span class="dot"></span>Stop for human authorization</div>
+    <div class="stage" data-stage="authorize"><span class="dot"></span>Policy check → single-use token</div>
+    <div class="stage" data-stage="submit"><span class="dot"></span>One-shot submit</div>
+    <div class="stage" data-stage="confirm"><span class="dot"></span>Confirm + record</div>
     <div class="log" id="log"></div>
   </aside>
 </div>
@@ -141,14 +155,14 @@
       const d = document.getElementById('drop');
       d.classList.add('attached');
       d.firstChild.textContent = '📎 ' + name + '  ';
-    },
-    gate() {
-      document.getElementById('submit').disabled = true;
-      document.getElementById('submit-hint').textContent = 'Locked — no authorization token';
-      document.getElementById('banner').classList.add('show');
     }
   };
-  document.getElementById('application').addEventListener('submit', e => { e.preventDefault(); document.body.dataset.submitted = 'true'; });
+  document.getElementById('application').addEventListener('submit', e => {
+    e.preventDefault();
+    document.getElementById('application').style.display = 'none';
+    const c = document.getElementById('confirm'); c.style.display = 'block'; c.classList.add('show');
+    document.body.dataset.submitted = 'true';
+  });
 </script>
 </body>
 </html>
