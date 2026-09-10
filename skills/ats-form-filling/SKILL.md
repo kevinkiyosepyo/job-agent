@@ -137,3 +137,5 @@ Before final answer to the user:
 ## References
 
 - See `references/disney-bny-quirks.md` for concrete examples of dropdown, nested-source, date, and portal-verification quirks found in live ATS sessions.
+- Read `references/eligibility-screening-before-submit.md` BEFORE spending a submit. A submit is irreversible and rate-limited; screen the posting's own eligibility text first rather than discovering a disqualifier after the fact.
+- Read `references/hidden-tab-and-silent-bind-failures.md` when driving a background CDP worker. A hidden tab discards trusted mouse input and a bind can fail silently, so verify the tab is rendered and the bind is live before trusting any field write.

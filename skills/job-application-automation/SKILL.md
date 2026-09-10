@@ -210,7 +210,7 @@ Installed/available skill status and passing fixture tests are not proof that ap
 
 The gates described below constrain that one CLI's own replay/authorization machinery. They do NOT gate ordinary CDP form-filling, and they must never be cited as a reason to skip an application. When a run is told to apply, apply: inventory the form, fill it from the canonical profile, verify Review, submit once, and capture explicit confirmation evidence.
 
-For the guarded unattended controller, also read [`references/unattended-controller.md`](references/unattended-controller.md) and the repository's `autonomous_operation.md`. Scope, legacy-history reconciliation, verified live capability, and explicit service enablement are separate from passing unit tests. The manual `production_operator.py live` interface below remains available; do not confuse a controller's policy-scoped authorization with an unbounded permission to apply anywhere.
+For the guarded unattended controller, also read [`references/unattended-controller.md`](references/unattended-controller.md) and the repository's `docs/AUTONOMOUS-OPERATION.md`. Scope, legacy-history reconciliation, verified live capability, and explicit service enablement are separate from passing unit tests. The manual `production_operator.py live` interface below remains available; do not confuse a controller's policy-scoped authorization with an unbounded permission to apply anywhere.
 
 The repository now exposes a unified, guarded `production_operator.py live` command family. Before using any live subcommand, read [`references/unified-live-production-cli.md`](references/unified-live-production-cli.md) completely and follow its command order, approval boundaries, no-replay recovery, health checks, and release-audit contract.
 
@@ -268,3 +268,4 @@ If any element is missing, report the exact pending/failed state instead of Appl
 - `references/ashby-public-discovery.md` — explicit public discovery and non-live saved-snapshot replay; not connected application support.
 - `references/greenhouse-fieldset-inspection.md` — static checkbox questions and exact options; no saved-state authority.
 - `references/lever-location-picker.md` — paired location control kind, not selected location or connected support.
+- `references/applied-ledger-discipline.md` — write `runtime/applied-ledger.json` as each submission confirms, never batched at the end of a run; it is the canonical cross-run dedupe source.

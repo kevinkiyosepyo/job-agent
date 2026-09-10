@@ -1,8 +1,12 @@
 # Operations Runbook
 
+> New to this project? Start with the [README](../README.md) for what the system does, then [ARCHITECTURE.md](ARCHITECTURE.md) for how the modules fit together. This runbook assumes both.
+
 ## Purpose
 
 This repository is a local, safety-first job-agent build. The default mode is offline verification and dry-run orchestration only.
+
+**Python 3.11+ is required** for every command below — see the Python version note in [ARCHITECTURE.md](ARCHITECTURE.md#python-version-requirement).
 
 ## Standard operator workflow
 

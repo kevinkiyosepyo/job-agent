@@ -2,7 +2,7 @@
 
 Never starts a worker, opens Chrome/WebSockets, or retries an action.
 Preparation mutation requires constructor opt-in; see BROWSER_INTERFACE.md.
-See worker_operator.md for client-bound Review, single-use submit and guest evidence.
+See docs/WORKER-OPERATOR.md for client-bound Review, single-use submit and guest evidence.
 """
 from __future__ import annotations
 
