@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Software Engineer Intern — Fixture Company</title>
+<meta name="job-agent-fixture" content="sanitized-demo-greenhouse-v1">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #f4f5f7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #1f2933; }
+  .topbar { background: #ffffff; border-bottom: 1px solid #e3e6ea; height: 56px; display: flex; align-items: center; padding: 0 32px; gap: 12px; }
+  .logo { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg,#3ac47d,#1f9d5a); }
+  .brand { font-weight: 600; font-size: 15px; }
+  .wrap { display: grid; grid-template-columns: 1fr 380px; gap: 24px; max-width: 1180px; margin: 24px auto; padding: 0 24px; }
+  .card { background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 28px 32px; }
+  h1 { margin: 0 0 4px; font-size: 24px; }
+  .meta { color: #5f6b7a; font-size: 14px; margin-bottom: 22px; }
+  .section { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #7b8794; margin: 18px 0 10px; font-weight: 600; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  label .req { color: #d64545; margin-left: 2px; }
+  input[type=text], input[type=email], input[type=tel], select {
+    width: 100%; height: 40px; padding: 0 12px; border: 1px solid #cfd5dc; border-radius: 6px; font-size: 14px; background: #fff; color: #1f2933;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus { outline: none; border-color: #3ac47d; box-shadow: 0 0 0 3px rgba(58,196,125,.18); }
+  input.verified, select.verified { border-color: #1f9d5a; background: #f2fbf6; }
+  .field { margin-bottom: 14px; position: relative; }
+  .check { position: absolute; right: 12px; top: 33px; width: 18px; height: 18px; border-radius: 50%; background: #1f9d5a; color: #fff; font-size: 12px; display: none; align-items: center; justify-content: center; }
+  .field.verified .check { display: flex; }
+  .drop { border: 1.5px dashed #cfd5dc; border-radius: 8px; padding: 18px; text-align: center; color: #7b8794; font-size: 13px; }
+  .drop.attached { border-style: solid; border-color: #1f9d5a; background: #f2fbf6; color: #1f2933; }
+  .drop input { display: none; }
+  .actions { margin-top: 24px; display: flex; gap: 10px; align-items: center; }
+  button { height: 42px; padding: 0 22px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+  #submit { background: #1f9d5a; color: #fff; }
+  #submit:disabled { background: #b8c2cc; }
+  .hint { font-size: 12px; color: #7b8794; }
+
+  /* Operator HUD — what the agent is doing, shown for the demo */
+  .hud { background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 18px 20px; font: 12.5px/1.55 "SF Mono", Menlo, Consolas, monospace; align-self: start; position: sticky; top: 24px; }
+  .hud h2 { margin: 0 0 12px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #94a3b8; font-weight: 600; }
+  .hud .stage { display: flex; gap: 10px; align-items: center; padding: 6px 0; color: #64748b; }
+  .hud .stage .dot { width: 8px; height: 8px; border-radius: 50%; background: #334155; flex: none; }
+  .hud .stage.active { color: #f8fafc; }
+  .hud .stage.active .dot { background: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,.25); }
+  .hud .stage.done { color: #86efac; }
+  .hud .stage.done .dot { background: #22c55e; }
+  .hud .log { margin-top: 14px; border-top: 1px solid #1e293b; padding-top: 12px; max-height: 400px; overflow: hidden; }
+  .hud .line { white-space: pre; color: #cbd5e1; }
+  .hud .line.ok { color: #86efac; }
+  .hud .line.warn { color: #fbbf24; }
+  .hud .line.dim { color: #64748b; }
+  .hud .line.stop { color: #f87171; font-weight: 700; }
+  .banner { display: none; margin-top: 16px; padding: 14px 16px; border-radius: 8px; background: #fef3c7; border: 1px solid #f59e0b; color: #78350f; font-size: 13px; line-height: 1.5; }
+  .banner.show { display: block; }
+  .banner b { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="topbar"><div class="logo"></div><div class="brand">Fixture Company</div><div class="hint" style="margin-left:auto">Sanitized demo · no real employer · no real data</div></div>
+<div class="wrap">
+  <div class="card">
+    <h1>Software Engineer Intern</h1>
+    <div class="meta">Fixture Company · San Diego, CA · Summer 2027 · Requisition GH-123</div>
+
+    <form id="application" autocomplete="off">
+      <div class="section">Your information</div>
+      <div class="row">
+        <div class="field"><label>First name<span class="req">*</span></label><input type="text" id="first_name" name="first_name" required><div class="check">✓</div></div>
+        <div class="field"><label>Last name<span class="req">*</span></label><input type="text" id="last_name" name="last_name" required><div class="check">✓</div></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Email<span class="req">*</span></label><input type="email" id="email" name="email" required><div class="check">✓</div></div>
+        <div class="field"><label>Phone<span class="req">*</span></label><input type="tel" id="phone" name="phone" required><div class="check">✓</div></div>
+      </div>
+
+      <div class="section">Resume</div>
+      <div class="field">
+        <div class="drop" id="drop">Attach resume (PDF) <input id="resume" name="resume" type="file" accept=".pdf" required></div>
+      </div>
+
+      <div class="section">Screening questions</div>
+      <div class="row">
+        <div class="field"><label>Are you legally authorized to work in the United States?<span class="req">*</span></label>
+          <select id="authorization" required><option value="">Select…</option><option>Yes</option><option>No</option></select><div class="check">✓</div></div>
+        <div class="field"><label>Will you now or in the future require sponsorship?<span class="req">*</span></label>
+          <select id="sponsorship" required><option value="">Select…</option><option>Yes</option><option>No</option></select><div class="check">✓</div></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>School<span class="req">*</span></label>
+          <select id="school" required><option value="">Select…</option><option>University of California, San Diego</option><option>University of California, Los Angeles</option><option>Stanford University</option></select><div class="check">✓</div></div>
+        <div class="field"><label>How did you hear about us?<span class="req">*</span></label>
+          <select id="source" required><option value="">Select…</option><option>LinkedIn</option><option>Social Media</option><option>Career fair</option></select><div class="check">✓</div></div>
+      </div>
+
+      <div class="actions">
+        <button id="submit" type="submit">Submit application</button>
+        <span class="hint" id="submit-hint">Requires human authorization</span>
+      </div>
+    </form>
+
+    <div class="banner" id="banner"><b>⏸ Stopped before submit — waiting for a human.</b>Every field verified by read-back. The agent cannot press this button on its own: submission requires a one-time, expiring authorization token bound to this exact page.</div>
+  </div>
+
+  <aside class="hud">
+    <h2>job-agent · operator view</h2>
+    <div class="stage" data-stage="bind"><span class="dot"></span>Bind exact page target</div>
+    <div class="stage" data-stage="inventory"><span class="dot"></span>Inventory required fields</div>
+    <div class="stage" data-stage="fill"><span class="dot"></span>Fill + read-back verify</div>
+    <div class="stage" data-stage="upload"><span class="dot"></span>Attach resume + hash check</div>
+    <div class="stage" data-stage="review"><span class="dot"></span>Authoritative Review</div>
+    <div class="stage" data-stage="gate"><span class="dot"></span>Stop for human authorization</div>
+    <div class="log" id="log"></div>
+  </aside>
+</div>
+
+<script>
+  // Demo-only presentation hooks. The agent drives the form through CDP;
+  // these helpers just let the page reflect what the agent reports.
+  window.__hud = {
+    stage(name, state) {
+      document.querySelectorAll('.stage').forEach(s => {
+        if (s.dataset.stage === name) { s.className = 'stage ' + state; }
+      });
+    },
+    log(text, cls) {
+      const el = document.createElement('div');
+      el.className = 'line ' + (cls || '');
+      el.textContent = text;
+      const log = document.getElementById('log');
+      log.appendChild(el);
+      while (log.children.length > 17) log.removeChild(log.firstChild);
+    },
+    mark(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('verified');
+      const f = el.closest('.field'); if (f) f.classList.add('verified');
+    },
+    attached(name) {
+      const d = document.getElementById('drop');
+      d.classList.add('attached');
+      d.firstChild.textContent = '📎 ' + name + '  ';
+    },
+    gate() {
+      document.getElementById('submit').disabled = true;
+      document.getElementById('submit-hint').textContent = 'Locked — no authorization token';
+      document.getElementById('banner').classList.add('show');
+    }
+  };
+  document.getElementById('application').addEventListener('submit', e => { e.preventDefault(); document.body.dataset.submitted = 'true'; });
+</script>
+</body>
+</html>

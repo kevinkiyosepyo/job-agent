@@ -1,6 +1,10 @@
 # Job Agent
 
-**A bot that fills out job applications for you, from creating accounts to submitting the application **
+**A bot that fills out job applications for you, from creating accounts to submitting the application.**
+
+![Job Agent filling a sanitized Greenhouse application, verifying every field by read-back, and stopping before submit to wait for a human](docs/demo.gif)
+
+<sup>Real Chrome, real code path, fake company. The agent binds one exact page, fills each field, reads it back to prove it saved, hashes the resume, reconciles a Review — then stops. There is no authorization token, so it can't press the button. <a href="#try-it-without-touching-a-real-job-posting">Run it yourself.</a></sup>
 
 Applying to internships means typing the same name, school, and phone number into hundreds of nearly identical forms. This project automates that typing. It finds job postings, opens the application form in a real Chrome browser, fills in the answers, and stops so a human can check the work before anything is sent.
 
@@ -99,6 +103,14 @@ python3 production_operator.py local-demo \
 ```
 
 That last command launches a real Chrome browser against a local test page and runs all seven stages — including deliberately interrupting the submit step to prove the recovery logic doesn't double-click.
+
+**Re-record the GIF at the top of this page:**
+
+```bash
+python3 tools/record_demo.py --output docs/demo.gif
+```
+
+It drives `fixtures/demo_greenhouse_styled.html` through the same `MutableCDPPageAdapter` and `browser_actions` read-back contracts the production path uses, then asserts the fixture was never submitted before writing the file.
 
 ---
 
