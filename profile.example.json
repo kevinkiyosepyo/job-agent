@@ -1,0 +1,65 @@
+{
+  "_comment": "Copy to profile.json and fill in. profile.json is gitignored. Every key below is one canonical_answers.py reads; add more keys freely, but do not rename these.",
+
+  "name": {
+    "first": "Sam",
+    "last": "Fixture",
+    "full": "Sam Fixture"
+  },
+
+  "contact": {
+    "email": "sam.fixture@example.test",
+    "phone": "555-010-4242",
+    "location": {
+      "city": "San Diego",
+      "state": "CA",
+      "country": "United States",
+      "zip": "92093"
+    }
+  },
+
+  "work_authorization": true,
+  "requires_sponsorship": false,
+
+  "education": {
+    "university": "University of California, San Diego",
+    "degree": "Bachelor of Science",
+    "major": "Data Science",
+    "gpa": 3.5,
+    "gpa_scale": 4.0,
+    "expected_graduation": "2028",
+    "graduation_season": "Spring"
+  },
+
+  "links": {
+    "linkedin": "https://www.linkedin.com/in/sam-fixture",
+    "github": "https://github.com/sam-fixture"
+  },
+
+  "resume": {
+    "primary": "~/Documents/Sam_Fixture_Resume.pdf"
+  },
+
+  "screening_defaults": {
+    "authorized_to_work_us": true,
+    "require_sponsorship": false,
+    "is_18_or_older": true,
+    "willing_to_relocate": true,
+    "outside_business_activities": false,
+    "how_did_you_hear": "Social Media",
+    "social_media_source": "LinkedIn",
+    "desired_salary": "$25/hr",
+    "demographic_disclosures": {
+      "gender": "Decline to self-identify",
+      "race": "Decline to self-identify",
+      "veteran": "I am not a protected veteran",
+      "disability": "I do not want to answer"
+    }
+  },
+
+  "preferences": {
+    "target_roles": ["Software Engineer Intern", "Data Science Intern"],
+    "target_levels": ["Intern"],
+    "target_timelines": ["Summer 2027", "Winter 2027", "Fall 2027"]
+  }
+}

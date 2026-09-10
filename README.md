@@ -154,6 +154,177 @@ job-agent/
 
 ---
 
+## Build your own: step-by-step
+
+This walks you from an empty folder to the agent applying on your behalf. Every command here was run in a fresh clone on a clean machine before it was written down. Budget about 30 minutes for steps 1–5; step 6 depends on how many job boards you want to watch.
+
+You need macOS, Google Chrome, and Python 3.11 or newer. No paid services.
+
+### Step 1 — Clone and install
+
+```bash
+git clone https://github.com/kevinkiyosepyo/job-agent.git
+cd job-agent
+
+# Pick a Python 3.11+ interpreter. macOS ships 3.9, which will NOT work.
+python3.13 --version   # or python3.12, python3.11, /opt/homebrew/bin/python3
+
+python3.13 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Only two packages get installed — `websocket-client` for talking to Chrome, and `pytest`. Everything else is the Python standard library.
+
+**Check it worked:**
+
+```bash
+python run_offline_tests.py
+```
+
+You should see `1273 passed, 1 skipped` (the skip is a check against the owner's personal profile, which you don't have yet). This suite runs with network access blocked, so it can't touch a real employer even by accident.
+
+### Step 2 — Tell it who you are
+
+The agent answers every form from one file: `profile.json`. It's gitignored, so your data stays on your machine.
+
+```bash
+cp profile.example.json profile.json
+open -e profile.json      # or any editor
+```
+
+Fill in your real name, email, phone, school, and so on. The example shows every key the code reads. You can add more keys, but don't rename the ones that are there — `canonical_answers.py` looks them up by exact path.
+
+The one you must get right is the resume:
+
+```json
+"resume": {
+  "primary": "~/Documents/Your_Name_Resume.pdf"
+}
+```
+
+That path has to point at a real PDF. The agent verifies the file's SHA-256 hash after every upload, so it needs the real bytes.
+
+**Check it worked:**
+
+```bash
+python setup_diagnostics.py --skip-browser
+```
+
+Look for `"status": "ready"` at the top. If it says the profile is missing something, the message tells you the exact key.
+
+### Step 3 — Watch it run against a fake job
+
+Before letting it near anything real, see it work end to end on the bundled fake Greenhouse page. This is the same thing the GIF at the top shows.
+
+```bash
+python tools/record_demo.py --output /tmp/my-demo.gif
+open /tmp/my-demo.gif
+```
+
+Chrome launches invisibly, the form fills in, the resume attaches, the fake application submits, and you get a GIF of the whole thing. The JSON it prints at the end should say `"submitted": "true"` and `"fields_verified": 9`.
+
+If you want the heavier proof — the one that interrupts the submit mid-click to show it never double-fires:
+
+```bash
+python -m pytest tests/test_local_cdp_operator.py -q
+```
+
+### Step 4 — Find real jobs (no applying yet)
+
+Discovery reads public job-board APIs. You give it board "tokens" — the slug in a company's careers URL. Copy it exactly; `andurilindustries` works and `anduril` returns a 404.
+
+| If the careers page is… | the token is… |
+|---|---|
+| `job-boards.greenhouse.io/**andurilindustries**/jobs/...` | `--greenhouse andurilindustries` |
+| `jobs.lever.co/**palantir**/...` | `--lever palantir` |
+| `jobs.ashbyhq.com/**ramp**` | `--ashby ramp` |
+
+```bash
+python sources.py --greenhouse andurilindustries --lever palantir \
+  --output candidates.json --report sources-report.json
+```
+
+This writes every active internship it found to `candidates.json` and a health report to `sources-report.json`. Exit code `0` means all boards answered and had fresh postings. `1` means a token failed (check the `failures` list in the output). `3` means a board came back empty or stale.
+
+Now route them through the policy engine:
+
+```bash
+python orchestrator.py candidates.json \
+  --source-report sources-report.json \
+  --output orchestrator-report.json
+```
+
+Open `orchestrator-report.json` and look under `scan`. You'll see two lists:
+
+- **`auto_apply_queue`** — jobs on a supported ATS that match your `preferences.target_roles`
+- **`manual_only`** — jobs at Meta, Amazon, Apple, Netflix, Google, or Microsoft. The agent will never auto-apply to these; it flags them for you instead.
+
+With the two boards above and the example profile, that's roughly 2,500 postings scanned and about 40 internship matches queued. Nothing has been submitted. This step only reads.
+
+### Step 5 — Set up notifications and tracking (optional)
+
+The agent can tell you when it applies and log every submission to a spreadsheet. Both are optional; skip this step and it'll just write to the local ledger at `runtime/applied-ledger.json`.
+
+**Discord** — create a bot in the [Discord Developer Portal](https://discord.com/developers/applications), invite it to a server, then:
+
+```bash
+export DISCORD_BOT_TOKEN='your-bot-token'
+export JOB_AGENT_DISCORD_TARGET='your-channel-id'
+```
+
+**Google Sheets** — make a blank sheet with these headers in row 1:
+
+```
+Company Name | Application Status | Role | Salary | Date Submitted | Link to Job Req | Rejection Reason | Notes
+```
+
+Then point the agent at it:
+
+```bash
+export JOB_AGENT_SHEET_ID='the-long-id-from-the-sheet-url'
+```
+
+The tracker authenticates through a Google OAuth token at `~/.hermes/google_token.json`. Verify the round trip with the self-cleaning smoke test — it appends one test row, reads it back, then removes it:
+
+```bash
+python tracker.py integration-check --tag setup-check
+```
+
+### Step 6 — Apply to one job, for real
+
+Real applications go through the `production_operator.py live` command family. Every stage is a separate command, and each one re-verifies the page before acting. Read [`docs/OPERATIONS.md`](docs/OPERATIONS.md) for the full sequence; here's the shape of it:
+
+1. Open Chrome with remote debugging on: `open -a "Google Chrome" --args --remote-debugging-port=9222`
+2. Navigate to the job's application page yourself.
+3. Write a **manifest** — a JSON file naming the exact page target, company, role, requisition, and where to put evidence. `live_run_manifest.py` documents every field.
+4. Run the stages in order: `prepare` → `review` → `authorize` → `submit` → `confirmation` → `deliver`.
+
+Each stage prints JSON. If any one says `human_required`, stop and look — that's the agent telling you it found something it couldn't prove. Nothing downstream will run until it's cleared.
+
+**The autonomous version** — once you've done one by hand and trust it — is the unattended controller. Copy the example configs, set your approved boards, and flip `production_enabled` to `true`:
+
+```bash
+cp autonomous_config.example.json runtime/autonomous-controller/config.json
+cp autonomous_sources.example.json runtime/autonomous-controller/sources.json
+```
+
+[`docs/AUTONOMOUS-OPERATION.md`](docs/AUTONOMOUS-OPERATION.md) covers the controller, pacing limits, and what it does when it hits a CAPTCHA at 3 a.m. (Short version: it holds the tab open, pings you, and waits.)
+
+### Adding a job board it doesn't know yet
+
+Every ATS the agent supports has a **handler** — a file that knows that platform's form structure. To add one:
+
+1. Save a sanitized copy of the application page into `fixtures/` (strip any real data).
+2. Write `yourplatform_handler.py` following the shape of [`lever_handler.py`](lever_handler.py) — it's the smallest one. A handler inventories fields, verifies the resume attached, and recognizes the confirmation page.
+3. Register it in [`ats_registry.py`](ats_registry.py).
+4. Add learned selectors to [`tenant_field_maps.py`](tenant_field_maps.py) — semantic keys like `first_name` mapped to one CSS selector each.
+5. Write a test in `tests/` that drives your fixture through the handler and asserts `submission_enabled: false`.
+
+If your handler can't prove a field saved, make it return a blocker rather than guess. That's the whole design.
+
+---
+
 ## Privacy
 
 Personal data never enters version control. Resumes, profiles, OAuth tokens, tracker exports, and generated run artifacts are all gitignored.

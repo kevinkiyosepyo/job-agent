@@ -1,0 +1,6 @@
+# Runtime dependencies. Everything else the repo uses is Python standard library.
+# Requires Python 3.11+ (datetime.UTC).
+websocket-client>=1.6
+
+# Test runner
+pytest>=7.0

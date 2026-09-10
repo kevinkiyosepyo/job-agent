@@ -6,6 +6,7 @@ import argparse
 import csv
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -14,9 +15,9 @@ from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-SHEET_ID = "1z7DTGJthLoQkjq-k5FFfkTdP3HizJCytYKvhcbKLolw"
-SHEET_GID = "0"
-SHEET_NAME = "Tracking Template"
+SHEET_ID = os.environ.get("JOB_AGENT_SHEET_ID", "1z7DTGJthLoQkjq-k5FFfkTdP3HizJCytYKvhcbKLolw")
+SHEET_GID = os.environ.get("JOB_AGENT_SHEET_GID", "0")
+SHEET_NAME = os.environ.get("JOB_AGENT_SHEET_NAME", "Tracking Template")
 SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit?gid={SHEET_GID}#gid={SHEET_GID}"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&gid={SHEET_GID}"
 HEADERS = [
