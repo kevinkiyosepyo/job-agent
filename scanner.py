@@ -92,12 +92,29 @@ def relevant(role: str, profile: dict, extra_text: str = "") -> bool:
     role_terms = [x.casefold().replace(" intern", "") for x in (preferences.get("target_roles") or [])]
     target = any(term in low for term in role_terms)
     aliases = {
-        "software engineer": ("software development engineer", "software developer",
-                              "frontend engineer", "front-end engineer", "front end engineer"),
-        "ai/ml engineer": ("ai engineer", "ml engineer", "machine learning engineer", "artificial intelligence engineer"),
+        "software engineer": (r"software development engineer", r"software developer",
+                              r"(?:front|back)[ -]?end engineer", r"full[ -]?stack engineer(?:ing)?",
+                              r"product engineer(?:ing)?", r"forward deployed engineer",
+                              r"\bswe\b"),
+        "ai/ml engineer": (r"\bai engineer", r"\bml engineer", r"machine learning engineer",
+                           r"artificial intelligence engineer", r"machine learning",
+                           r"artificial intelligence", r"\bai\b(?![ -]?\w*\bops\b)"),
+        "product management": (r"product manager", r"product management"),
+        "business analyst": (r"business analytics",),
+        "data analytics": (r"data analyst",),
+        "data science": (r"data scientist",),
     }
     if not target:
-        target = any(alias in low for term in role_terms for alias in aliases.get(term, ()))
+        target = any(re.search(alias, low) for term in role_terms for alias in aliases.get(term, ()))
+    # A posting may name the discipline without the exact "<X> Engineer" noun phrase
+    # ("Internship - Software", "Engineering Track"). Accept the discipline token only
+    # when the title is not owned by a non-engineering function.
+    if not target and any(term in role_terms for term in ("software engineer", "software engineering")):
+        non_engineering = re.search(
+            r"\b(sales|marketing|recruit\w*|business develop\w*|customer success|"
+            r"finance|accounting|legal|communications|design(?:er)?)\b", low)
+        if not non_engineering and re.search(r"\b(software|engineer(?:ing)?|developer)\b", low):
+            target = True
     level_patterns = {
         "intern": r"\bintern(?:ship)?s?\b",
         "co op": r"\bco[ -]?op\b",
@@ -113,7 +130,10 @@ def relevant(role: str, profile: dict, extra_text: str = "") -> bool:
         for key in [item.casefold().replace("-", " ")]
         if key in level_patterns
     )
-    senior = bool(re.search(r"\b(senior|staff|principal|lead|manager|director|vp)\b", low))
+    # "Product Manager" is a target function here, not a seniority signal; strip that exact
+    # phrase before scanning so "Senior Product Manager" and "Engineering Manager" still reject.
+    seniority_text = re.sub(r"\bproduct (?:manager|management)\b", " ", low)
+    senior = bool(re.search(r"\b(senior|staff|principal|lead|manager|director|vp)\b", seniority_text))
     return target and level and not senior
 
 
