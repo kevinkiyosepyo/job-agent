@@ -59,6 +59,17 @@ Instead it requires two independent sources of proof:
 
 If those two disagree, or if the portal shows zero or multiple matches, the result is flagged for human review rather than recorded as a success.
 
+## Things it handles on its own
+
+Two steps that stall most application bots don't stop this one:
+
+| It handles | How |
+|---|---|
+| Emailed verification codes | Some Greenhouse boards email an 8 character security code before they accept a submit. The agent reads the newest code from your inbox through read only Gmail access and types it in. |
+| Account creation, activation, and password resets | Every Workday employer needs its own account. The agent creates it with your Keychain password, pulls the activation or reset link from Gmail, and continues the application in the same run. |
+
+These are the employer's own checks that the real applicant controls the email address. The agent goes through your inbox, not around the check.
+
 ## Things it will never do
 
 These limits are deliberate, and they're enforced in code:
@@ -66,7 +77,7 @@ These limits are deliberate, and they're enforced in code:
 | It won't | Why |
 |---|---|
 | Solve a CAPTCHA | Bypassing a human check is against site terms |
-| Complete identity or email verification | That's the human proving it's them, not a bot |
+| Complete identity verification, MFA, or passkey prompts | That's the human proving it's them, not a bot |
 | Take a timed assessment | The answers have to be the applicant's own |
 | Invent an answer to an unfamiliar question | A wrong answer on an application is worse than no answer |
 | Apply to Meta/Amazon/Apple/Netflix/Google/Microsoft automatically | Big company applications route to manual review by policy |
