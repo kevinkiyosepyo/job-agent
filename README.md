@@ -8,6 +8,8 @@ A bot that fills out job applications for you while you sleep, from creating acc
 
 Applying to internships means typing the same name, school, and phone number into hundreds of nearly identical forms. This project automates that typing. It finds job postings, opens the application form in a real Chrome browser, fills in the answers, verifies every one of them saved, and submits. It runs on its own, around the clock.
 
+Start with `python onboarding.py` after installing the dependencies. Answer the common application questions once, optionally set a dedicated reusable Workday password, and let future applications reuse your saved answers. [Setup guide](#step-2-answer-once-reuse-on-future-applications) · [Questionnaire and password details](docs/ONBOARDING.md).
+
 ## The design rule
 
 The agent is built to refuse to do the wrong thing.
@@ -69,7 +71,7 @@ These limits are deliberate, and they're enforced in code:
 | Invent an answer to an unfamiliar question | A wrong answer on an application is worse than no answer |
 | Apply to Meta/Amazon/Apple/Netflix/Google/Microsoft automatically | Big company applications route to manual review by policy |
 | Submit twice | One shot design, enforced by single use tokens |
-| Store your password | Credentials stay in the macOS Keychain, referenced but never copied |
+| Put passwords in your profile, logs, or Git | The setup saves passwords only in macOS Keychain; the profile holds references |
 
 When it hits one of these, it pauses, keeps the browser tab exactly where it is, notifies you, and waits. After you handle it manually, it picks up where it left off.
 
@@ -83,7 +85,7 @@ Requires Python 3.11 or newer. The code uses `datetime.UTC`, which older version
 # 1. Confirm your setup is ready
 python3 setup_diagnostics.py --skip-browser
 
-# 2. Run the full test suite: 1274 tests, no network access
+# 2. Run the guarded regression suite, no network access
 python3 run_offline_tests.py
 
 # 3. Watch a complete fake application, start to finish
@@ -129,7 +131,7 @@ job-agent/
 │   ├── WORKER-OPERATOR.md   client bound review and submit
 │   └── BUILD-LOG.md         development history
 ├── skills/                ← agent instructions for each ATS platform
-├── tests/                 ← 1274 tests
+├── tests/                 ← offline regression tests
 ├── fixtures/              ← fake job pages for safe testing
 └── *.py                   ← the system itself
 ```
@@ -158,7 +160,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Only two packages get installed: `websocket-client` for talking to Chrome, and `pytest`. Everything else is the Python standard library.
+`websocket-client` talks to Chrome, `pytest` runs the tests, and `keyring` stores optional job-portal passwords in the macOS Keychain.
 
 Check it worked:
 
@@ -166,36 +168,38 @@ Check it worked:
 python run_offline_tests.py
 ```
 
-You should see `1273 passed, 1 skipped` (the skip is a check against the owner's personal profile, which you don't have yet). This suite runs with network access blocked, so it can't touch a real employer even by accident.
+The personal-profile check is skipped in a fresh clone. The guarded suite blocks network access and excludes browser-launch tests, so it cannot touch a real employer. Test totals change as coverage grows.
 
-### Step 2: Tell it who you are
+### Step 2: Answer once, reuse on future applications
 
-The agent answers every form from one file: `profile.json`. It's gitignored, so your data stays on your machine.
-
-```bash
-cp profile.example.json profile.json
-open -e profile.json      # or any editor
-```
-
-Fill in your real name, email, phone, school, and so on. The example shows every key the code reads. You can add more keys, but don't rename the ones that are there; `canonical_answers.py` looks them up by exact path.
-
-The one you must get right is the resume:
-
-```json
-"resume": {
-  "primary": "~/Documents/Your_Name_Resume.pdf"
-}
-```
-
-That path has to point at a real PDF. The agent verifies the file's SHA-256 hash after every upload, so it needs the real bytes.
-
-Check it worked:
+Run the guided setup instead of editing JSON:
 
 ```bash
-python setup_diagnostics.py --skip-browser
+python onboarding.py
 ```
 
-Look for `"status": "ready"` at the top. If it says the profile is missing something, the message tells you the exact key.
+It asks for your contact details, school, resume, job preferences, and the questions that would otherwise interrupt an application:
+
+- Are you a US citizen? Are you authorized to work in the US?
+- Do you need employer sponsorship now? In the future?
+- Do you need OPT (Optional Practical Training) or CPT (Curricular Practical Training)?
+- Do you have affiliations with any companies, outside business activities, or a restrictive covenant?
+- For each employer you add: are you a current/former employee, or do you have relatives there?
+- When can you start, are you willing to relocate, and what compensation should it use?
+
+Choose Yes, No, or unknown for screening questions. It never treats a skipped answer as No, and it does not infer immigration answers from your nationality. You review the answers before saving. Optional demographic disclosures are yours to choose, not guessed.
+
+The password step offers a universal job-portal password and a Workday reference to the same value. Use a strong password dedicated to job portals, not your email or banking password. The prompt is hidden and the password stays in macOS Keychain; `profile.json` contains only service/account references. Reusing a password across employers increases the impact of a breach, and individual employers may require a different password or a separate account.
+
+Check the saved profile without opening Chrome or connecting any accounts:
+
+```bash
+python onboarding.py --check
+```
+
+This checks profile setup, not permission to submit or live browser readiness. The report lists unanswered screening facts so you can fill gaps in one sitting. Rerun `python onboarding.py` whenever something changes; unrelated profile data is preserved. Use `--skip-credentials` if you want to configure the profile without accessing Keychain.
+
+Answers stay in the gitignored, owner-readable `profile.json`. The wizard does not create employer accounts, change any existing Workday account password, or submit applications. It supplies reusable facts and secure credential references. The browser agent must consume those references during a separately authorized login; setup alone is not a verified Workday login. Unknown or differently worded legal questions still fail closed. [Full setup reference](docs/ONBOARDING.md).
 
 ### Step 3: Watch it run against a fake job
 

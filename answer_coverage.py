@@ -60,7 +60,7 @@ def build_coverage_matrix(
         result = engine.answer(item["label"], company=company)
         option_reason = _native_option_reason(item, result.answer) if result.status == "answered" else None
         if result.status == "answered" and option_reason is None:
-            bucket = "company_specific" if result.source == "google_doc:company" else "known"
+            bucket = "company_specific" if result.source in {"google_doc:company", "profile:company"} else "known"
             matrix[bucket].append(
                 {
                     "question": item["label"],

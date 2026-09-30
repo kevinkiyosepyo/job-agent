@@ -4,6 +4,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -22,6 +24,22 @@ def make_profile() -> dict:
             "require_sponsorship": False,
         },
     }
+
+
+@pytest.mark.parametrize("field", ["target_roles", "target_levels", "target_timelines"])
+@pytest.mark.parametrize("season", ["Summer 2027", "Winter 2027", ""])
+def test_null_targeting_preferences_fail_closed_without_crashing(field, season):
+    profile = make_profile()
+    profile["preferences"]["target_levels"] = ["Intern"]
+    profile["preferences"][field] = None
+    result = scanner.classify({
+        "company": "Example", "role": "Software Engineer Intern", "season": season,
+        "location": "Remote - United States", "url": "https://example.test/jobs/1",
+    }, profile)
+    assert result["relevant"] is False
+    assert result["eligibility_status"] != "eligible"
+    if field == "target_timelines":
+        assert "timeline:unknown" in result["rejection_reasons"]
 
 
 def test_maango_word_match_avoids_apple_federal_credit_union_false_positive():

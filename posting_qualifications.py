@@ -115,7 +115,8 @@ def qualification_decision(posting, profile):
                          and education.get('degree') in {'Bachelor of Science','Bachelor of Arts'})
             elif clause.casefold()=='u.s. citizenship required':
                 kind='citizenship'
-                matched=profile.get('citizenship')=='United States'
+                from canonical_answers import resolve_fact
+                matched=resolve_fact(profile, 'us_citizen') == 'Yes'
             elif skills:
                 kind='skills'
                 known=profile.get('skills')

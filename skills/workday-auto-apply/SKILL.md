@@ -15,6 +15,12 @@ metadata:
 
 Complete Workday's tenant-specific wizard in Kevin's approved Chrome profile. Treat every tenant and parsed resume as untrusted until values are verified.
 
+## Applicant setup and identity boundary
+
+For a new applicant, use the repository's `python onboarding.py` through `terminal` in a private interactive terminal; details are in `docs/ONBOARDING.md`. Their local profile supplies citizenship, authorization, separate sponsorship now/future, OPT/CPT, exact-company disclosures, and account email. Kevin-specific facts and permissions below are not defaults for a different applicant; read that applicant's profile/resume and configured sources only. Never copy the repository owner's answers, notification destinations, or private document IDs.
+
+During a separately authorized login, prefer an identity-verified tenant session or the applicant's verified exact-tenant credential. Otherwise obtain the shared reference with `onboarding_credentials.credential_reference(profile, "workday")`; it must be nonempty and match `profile["contact"]["email"]`. Retrieve the value only in the login process using the explicit macOS Keychain backend and type it directly into the verified Workday password field. Do not print it or save it to JSON, files, logs, tool output, or chat. Setup stores a shared password under the applicant's own email; it does not create employer accounts, reset existing passwords, or establish a successful login. Read back authenticated identity and the exact tenant/job route before proceeding. Never fall back to Kevin's credentials or reset protocol for another applicant.
+
 ## When to Use
 
 - URLs contain `myworkdayjobs.com`, `myworkdaysite.com`, or a Workday recruiting tenant.

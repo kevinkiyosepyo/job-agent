@@ -17,7 +17,8 @@ FACT_PATHS = {
     'discipline': ('education.major',), 'gpa': ('education.gpa',),
     'education_end_year': ('education.expected_graduation',),
     'graduation_season': ('education.graduation_season',),
-    'work_authorization': ('work_authorization', 'screening_defaults.authorized_to_work_us'),
+    'work_authorization': ('work_authorization', 'screening_defaults.authorized_to_work_us',
+                           'application_facts.work_authorization', 'application_facts.authorized_to_work_us'),
     'sponsorship_now': ('requires_sponsorship', 'screening_defaults.require_sponsorship'),
     'sponsorship_future': ('requires_sponsorship', 'screening_defaults.require_sponsorship'),
     'is_18_or_older': ('screening_defaults.is_18_or_older',),
@@ -38,7 +39,9 @@ FACT_PATHS = {
 
 
 BOOLEAN_FIELDS = frozenset({'work_authorization', 'sponsorship_now', 'sponsorship_future', 'sponsorship_now_or_future',
-                            'is_18_or_older', 'willing_to_relocate', 'outside_business_activities'})
+                            'is_18_or_older', 'willing_to_relocate', 'outside_business_activities',
+                            'us_citizen', 'needs_opt', 'needs_cpt', 'has_company_affiliations',
+                            'restrictive_covenant', 'current_employee', 'former_employee', 'relatives_employed'})
 TENANT_ALIASES = {
     'schonfeld': {
         'school': {'University of California, San Diego': 'University of California - San Diego'},
@@ -91,6 +94,11 @@ def resolve_fact(profile: dict, field: str, *, tenant: str | None = None) -> str
     """
     aliases = TENANT_ALIASES.get(tenant or '', {}).get(field, {})
     values = []
+    if field in {'sponsorship', 'requires_sponsorship'} and isinstance(profile.get('application_facts'), dict) \
+            and profile['application_facts'].get('sponsorship_now') is not None:
+        values.append(resolve_fact(profile, 'sponsorship_now', tenant=tenant))
+    if field == 'us_citizen' and profile.get('citizenship') == 'United States':
+        values.append('Yes')
     if field == 'sponsorship_now_or_future':
         timeframes = [resolve_fact(profile, key, tenant=tenant)
                       for key in ('sponsorship_now', 'sponsorship_future')]
@@ -107,6 +115,31 @@ def resolve_fact(profile: dict, field: str, *, tenant: str | None = None) -> str
     if len(set(values)) != 1:
         raise CanonicalAnswerError(f'canonical profile facts conflicting for {field}')
     return values[0]
+
+
+def resolve_company_fact(profile: dict, company: str, field: str) -> str:
+    """Resolve an explicitly recorded disclosure for one exact employer only."""
+    fields = {'current_employee', 'former_employee', 'relatives_employed', 'ever_employee'}
+    if field not in fields or not isinstance(company, str) or not company.strip():
+        raise CanonicalAnswerError('canonical company fact missing')
+    records = profile.get('company_disclosures', [])
+    if not isinstance(records, list) or any(not isinstance(r, dict) or
+            not isinstance(r.get('company'), str) for r in records):
+        raise CanonicalAnswerError('canonical company facts malformed')
+    normalize = lambda text: ' '.join(text.casefold().split())
+    matches = [r for r in records if normalize(r['company']) == normalize(company)]
+    if not matches:
+        raise CanonicalAnswerError('canonical company fact missing')
+    if len(matches) != 1:
+        raise CanonicalAnswerError('canonical company facts conflicting')
+    if field == 'ever_employee':
+        values = [resolve_company_fact(profile, company, key)
+                  for key in ('current_employee', 'former_employee')]
+        return 'Yes' if 'Yes' in values else 'No'
+    value = matches[0].get(field)
+    if value is None:
+        raise CanonicalAnswerError('canonical company fact missing')
+    return _normalize(field, value)
 
 
 def verify_profile_answers(profile: dict, answers: dict, *, tenant: str | None = None) -> None:

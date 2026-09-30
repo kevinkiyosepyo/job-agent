@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from canonical_answers import CanonicalAnswerError, resolve_fact
+from canonical_answers import CanonicalAnswerError, resolve_fact, resolve_company_fact
 
 
 @dataclass(frozen=True)
@@ -26,6 +26,9 @@ class QuestionAnswerEngine:
         self.google_doc_answers = list(google_doc_answers or [])
 
     def answer(self, question: str, *, company: str | None = None) -> AnswerResult:
+        company_answer = self._company_answer(question, company)
+        if company_answer is not None:
+            return company_answer
         question_key = self._question_key(question)
         if question_key == 'unknown':
             return AnswerResult(status='unknown', question_key=question_key, reason='unknown_question')
@@ -53,12 +56,55 @@ class QuestionAnswerEngine:
             )
         return AnswerResult(status="unknown", question_key=question_key, reason=profile_reason or "unknown_question")
 
+    def _company_answer(self, question: str, company: str | None) -> AnswerResult | None:
+        if not company:
+            return None
+        lowered = ' '.join(question.casefold().strip().rstrip('?*').split())
+        # Exact templates avoid confusing prior employment with family ties,
+        # supplier relationships, a different employer, or a specified timeframe.
+        for name in ('this company', self._normalize_company(company)):
+            templates = {
+                f'are you currently employed by {name}': 'current_employee',
+                f'have you previously been employed by {name}': 'former_employee',
+                f'were you formerly employed by {name}': 'former_employee',
+                f'do you have relatives employed by {name}': 'relatives_employed',
+                f'have you ever worked for {name}': 'ever_employee',
+            }
+            field = templates.get(lowered)
+            if field:
+                try:
+                    return AnswerResult(status='answered', answer=resolve_company_fact(self.profile, company, field),
+                                        source='profile:company', question_key=field)
+                except CanonicalAnswerError as exc:
+                    conflict = 'conflicting' in str(exc) or 'malformed' in str(exc)
+                    return AnswerResult(status='conflict' if conflict else 'unknown', question_key=field,
+                                        reason='conflicting_profile_fact' if conflict else 'unknown_profile_fact')
+        return None
+
     def _normalize_company(self, company: str | None) -> str:
-        return (company or "").strip().casefold()
+        return ' '.join((company or "").casefold().split())
 
     def _question_key(self, question: str) -> str:
         lowered = ' '.join(question.casefold().strip().rstrip('?*').split())
         ordinary = {
+            'do you have any company affiliations': 'has_company_affiliations',
+            'do you need opt (optional practical training)': 'needs_opt',
+            'do you need cpt (curricular practical training)': 'needs_cpt',
+            'do you need employer sponsorship now': 'sponsorship_now',
+            'will you need employer sponsorship in the future': 'sponsorship_future',
+            'are you subject to a restrictive covenant (such as a non-compete)': 'restrictive_covenant',
+            'are you a us citizen': 'us_citizen',
+            'are you a u.s. citizen': 'us_citizen',
+            'are you a united states citizen': 'us_citizen',
+            'do you need opt': 'needs_opt',
+            'do you require optional practical training (opt)': 'needs_opt',
+            'do you need cpt': 'needs_cpt',
+            'do you require curricular practical training (cpt)': 'needs_cpt',
+            'do you have any affiliations to any companies': 'has_company_affiliations',
+            'do you have any affiliations with any companies': 'has_company_affiliations',
+            'are you subject to a restrictive covenant': 'restrictive_covenant',
+            'what is your earliest available start date': 'available_start_date',
+            'when can you start full-time after graduation': 'full_time_start_date',
             'what is your gpa': 'gpa', 'what degree are you pursuing': 'degree',
             'what is your major': 'discipline', 'what university do you attend': 'school',
             'name of school': 'school',
