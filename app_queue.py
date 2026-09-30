@@ -27,14 +27,13 @@ class QueueJob:
 
 
 PARKED_STATES = ("blocked_security", "blocked_fact", "blocked_approval",
-                 "pending_captcha", "pending_question", "pending_approval", "submission_uncertain")
+                 "pending_question", "pending_approval", "submission_uncertain")
 
 VALID_STATES = (
     "discovered",
     "leased",
     "prepared",
     "pending_question",
-    "pending_captcha",
     "pending_approval",
     "failed",
     "applied",
@@ -46,10 +45,9 @@ ALLOWED_TRANSITIONS = {
     "blocked_fact": {"discovered", "failed"},
     "blocked_approval": {"discovered", "failed"},
     "submission_uncertain": {"applied"},
-    "leased": {"discovered", "prepared", "pending_question", "pending_captcha", "pending_approval", "failed", "applied"},
+    "leased": {"discovered", "prepared", "pending_question", "pending_approval", "failed", "applied"},
     "prepared": {"applied"},
     "pending_question": {"discovered", "failed"},
-    "pending_captcha": {"discovered", "failed"},
     "pending_approval": {"discovered", "failed"},
     "failed": set(),
     "applied": set(),
@@ -59,7 +57,6 @@ LEASE_OUTCOMES = {
     "retry": "discovered",
     "prepared": "prepared",
     "pending_question": "pending_question",
-    "pending_captcha": "pending_captcha",
     "pending_approval": "pending_approval",
     "failed": "failed",
     "applied": "applied",

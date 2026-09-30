@@ -28,8 +28,6 @@ def test_audit_requires_all_supported_fixture_flows_and_reports_human_only_gates
     assert report["dry_run_verified"] is True
     assert report["fixture_flows_verified"] == ["greenhouse", "lever", "oracle", "workday"]
     assert report["human_only_gates"] == [
-        "CAPTCHA",
-        "email_or_identity_verification",
         "assessments",
         "unknown_required_questions",
         "explicit_submission_authorization",

@@ -8,7 +8,7 @@ import os
 import subprocess
 
 DEFAULT_TARGET = "discord:937013921028644927"
-ICON = {"maango": "⭐", "captcha": "🔒", "applied": "✅", "failed": "❌", "question": "❓", "scan": "🔎"}
+ICON = {"maango": "⭐", "captcha_solved": "🤖", "applied": "✅", "failed": "❌", "question": "❓", "scan": "🔎"}
 
 
 def default_target() -> str:
@@ -18,7 +18,7 @@ def default_target() -> str:
 def build_message(kind: str, *, company: str = "", role: str = "", url: str = "", detail: str = "") -> str:
     label = {
         "maango": "Manual application requested",
-        "captcha": "Manual CAPTCHA needed",
+        "captcha_solved": "CAPTCHA auto-solved",
         "applied": "Application submitted",
         "failed": "Application failed",
         "question": "Answer needed",

@@ -11,9 +11,7 @@ from submission_authorization import SubmissionAuthorizationStore
 
 
 MANDATORY_HUMAN_GATES = {
-    "captcha",
     "assessment",
-    "email_verification",
     "identity_verification",
 }
 

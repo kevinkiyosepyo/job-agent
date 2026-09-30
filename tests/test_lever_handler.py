@@ -42,7 +42,7 @@ def test_inspect_application_fixture_inventories_fields_and_verifies_uploaded_re
 
 
 
-def test_inspect_manual_gate_fixture_detects_captcha_blocker():
+def test_inspect_manual_gate_fixture_no_longer_blocks_on_captcha():
     fixture_text = (ROOT / "fixtures" / "lever_manual_gate.html").read_text()
 
     result = lever_handler.inspect_html(
@@ -51,10 +51,8 @@ def test_inspect_manual_gate_fixture_detects_captcha_blocker():
     )
 
     assert result["page_type"] == "application"
-    assert result["manual_gate"] == {
-        "type": "captcha",
-        "detail": "CAPTCHA detected",
-    }
+    # CAPTCHA is now auto-solved; no manual gate emitted.
+    assert result["manual_gate"] is None
 
 
 

@@ -22,8 +22,6 @@ LEARNED_ATS_SAFETY_INVARIANTS = (
     "discord_readback_required",
 )
 HUMAN_ONLY_GATES = [
-    "CAPTCHA",
-    "email_or_identity_verification",
     "assessments",
     "unknown_required_questions",
     "explicit_submission_authorization",

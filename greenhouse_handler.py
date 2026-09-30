@@ -124,8 +124,7 @@ class _GreenhouseHTMLParser(HTMLParser):
 
 def _detect_manual_gate(text_chunks: list[str]) -> dict | None:
     lowered = " ".join(text_chunks).casefold()
-    if "captcha" in lowered or "hcaptcha" in lowered or "recaptcha" in lowered:
-        return {"type": "captcha", "detail": "CAPTCHA detected"}
+    # CAPTCHA is handled automatically by captcha_solver; not a manual gate.
     if (
         "verify your email" in lowered
         or "verify email address" in lowered

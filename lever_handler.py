@@ -101,8 +101,7 @@ def _company_from_url(page_url: str) -> str:
 
 def _detect_manual_gate(text_chunks: list[str]) -> dict | None:
     lowered = " ".join(text_chunks).casefold()
-    if "captcha" in lowered or "hcaptcha" in lowered or "recaptcha" in lowered:
-        return {"type": "captcha", "detail": "CAPTCHA detected"}
+    # CAPTCHA is handled automatically by captcha_solver; not a manual gate.
     return None
 
 

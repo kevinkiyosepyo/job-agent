@@ -24,12 +24,12 @@ _ACTIONS = {
         "status": "rejected",
     },
     "retry": {
-        "allowed_states": {"pending_question", "pending_captcha"},
+        "allowed_states": {"pending_question"},
         "target_state": "discovered",
         "status": "retried",
     },
     "skip": {
-        "allowed_states": {"pending_question", "pending_captcha"},
+        "allowed_states": {"pending_question"},
         "target_state": "failed",
         "status": "skipped",
     },

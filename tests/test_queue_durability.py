@@ -112,11 +112,11 @@ def test_legacy_sqlite_migration_preserves_work_and_parks_unfenced_leases(tmp_pa
         conn.execute("""CREATE TABLE application_queue (
             id INTEGER PRIMARY KEY, company TEXT, role TEXT, normalized_url TEXT UNIQUE,
             ats_platform TEXT, state TEXT)""")
-        for number, state in enumerate(("discovered", "pending_captcha", "leased"), 1):
+        for number, state in enumerate(("discovered", "pending_question", "leased"), 1):
             conn.execute("INSERT INTO application_queue VALUES (?, 'E', 'I', ?, 'Greenhouse', ?)",
                          (number, f"https://example.com/{number}", state))
     queue = ApplicationQueue(path)
-    assert [job.state for job in queue.list_jobs()] == ["discovered", "pending_captcha", "submission_uncertain"]
+    assert [job.state for job in queue.list_jobs()] == ["discovered", "pending_question", "submission_uncertain"]
     assert len(queue.inspect_candidates()) == 2
     assert ApplicationQueue(path).list_jobs() == queue.list_jobs()
     assert queue.lease_next(now=NOW, lease_seconds=60).lease_token
@@ -164,14 +164,14 @@ def test_reclaimed_lease_recovers_durable_job_checkpoint_without_reprepare(tmp_p
     assert len(list((tmp_path / "plans").glob("*.json"))) == 1
 
 
-def test_captcha_is_parked_without_prepared_success_or_blocking_next_job(tmp_path, capsys):
+def test_security_gate_is_parked_without_prepared_success_or_blocking_next_job(tmp_path, capsys):
     import json
     import queue_worker
     queue = ApplicationQueue(tmp_path / "queue.db")
     enqueue(queue)
     enqueue(queue, 2)
     html = tmp_path / "gate.html"
-    html.write_text('<html><form><input name="name"></form><div>Complete CAPTCHA</div></html>')
+    html.write_text('<html><form><input name="name"></form><div>Complete assessment</div></html>')
     code = queue_worker.main([
         "--queue-db", str(queue.path), "--journal", str(tmp_path / "journal.db"),
         "--html-path", str(html), "--plan-dir", str(tmp_path / "plans"), "--now", NOW,
@@ -186,7 +186,7 @@ def test_captcha_is_parked_without_prepared_success_or_blocking_next_job(tmp_pat
 @pytest.mark.parametrize("payload, expected", [
     ({"safe_to_prepare": False}, "blocked_fact"),
     ({}, "blocked_fact"),
-    ({"safe_to_prepare": True, "human_gate": "captcha"}, "blocked_security"),
+    ({"safe_to_prepare": True, "human_gate": "assessment"}, "blocked_security"),
     ({"safe_to_prepare": False, "manual_gate": {"type": "approval"}}, "blocked_approval"),
     ({"safe_to_prepare": True, "approval_required": True}, "blocked_approval"),
     ({"safe_to_prepare": False, "manual_gate": {"type": "missing_fact"}}, "blocked_fact"),
@@ -295,7 +295,7 @@ def test_gate_clearance_invalidates_checkpoint_even_if_finished_audit_was_lost(t
                   lease_seconds=60, plan_dir=tmp_path / "plans")
     with pytest.raises(RuntimeError, match="audit crash"):
         queue_worker.prepare_next_job(**kwargs, now=NOW,
-            html_loader=lambda job: '<form><input name="name"></form>CAPTCHA')
+            html_loader=lambda job: '<form><input name="name"></form>assessment')
     assert queue.list_jobs()[0].state == "blocked_security"
     # The controller has independently verified manual gate clearance.
     queue.transition(1, "discovered")
@@ -351,7 +351,7 @@ def test_plan_checkpoint_is_published_atomically_before_journal_commit(tmp_path,
     assert queue.list_jobs()[0].state == "leased"
 
 
-@pytest.mark.parametrize("state", ["pending_captcha", "pending_question", "pending_approval"])
+@pytest.mark.parametrize("state", ["pending_question", "pending_approval"])
 def test_legacy_human_gates_cannot_skip_reinspection_to_prepared(tmp_path, state):
     queue = ApplicationQueue(tmp_path / "queue.db")
     enqueue(queue)

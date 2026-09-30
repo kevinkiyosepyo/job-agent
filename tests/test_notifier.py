@@ -11,13 +11,13 @@ import notifier
 
 def test_build_message_contains_state_and_identity():
     message = notifier.build_message(
-        "captcha",
+        "captcha_solved",
         company="Example Co",
         role="Data Science Intern",
         url="https://example.com/job/1",
-        detail="Form is complete and waiting.",
+        detail="CAPTCHA auto-cleared in real Chrome.",
     )
-    assert "Manual CAPTCHA needed" in message
+    assert "CAPTCHA auto-solved" in message
     assert "Example Co" in message
     assert "Data Science Intern" in message
     assert "https://example.com/job/1" in message

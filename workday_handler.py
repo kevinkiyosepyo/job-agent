@@ -133,8 +133,7 @@ class _WorkdayHTMLParser(HTMLParser):
 def _manual_gates(text_chunks: list[str]) -> list[dict[str, str]]:
     text = " ".join(text_chunks).casefold()
     gates: list[dict[str, str]] = []
-    if any(token in text for token in ("captcha", "hcaptcha", "recaptcha")):
-        gates.append({"type": "captcha", "detail": "CAPTCHA detected"})
+    # CAPTCHA is handled automatically by captcha_solver; not a manual gate.
     if "email verification" in text or "verify your email" in text:
         gates.append({"type": "email_verification", "detail": "Email verification required"})
     if "assessment" in text or "take-home" in text or "takehome" in text:

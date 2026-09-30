@@ -44,7 +44,7 @@ The system moves a job through seven stages. Each stage has to prove it succeede
 
 Stage 3 is the important one. After filling a field, the program doesn't trust that it worked. It reads the page back and compares what's actually there against what it meant to type. This is called *read back verification*, and it's the reason the system catches a dropdown that silently reset or a file upload that didn't attach.
 
-Stage 4 is the safety gate. Once the policy check passes (not a MAANGO company, no CAPTCHA, no assessment, no unknown questions), the system issues itself a token that works exactly once, expires in minutes, and is locked to that specific page. If anything changes between authorization and submission, the token stops working. It cannot authorize one application and accidentally submit a different one.
+**Stage 4 is the safety gate.** Once the policy check passes (not a MAANGO company, no assessment, no unknown questions), the system issues itself a token that works exactly once, expires in minutes, and is locked to that specific page. If anything changes between authorization and submission, the token stops working. It cannot authorize one application and accidentally submit a different one.
 
 Stage 5 can never repeat. If the connection drops mid click, the program is forbidden from clicking again. Instead it switches to inspection mode and looks for evidence of what happened. A double submitted application looks careless to an employer; a delayed one doesn't.
 
@@ -70,13 +70,26 @@ Two steps that stall most application bots don't stop this one:
 
 These are the employer's own checks that the real applicant controls the email address. The agent goes through your inbox, not around the check.
 
+## Things it handles on its own
+
+Two steps that stall most application bots don't stop this one:
+
+| It handles | How |
+|---|---|
+| CAPTCHAs | When a reCAPTCHA, hCaptcha, or Turnstile challenge appears, the agent clicks the checkbox in real Chrome and waits for it to clear. Real Chrome with normal browsing history auto-passes most challenges without an image grid. If a challenge can't be cleared after retries, it preserves the tab and notifies you. |
+| Emailed verification codes | Some Greenhouse boards email an 8-character security code before they accept a submit. The agent reads the newest code from your inbox through read-only Gmail access and types it in. |
+| Account creation, activation, and password resets | Every Workday employer needs its own account. The agent creates it with your Keychain password, pulls the activation or reset link from Gmail, and continues the application in the same run. |
+
+These are the employer's own checks that the real applicant controls the email address and is using a real browser. The agent goes through the checks, not around them.
+
+---
+
 ## Things it will never do
 
 These limits are deliberate, and they're enforced in code:
 
 | It won't | Why |
 |---|---|
-| Solve a CAPTCHA | Bypassing a human check is against site terms |
 | Complete identity verification, MFA, or passkey prompts | That's the human proving it's them, not a bot |
 | Take a timed assessment | The answers have to be the applicant's own |
 | Invent an answer to an unfamiliar question | A wrong answer on an application is worse than no answer |
@@ -308,7 +321,7 @@ cp autonomous_config.example.json runtime/autonomous-controller/config.json
 cp autonomous_sources.example.json runtime/autonomous-controller/sources.json
 ```
 
-[`docs/AUTONOMOUS-OPERATION.md`](docs/AUTONOMOUS-OPERATION.md) covers the controller, pacing limits, and what it does when it hits a CAPTCHA at 3 a.m. (Short version: it holds the tab open, pings you, and waits.)
+[`docs/AUTONOMOUS-OPERATION.md`](docs/AUTONOMOUS-OPERATION.md) covers the controller, pacing limits, and what it does when it hits a CAPTCHA at 3 a.m. (Short version: it clicks the checkbox in real Chrome, waits for it to clear, and continues the application.)
 
 ### Adding a job board it doesn't know yet
 

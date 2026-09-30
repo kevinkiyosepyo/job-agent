@@ -96,7 +96,7 @@ def test_retry_control_requeues_matching_pending_question_job(tmp_path):
     assert result["job"]["state"] == "discovered"
 
 
-def test_skip_control_marks_matching_pending_captcha_job_failed(tmp_path):
+def test_skip_control_marks_matching_pending_question_job_failed(tmp_path):
     queue = app_queue.ApplicationQueue(tmp_path / "queue.db")
     job = queue.enqueue(
         company="Example",
@@ -108,9 +108,9 @@ def test_skip_control_marks_matching_pending_captcha_job_failed(tmp_path):
     queue.finish_lease(
         job.id,
         lease_token=leased.lease_token,
-        outcome="pending_captcha",
+        outcome="pending_question",
         now="2026-08-24T17:21:00+00:00",
-        error="manual CAPTCHA required",
+        error="answer needed",
     )
 
     result = discord_controls.handle_control(
