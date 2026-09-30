@@ -79,6 +79,33 @@ def test_malformed_or_conflicting_canonical_sources_fail_closed(field, change):
         canonical().resolve_fact(p, field)
 
 
+@pytest.mark.parametrize('path', [
+    'work_authorization', 'screening_defaults.authorized_to_work_us',
+    'application_facts.work_authorization', 'application_facts.authorized_to_work_us',
+])
+@pytest.mark.parametrize(('value', 'expected'), [(True, 'Yes'), (False, 'No'), ('Yes', 'Yes'), ('No', 'No')])
+def test_authorization_semantic_names_resolve_each_equivalent_alias(path, value, expected):
+    p = {}
+    target = p
+    parts = path.split('.')
+    for part in parts[:-1]:
+        target = target.setdefault(part, {})
+    target[parts[-1]] = value
+    assert canonical().resolve_fact(p, 'work_authorization') == expected
+    assert canonical().resolve_fact(p, 'authorized_to_work_us') == expected
+
+
+@pytest.mark.parametrize('field', ['work_authorization', 'authorized_to_work_us'])
+@pytest.mark.parametrize('alias', ['work_authorization', 'authorized_to_work_us'])
+@pytest.mark.parametrize(('value', 'error'), [(False, 'conflicting'), ('maybe', 'malformed')])
+def test_authorization_semantic_names_validate_all_extension_aliases(field, alias, value, error):
+    p = {'work_authorization': True, 'screening_defaults': {'authorized_to_work_us': True},
+         'application_facts': {'work_authorization': 'Yes', 'authorized_to_work_us': True}}
+    p['application_facts'][alias] = value
+    with pytest.raises(canonical().CanonicalAnswerError, match=error):
+        canonical().resolve_fact(p, field)
+
+
 def test_missing_material_facts_are_not_inferred_from_year_or_demographics():
     for field in ('education_start_month', 'education_end_month', 'hispanic_latino', 'security_clearance'):
         with pytest.raises(canonical().CanonicalAnswerError):

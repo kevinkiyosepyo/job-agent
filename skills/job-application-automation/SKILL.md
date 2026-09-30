@@ -23,6 +23,16 @@ metadata:
 
 Umbrella skill for Kevin Pyo's end-to-end job discovery, preparation, submission, tracking, and notification pipeline. Load this skill first for job applications, then load the ATS-specific child selected by the router below.
 
+## Applicant setup and identity boundary
+
+For a new applicant, use `terminal` to run `python onboarding.py` from their checkout in a private interactive terminal. The guided questionnaire saves their reusable screening facts and optional Keychain references; `python onboarding.py --check` reports missing answers without exposing values. Read `docs/ONBOARDING.md` in the repository for setup and recovery.
+
+**The active applicant's private profile and approved resume are authoritative.** The Kevin-specific facts, paths, document IDs, channels, and standing permissions below and in child skills apply only to Kevin's own workflow. They are not defaults for anyone else. Do not read Kevin's private sources, use his identity, assume his citizenship/sponsorship, or send another applicant's data to his notification destinations. For other applicants, use only their explicitly configured profile, sources, browser, destinations, and authorization. Unknown answers remain unknown.
+
+Reuse `application_facts` through `QuestionAnswerEngine` / `canonical_answers.resolve_fact`; read employer disclosures through `resolve_company_fact(profile, exact_company, field)`. A general No to affiliations never means No to every employer's employment/relatives question. Verify real options and Review as usual.
+
+For an authorized portal login, prefer an identity-verified existing session, then the applicant's verified exact-tenant credential. Otherwise call `onboarding_credentials.credential_reference(profile, "workday")` or `"universal"` for the shared creation credential. Require a nonempty reference matching `contact.email`. Only inside the process that fills the password field, retrieve with `keyring.backends.macOS.Keyring().get_password(reference["service"], reference["account"])`; never print the result, return it in a tool response, or persist it. Do not use another account's credential as a fallback. Missing credentials are a setup gap, not permission to guess. Confirm the portal identity and exact job route after sign-in. This setup grants no account-reset or submission authorization; follow the applicant's permissions and stop at real security challenges.
+
 ## When to Use
 
 - Kevin asks to find, evaluate, prepare, test, or submit job applications.

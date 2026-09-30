@@ -88,7 +88,8 @@ def maango_company(company: str, url: str) -> str | None:
 def relevant(role: str, profile: dict, extra_text: str = "") -> bool:
     low = role.casefold()
     level_text = " ".join(part.casefold() for part in (role, extra_text) if part)
-    role_terms = [x.casefold().replace(" intern", "") for x in profile["preferences"]["target_roles"]]
+    preferences = profile.get("preferences", {})
+    role_terms = [x.casefold().replace(" intern", "") for x in (preferences.get("target_roles") or [])]
     target = any(term in low for term in role_terms)
     aliases = {
         "software engineer": ("software development engineer", "software developer",
@@ -104,7 +105,8 @@ def relevant(role: str, profile: dict, extra_text: str = "") -> bool:
         "entry level": r"\bentry[ -]level\b",
         "fellow": r"\bfellow(?:ship)?s?\b",
     }
-    allowed_levels = profile["preferences"].get("target_levels", level_patterns)
+    # Missing keeps legacy defaults; an explicitly unknown level matches none.
+    allowed_levels = preferences.get("target_levels", level_patterns) or []
     level = any(
         re.search(level_patterns[key], level_text)
         for item in allowed_levels
@@ -183,7 +185,11 @@ def rejection_reasons(job: dict, profile: dict) -> list[str]:
     timeline = " ".join(
         str(value).strip() for value in (job.get("season"), job.get("role")) if str(value).strip()
     ).casefold()
-    target_timelines = [item.casefold() for item in profile.get("preferences", {}).get("target_timelines", [])]
+    configured_timelines = profile.get("preferences", {}).get("target_timelines", [])
+    if configured_timelines is None:
+        # Clearing a preference must not silently turn off its constraint.
+        reasons.append("timeline:unknown")
+    target_timelines = [item.casefold() for item in (configured_timelines or [])]
     if target_timelines and any(season in timeline for season in ("winter", "spring", "summer", "fall")):
         if not any(target in timeline for target in target_timelines):
             reasons.append("timeline:not_target")

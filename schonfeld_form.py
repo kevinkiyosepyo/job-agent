@@ -134,6 +134,10 @@ def verify_profile_answers(profile: dict, answers: dict) -> None:
     for field, source in (("work_authorization", "work_authorization"), ("sponsorship_now", "requires_sponsorship"), ("sponsorship_future", "requires_sponsorship")):
         value = profile.get(source)
         sources[field] = ("Yes" if value else "No") if isinstance(value, bool) else None
+        # The guided setup records separate boolean timeframes, not a single
+        # legacy sponsorship value. Normalize those without conflating them.
+        if isinstance(facts.get(field), bool):
+            facts[field] = "Yes" if facts[field] else "No"
     facts.update({field: value for field, value in sources.items() if value is not None})
     aliases = {
         "school": {"University of California, San Diego": "University of California - San Diego"},

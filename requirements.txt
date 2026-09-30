@@ -1,6 +1,8 @@
 # Runtime dependencies. Everything else the repo uses is Python standard library.
 # Requires Python 3.11+ (datetime.UTC).
 websocket-client>=1.6
+# Optional credential setup explicitly uses keyring.backends.macOS.Keyring.
+keyring>=25.0
 
 # Test runner
 pytest>=7.0
