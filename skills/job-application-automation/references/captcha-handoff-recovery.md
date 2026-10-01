@@ -1,52 +1,16 @@
-# CAPTCHA Detection, Handoff, and Resume
+# CAPTCHA Detection, Bounded Attempt, and Handoff
 
-Use when an ATS page contains CAPTCHA/reCAPTCHA/hCaptcha/Turnstile scripts, widgets, checkboxes, challenges, or validation errors. This reference does not authorize clicking, solving, outsourcing, or bypassing a CAPTCHA.
+Use when a job-application page contains CAPTCHA, reCAPTCHA, hCaptcha, or Turnstile indicators. Do not equate a dormant integration, a checkbox click, or the existence of `captcha_solver.py` with employer acceptance.
 
-## Maximum Hands-Off Boundary
+## Connected autonomous backend
 
-- Do not interrupt Kevin merely because CAPTCHA-related scripts, site keys, hidden response fields, badges, or empty containers exist. Inspect whether a rendered security challenge actually blocks progress.
-- Automatically continue through ordinary ATS controls, validation fixes, Save Draft, Next, Continue, and Review actions when they are not owned by or part of a CAPTCHA challenge.
-- If Kevin has already cleared a challenge, detect that state and resume the application automatically; do not ask him to repeat the application instructions.
-- A visible `I'm not a robot` checkbox, image/audio puzzle, managed challenge, CAPTCHA-owned Verify button, or control whose purpose is obtaining a CAPTCHA token is the non-automatable boundary. Preserve it for human completion rather than clicking it.
-- A nearby control may be automated only when inspection establishes that it belongs to the ATS application flow rather than the challenge and the CAPTCHA already reports a cleared/nonblocking state.
+On its currently supported one-page Greenhouse flow, `PipelineBackend._try_captcha_on_new_target` may attempt **one visible reCAPTCHA checkbox** on the exact newly created Chrome target. hCaptcha and Turnstile/Cloudflare frames are recognized but not clicked: their challenge frames cannot be distinguished safely from checkboxes in outer-page HTML. It requires a healthy approved worker plus that same target on the configured loopback CDP endpoint (`captcha_cdp_base_url`, default `http://127.0.0.1:18800`). Validate the exact target ID and URL and job identity before mutation. The solver clicks only a lone, visible, unobscured reCAPTCHA anchor of bounded size when no other detectable security cue or visible provider frame is present. It does not solve image/audio grids or managed challenges, retry, use a third-party solver, or call Submit.
 
-## Distinguish Dormant Code from a Real Gate
+Treat a populated response field as provisional token-presence evidence only. Re-read the exact tab through the approved worker, then re-inspect live provider frames; proceed only when the ATS parser and visible-text checks see no remaining detectable gate, the lone supported reCAPTCHA frame remains, its response field is populated, the URL and identity still match, and all fields are freshly checked. Cross-origin challenge content is not visible to the outer-page parser, so neither provider issuance nor employer acceptance is proven. A response token is never submission authorization, and its contents must not be printed or persisted. A missing endpoint, stale worker, unresolved gate, wrong tab, or new challenge remains blocked. Offline tests and a synthetic browser fixture do not prove a live employer challenge will clear.
 
-1. Inspect the rendered page, not script names alone.
-2. Treat CAPTCHA libraries, hidden containers, or empty response fields as dormant when no visible widget/challenge, validation error, or blocked Continue/Submit state exists.
-3. If no real gate is rendered and the application advances normally, record `captcha_gate: false` and continue.
-4. Treat any visible `I'm not a robot` checkbox, image/audio challenge, managed challenge, verification spinner, CAPTCHA error, or required CAPTCHA token as a genuine human gate. Do not click the checkbox or challenge.
+## Dormant indicators and unsupported challenges
 
-## Genuine-Gate Handoff
-
-1. Save the server-side draft when the ATS offers a safe Save Draft action before the gate.
-2. Preserve the exact Chrome target ID, URL, company, role, requisition, current step, and verified field state.
-3. Capture a scoped screenshot of the browser page without interacting with the challenge.
-4. Notify Kevin immediately on Discord/Telegram: name the company/role, exact URL, current step, and say only `Complete the visible CAPTCHA in the preserved tab, then reply done.` Never include credentials or application answers.
-5. Leave the exact tab open and do not navigate, refresh, duplicate, submit, or retry the CAPTCHA.
-6. Wait for Kevin to complete it manually.
-
-## Automatic Resume After Kevin Clears It
-
-1. Rebind the same exact target and verify URL/job identity did not drift.
-2. Confirm the visible challenge is gone or the page exposes a verified cleared/completed state. Do not read, print, or persist CAPTCHA token contents.
-3. Re-read every field on the current step; CAPTCHA widgets can rerender or reset surrounding React state.
-4. Continue from the next safe action. If Submit was not previously attempted, follow the one-shot authorization/Submit procedure. If Submit may have occurred, inspect confirmation without replay.
-5. Verify portal confirmation and Discord read-back normally. Tracker read-back is required only when Kevin explicitly requested tracker synchronization for this application; otherwise do not read or write Sheets.
-
-## Failure and Expiry Recovery
-
-- If the challenge expires before Kevin completes it, preserve the draft and request one fresh human completion; do not automate retries.
-- If the page reloads, reopen only the canonical exact application route and verify saved state before presenting the new gate.
-- If the target, company, role, or requisition changes, stop and reacquire the intended application before any action.
-- If a CAPTCHA remains after Kevin reports completion, capture fresh scoped evidence and ask Kevin to finish the remaining visible challenge.
-
-## Verification
-
-A CAPTCHA handoff is complete only when:
-
-- the genuine challenge was completed by Kevin;
-- the exact target/job identity is unchanged;
-- the CAPTCHA no longer blocks the current step;
-- surrounding field state has been reverified;
-- no automated challenge click/solve/bypass occurred.
+- Ignore dormant scripts, hidden frames, and empty containers when no actual rendered challenge blocks the form. A visible provider frame without text can still merit the bounded inspection above; the solver's live DOM decides whether a checkbox is safely clickable.
+- Outside this connected backend, do not assume an ATS-specific agent or generic handler automatically attempts CAPTCHAs. Preserve the exact tab and server-side draft when a rendered challenge cannot be handled by the proven path.
+- For image/audio puzzles, Turnstile/managed challenges, inaccessible checkboxes, expired or rejected responses, or missing browser access: preserve target ID, exact URL, company, role, requisition, step, and verified field state; record the blocker without revealing secrets, answers, or token contents. The current controller persists parked state but does not send a notification for it; only confirmed submissions use its delivery path. Arrange human handoff through a separately verified channel. Do not refresh, replay Submit, or retry the challenge automatically.
+- After Kevin clears it, rebind the same target, verify URL/job identity and that the gate is truly absent, re-read nearby fields, and resume the next safe action. If Submit may have occurred, reconcile confirmation without replay.

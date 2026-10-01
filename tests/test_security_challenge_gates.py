@@ -41,3 +41,9 @@ def test_dormant_captcha_script_is_not_a_visible_challenge():
     html = '<h1>Software Engineer Intern</h1><form><input name="full_name"></form><script>var recaptcha = true;</script>'
     result = greenhouse_handler.inspect_html(html, page_url=URLS[0][1])
     assert result["manual_gate"] is None
+
+
+def test_security_gate_enumeration_keeps_simultaneous_challenges():
+    from security_gates import detect_security_gates
+    found = detect_security_gates(['Please complete CAPTCHA', 'Approve the sign-in request on your phone'])
+    assert [gate['type'] for gate in found] == ['captcha', 'mfa_approval']
