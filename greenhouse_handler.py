@@ -10,6 +10,7 @@ from pathlib import Path
 
 from pipeline import validate_confirmation_evidence
 from browser_actions import _FormInventoryParser, inventory_form_fields
+from security_gates import detect_security_gate
 
 
 class _GreenhouseHTMLParser(HTMLParser):
@@ -123,8 +124,10 @@ class _GreenhouseHTMLParser(HTMLParser):
 
 
 def _detect_manual_gate(text_chunks: list[str]) -> dict | None:
+    security_gate = detect_security_gate(text_chunks)
+    if security_gate is not None:
+        return security_gate
     lowered = " ".join(text_chunks).casefold()
-    # CAPTCHA is handled automatically by captcha_solver; not a manual gate.
     if (
         "verify your email" in lowered
         or "verify email address" in lowered
@@ -134,8 +137,6 @@ def _detect_manual_gate(text_chunks: list[str]) -> dict | None:
         return {"type": "email_verification", "detail": "Email verification detected"}
     if "assessment" in lowered or "skills test" in lowered or "online evaluation" in lowered or "coding challenge" in lowered:
         return {"type": "assessment", "detail": "Assessment detected"}
-    if "identity verification" in lowered or "verify your identity" in lowered:
-        return {"type": "identity_verification", "detail": "Identity verification detected"}
     return None
 
 

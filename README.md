@@ -61,28 +61,15 @@ If those two disagree, or if the portal shows zero or multiple matches, the resu
 
 ## Things it handles on its own
 
-Two steps that stall most application bots don't stop this one:
+These workflows use the applicant's configured account access; they are not a way around an employer's verification:
 
 | It handles | How |
 |---|---|
-| Emailed verification codes | Some Greenhouse boards email an 8 character security code before they accept a submit. The agent reads the newest code from your inbox through read only Gmail access and types it in. |
-| Account creation, activation, and password resets | Every Workday employer needs its own account. The agent creates it with your Keychain password, pulls the activation or reset link from Gmail, and continues the application in the same run. |
+| Emailed verification codes, including email-code MFA | With authorized read-only inbox access, the operator can retrieve a code for the exact employer and enter it in the preserved application tab. The form must advance before the gate is considered cleared. |
+| SMS one-time codes | When the code arrives in the applicant's authorized Messages account, the operator can enter the recent, matching code and verify the page advanced. This requires the Messages integration; it is not an MFA push approval. |
+| Account creation, activation, and password resets | The operator can use an authenticated session or configured Keychain password and an authorized activation/reset email, then verify the exact employer account. |
 
-These are the employer's own checks that the real applicant controls the email address. The agent goes through your inbox, not around the check.
-
-## Things it handles on its own
-
-Two steps that stall most application bots don't stop this one:
-
-| It handles | How |
-|---|---|
-| CAPTCHAs | When a reCAPTCHA, hCaptcha, or Turnstile challenge appears, the agent clicks the checkbox in real Chrome and waits for it to clear. Real Chrome with normal browsing history auto-passes most challenges without an image grid. If a challenge can't be cleared after retries, it preserves the tab and notifies you. |
-| Emailed verification codes | Some Greenhouse boards email an 8-character security code before they accept a submit. The agent reads the newest code from your inbox through read-only Gmail access and types it in. |
-| Account creation, activation, and password resets | Every Workday employer needs its own account. The agent creates it with your Keychain password, pulls the activation or reset link from Gmail, and continues the application in the same run. |
-
-These are the employer's own checks that the real applicant controls the email address and is using a real browser. The agent goes through the checks, not around them.
-
----
+**Scope:** The repository's offline tests do not prove a live employer inbox, SMS login, Workday account flow, or passkey authentication. A visible CAPTCHA is not automatically cleared merely because `captcha_solver.py` exists: it has no production caller, so the application remains blocked until the challenge is actually cleared.
 
 ## Things it will never do
 
@@ -90,7 +77,7 @@ These limits are deliberate, and they're enforced in code:
 
 | It won't | Why |
 |---|---|
-| Complete identity verification, MFA, or passkey prompts | That's the human proving it's them, not a bot |
+| Claim identity verification, a passkey/Touch ID prompt, or an MFA push/device approval completed without your action | Those checks require your participation; the agent preserves the application and resumes only after the site confirms clearance. Email/SMS *code* challenges are different: an authorized operator can enter a matching code. |
 | Take a timed assessment | The answers have to be the applicant's own |
 | Invent an answer to an unfamiliar question | A wrong answer on an application is worse than no answer |
 | Apply to Meta/Amazon/Apple/Netflix/Google/Microsoft automatically | Big company applications route to manual review by policy |
@@ -321,7 +308,7 @@ cp autonomous_config.example.json runtime/autonomous-controller/config.json
 cp autonomous_sources.example.json runtime/autonomous-controller/sources.json
 ```
 
-[`docs/AUTONOMOUS-OPERATION.md`](docs/AUTONOMOUS-OPERATION.md) covers the controller, pacing limits, and what it does when it hits a CAPTCHA at 3 a.m. (Short version: it clicks the checkbox in real Chrome, waits for it to clear, and continues the application.)
+[`docs/AUTONOMOUS-OPERATION.md`](docs/AUTONOMOUS-OPERATION.md) covers the controller, pacing limits, and what it does when it hits a CAPTCHA at 3 a.m. (Short version: it holds the application and notifies you; the presence of an unconnected solver module is not proof the challenge cleared.)
 
 ### Adding a job board it doesn't know yet
 

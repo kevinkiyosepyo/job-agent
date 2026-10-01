@@ -101,13 +101,9 @@ def test_inspect_manual_gate_fixture_reports_every_human_gate():
         page_url="https://example.wd1.myworkdayjobs.com/en-US/careers/job/1",
     )
 
-    # CAPTCHA no longer emitted; first gate is now email_verification.
-    assert result["manual_gate"] == {
-        "type": "email_verification",
-        "detail": "Email verification required",
-    }
-    # CAPTCHA is now auto-solved; only non-CAPTCHA gates remain.
+    assert result["manual_gate"] == {"type": "captcha", "detail": "CAPTCHA challenge detected"}
     assert result["manual_gates"] == [
+        {"type": "captcha", "detail": "CAPTCHA challenge detected"},
         {"type": "email_verification", "detail": "Email verification required"},
         {"type": "assessment", "detail": "Assessment detected"},
     ]
@@ -151,6 +147,7 @@ def test_main_fails_closed_for_manual_gates_and_emits_json(capsys):
     assert exit_code == 2
     assert payload["safe_to_prepare"] is False
     assert [gate["type"] for gate in payload["manual_gates"]] == [
+        "captcha",
         "email_verification",
         "assessment",
     ]

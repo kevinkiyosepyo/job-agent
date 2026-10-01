@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 from pipeline import validate_confirmation_evidence
 from browser_actions import _FormInventoryParser, inventory_form_fields
+from security_gates import detect_security_gate
 
 
 class _LeverHTMLParser(HTMLParser):
@@ -100,9 +101,7 @@ def _company_from_url(page_url: str) -> str:
 
 
 def _detect_manual_gate(text_chunks: list[str]) -> dict | None:
-    lowered = " ".join(text_chunks).casefold()
-    # CAPTCHA is handled automatically by captcha_solver; not a manual gate.
-    return None
+    return detect_security_gate(text_chunks)
 
 
 def _card_heading(node: dict, nodes: list[dict]) -> str | None:
