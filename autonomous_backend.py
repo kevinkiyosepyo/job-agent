@@ -18,7 +18,9 @@ from app_queue import normalize_url
 
 
 class PipelineBackend:
-    def __init__(self, config: dict, *, opener=None, client=None, transport_builder=None, clock=None, discord_adapter=None):
+    def __init__(self, config: dict, *, opener=None, client=None, transport_builder=None, clock=None, discord_adapter=None,
+                 captcha_transport_factory=None):
+        self._captcha_transport_factory = captcha_transport_factory
         self.config = dict(config)
         self.root = Path(config['runtime_dir']).expanduser().resolve()
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -193,6 +195,89 @@ class PipelineBackend:
                     all(identity.get(k) == expected[k] for k in ('platform', 'tenant', 'requisition'))):
                     raise CandidateParked('blocked_fact', 'historical_application_requires_reconciliation')
 
+    def _try_captcha_on_new_target(self, job, target, snapshot):
+        """Attempt one visible reCAPTCHA anchor in the exact new tab before preparation.
+
+        Token-field presence is necessary but never sufficient: the worker and
+        a second live frame inspection must find no other detectable gates.
+        """
+        from prepare_job import prepare_saved_html
+        from prepare_live_job import _has_exact_identity, _validate_local_cdp_base_url
+        from autonomous_controller import CandidateParked
+        from scoped_cdp import ScopedCDPTransport
+        from greenhouse_handler import _GreenhouseHTMLParser
+        from security_gates import detect_security_gates
+        import captcha_solver
+
+        def security_kinds(page):
+            parsed = _GreenhouseHTMLParser()
+            parsed.feed(page['html'])
+            visible_text = page.get('body_text')
+            chunks = parsed.text_chunks + ([visible_text] if isinstance(visible_text, str) else [])
+            kinds = {gate['type'] for gate in detect_security_gates(chunks)}
+            lowered = ' '.join(chunks).casefold()
+            if any(phrase in lowered for phrase in (
+                'verify your email', 'verify email address', 'email verification', 'confirm your email address')):
+                kinds.add('email_verification')
+            if any(phrase in lowered for phrase in (
+                'assessment', 'skills test', 'online evaluation', 'coding challenge')):
+                kinds.add('assessment')
+            return kinds
+
+        if (snapshot.get('read_only') is not True or snapshot.get('target_id') != target['id']
+            or snapshot.get('url') != target['url'] or not isinstance(snapshot.get('html'), str)):
+            raise CandidateParked('blocked_fact', 'exact_target_snapshot_unavailable')
+        inspection = prepare_saved_html(html_text=snapshot['html'], page_url=job.url)
+        gates = inspection.get('manual_gates') or ([inspection['manual_gate']] if inspection.get('manual_gate') else [])
+        reported = snapshot.get('gates')
+        if reported is not None and reported != [] and (not isinstance(reported, list) or len(reported) != 1 or
+                         not isinstance(reported[0], dict) or reported[0].get('type') != 'captcha'):
+            raise CandidateParked('blocked_security', 'captcha_with_other_gate_or_identity_unverified')
+        observed_security = security_kinds(snapshot)
+        if observed_security - {'captcha'}:
+            raise CandidateParked('blocked_security', 'captcha_with_other_gate_or_identity_unverified')
+        if not gates and not reported and not captcha_solver.has_provider_frame(snapshot['html']):
+            return snapshot
+        if (any(not isinstance(gate, dict) or gate.get('type') != 'captcha' for gate in gates)
+            or not all(_has_exact_identity(snapshot['html'], value) for value in (job.company, job.role))):
+            raise CandidateParked('blocked_security', 'captcha_with_other_gate_or_identity_unverified')
+        factory = self._captcha_transport_factory or ScopedCDPTransport
+        try:
+            cdp_base_url = self.config.get('captcha_cdp_base_url', 'http://127.0.0.1:18800')
+            _validate_local_cdp_base_url(cdp_base_url)
+            with factory(cdp_base_url).bind_page_target(target['id']) as bound:
+                if bound.target_url != target['url']:
+                    raise ValueError('exact CAPTCHA target URL drift')
+                result = captcha_solver.attempt_solve(bound._connection, expected_url=target['url'])
+        except (OSError, RuntimeError, ValueError, KeyError):
+            raise CandidateParked('blocked_security', 'captcha_browser_transport_unavailable') from None
+        if result.get('solved') is not True:
+            if not gates and (result.get('detail') == 'no_visible_widget' or
+                              (result.get('kind') == 'recaptcha_invisible' and
+                               result.get('detail') == 'unsupported_challenge')):
+                return snapshot
+            raise CandidateParked('blocked_security', 'captcha_challenge_not_cleared')
+        with self._transport(target, official_posting=inspection.get('official_posting')).bind_page_target(target['id']) as page:
+            fresh = page.read_only_snapshot()
+        if (fresh.get('read_only') is not True or fresh.get('target_id') != target['id']
+            or fresh.get('url') != target['url'] or not isinstance(fresh.get('html'), str)):
+            raise CandidateParked('blocked_security', 'captcha_target_drift_after_attempt')
+        remaining = prepare_saved_html(html_text=fresh['html'], page_url=job.url)
+        more = remaining.get('manual_gates') or ([remaining['manual_gate']] if remaining.get('manual_gate') else [])
+        if fresh.get('gates') or more or security_kinds(fresh):
+            raise CandidateParked('blocked_security', 'captcha_gate_still_present_after_attempt')
+        try:
+            with factory(cdp_base_url).bind_page_target(target['id']) as bound:
+                if (bound.target_url != target['url'] or
+                    captcha_solver._value(bound._connection, 'location.href') != target['url']):
+                    raise ValueError('fresh CAPTCHA target drift')
+                current = captcha_solver.detect(bound._connection)
+        except (OSError, RuntimeError, ValueError, KeyError):
+            raise CandidateParked('blocked_security', 'captcha_fresh_frame_inspection_unavailable') from None
+        if current.get('kind') != 'recaptcha_v2' or current.get('cleared') is not True:
+            raise CandidateParked('blocked_security', 'captcha_fresh_provider_state_unverified')
+        return fresh
+
     def prepare(self, job, checkpoint):
         import production_operator as op
         candidate, mapping, answers, resume = self._canonical_inputs(job)
@@ -212,6 +297,7 @@ class PipelineBackend:
             raise CandidateParked('blocked_fact', 'new_target_verification_failed')
         with self._transport(target, official_posting=candidate['official_posting']).bind_page_target(target['id']) as page:
             snapshot = page.read_only_snapshot()
+        snapshot = self._try_captcha_on_new_target(job, target, snapshot)
         attempt = self.build_inputs(job, target, snapshot=snapshot)
         checkpoint(**attempt)
         kwargs = self._stage_kwargs(attempt, allow_mutation=True)

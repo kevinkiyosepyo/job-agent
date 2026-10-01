@@ -65,11 +65,12 @@ These workflows use the applicant's configured account access; they are not a wa
 
 | It handles | How |
 |---|---|
+| CAPTCHA checkbox attempts (supported, single-step challenges) | On a verified exact application tab, the connected autonomous backend can try one visible reCAPTCHA checkbox in real Chrome. It continues only if a response field is populated **and** a second live inspection plus the worker's fresh read-back show no remaining detectable application gate. hCaptcha, Turnstile, image/audio puzzles, managed challenges, missing CDP access, or failed checks keep the application parked; this is not a guarantee that an employer CAPTCHA is cleared. |
 | Emailed verification codes, including email-code MFA | With authorized read-only inbox access, the operator can retrieve a code for the exact employer and enter it in the preserved application tab. The form must advance before the gate is considered cleared. |
 | SMS one-time codes | When the code arrives in the applicant's authorized Messages account, the operator can enter the recent, matching code and verify the page advanced. This requires the Messages integration; it is not an MFA push approval. |
 | Account creation, activation, and password resets | The operator can use an authenticated session or configured Keychain password and an authorized activation/reset email, then verify the exact employer account. |
 
-**Scope:** The repository's offline tests do not prove a live employer inbox, SMS login, Workday account flow, or passkey authentication. A visible CAPTCHA is not automatically cleared merely because `captcha_solver.py` exists: it has no production caller, so the application remains blocked until the challenge is actually cleared.
+**Scope:** The checkbox attempt is wired only into the connected autonomous backend's currently supported one-page Greenhouse flow; it needs the **same Chrome tab exposed through loopback CDP at the configured `captcha_cdp_base_url` (default `127.0.0.1:18800`)** as well as a healthy approved worker. It has passed offline regression tests and a synthetic checkbox test in a real browser, **not a live employer CAPTCHA**. Cross-origin challenge content cannot be inspected from the application's outer HTML; a populated response field and absence of detectable page gates are not proof that the provider issued or employer accepted a token. It does not solve image grids, hCaptcha, Turnstile, or guarantee the employer accepts a token. The repository's offline tests also do not prove a live employer inbox, SMS login, Workday account flow, or passkey authentication.
 
 ## Things it will never do
 
@@ -84,7 +85,7 @@ These limits are deliberate, and they're enforced in code:
 | Submit twice | One shot design, enforced by single use tokens |
 | Put passwords in your profile, logs, or Git | The setup saves passwords only in macOS Keychain; the profile holds references |
 
-When it hits one of these, it pauses, keeps the browser tab exactly where it is, notifies you, and waits. After you handle it manually, it picks up where it left off.
+When it hits one of these, it parks the candidate and records the reason while preserving the tab. **The current autonomous controller sends a Discord notification only after a confirmed submission; parked security challenges do not trigger a message.** After you handle a challenge manually, the exact page still has to be re-verified before proceeding.
 
 ## Try it without touching a real job posting
 
@@ -308,7 +309,7 @@ cp autonomous_config.example.json runtime/autonomous-controller/config.json
 cp autonomous_sources.example.json runtime/autonomous-controller/sources.json
 ```
 
-[`docs/AUTONOMOUS-OPERATION.md`](docs/AUTONOMOUS-OPERATION.md) covers the controller, pacing limits, and what it does when it hits a CAPTCHA at 3 a.m. (Short version: it holds the application and notifies you; the presence of an unconnected solver module is not proof the challenge cleared.)
+[`docs/AUTONOMOUS-OPERATION.md`](docs/AUTONOMOUS-OPERATION.md) covers the controller, pacing limits, and what it does when it hits a CAPTCHA at 3 a.m. (Short version: on its connected Greenhouse flow it tries one supported checkbox, then checks the provider response and the application's actual gate state; unresolved challenges stay parked for you.)
 
 ### Adding a job board it doesn't know yet
 

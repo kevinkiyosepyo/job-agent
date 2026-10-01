@@ -29,9 +29,22 @@ readiness. No production service is enabled by installing these files.
   before intent can park one candidate and allow an eligible alternative.
 - Review expectations come from canonical facts, not the generated answers file.
   Actual values, option identities, provenance and resume bytes bind authorization.
-- The existing approved normal-Chrome Unix worker is the only live transport.
-  This program never starts a browser or accepts a security prompt. Health must
-  verify that actual worker, not just an HTTP endpoint.
+- The approved normal-Chrome Unix worker remains the live application transport.
+  For a detected CAPTCHA on the exact new target, a separate bounded loopback
+  CDP connection (`captcha_cdp_base_url`, default `127.0.0.1:18800`) may
+  try one visible reCAPTCHA checkbox. This requires the worker's Chrome to
+  expose that same target ID at the loopback endpoint. Otherwise
+  the attempt fails closed without changing the tab.
+  hCaptcha, Turnstile/Cloudflare, image/audio and managed challenges are not
+  clicked by this path. The worker must read back the exact application and
+  a second live frame check must see only the supported checkbox with a
+  populated response field before any preparation; this is token-presence
+  evidence, not proof that the provider issued or employer accepted it.
+  Cross-origin challenge interiors are not readable from the outer-page HTML.
+  Parked security challenges persist locally but currently do **not** trigger a
+  Discord notification; delivery is wired only for confirmed submissions.
+  No production service is enabled merely by installing this code. Health must
+  verify the actual worker, not just an HTTP endpoint.
 - STOP in the controller runtime, or SIGTERM/SIGINT, stops future stages.
   Do not terminate a pending browser request and then assume it was not sent.
 - Confirmation is separate from notification. Delivery uses a durable deduplicated

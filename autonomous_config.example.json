@@ -4,6 +4,7 @@
   "profile_path": "/Users/kevinpoopz/Documents/job-agent/profile.json",
   "registry_path": "/Users/kevinpoopz/Documents/job-agent/runtime/autonomous-sources.json",
   "worker_socket": "/Users/kevinpoopz/.hermes/cache/random-job-20260904/browser.sock",
+  "captcha_cdp_base_url": "http://127.0.0.1:18800",
   "notifications_enabled": true,
   "discord_channel_id": "937013921028644927",
   "discord_token_env": "DISCORD_BOT_TOKEN",
