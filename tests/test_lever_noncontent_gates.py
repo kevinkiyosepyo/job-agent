@@ -23,10 +23,9 @@ def test_script_and_style_text_do_not_establish_static_captcha_gate(non_content)
     '<script>const text = "<style>captcha";</script><p>reCAPTCHA required</p>',
     '</style><p aria-hidden="true">Please complete CAPTCHA</p>',
 ])
-def test_ordinary_challenge_text_is_not_a_manual_gate_anymore(markup):
-    """CAPTCHA is auto-solved now; visible challenge text no longer emits a manual gate."""
+def test_ordinary_challenge_text_is_a_static_gate_candidate(markup):
     result = inspect_html(FORM + markup, page_url=URL)
-    assert result['manual_gate'] is None
+    assert result['manual_gate'] == {'type': 'captcha', 'detail': 'CAPTCHA challenge detected'}
 
 
 def test_prepare_snapshot_retains_all_non_gate_results_and_submission_disabled():

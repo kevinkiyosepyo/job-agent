@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 from pipeline import validate_confirmation_evidence
 from browser_actions import inventory_form_fields
+from security_gates import detect_security_gate
 
 
 class _WorkdayHTMLParser(HTMLParser):
@@ -133,13 +134,15 @@ class _WorkdayHTMLParser(HTMLParser):
 def _manual_gates(text_chunks: list[str]) -> list[dict[str, str]]:
     text = " ".join(text_chunks).casefold()
     gates: list[dict[str, str]] = []
-    # CAPTCHA is handled automatically by captcha_solver; not a manual gate.
+    security_gate = detect_security_gate(text_chunks)
+    if security_gate and security_gate["type"] == "captcha":
+        gates.append(security_gate)
     if "email verification" in text or "verify your email" in text:
         gates.append({"type": "email_verification", "detail": "Email verification required"})
     if "assessment" in text or "take-home" in text or "takehome" in text:
         gates.append({"type": "assessment", "detail": "Assessment detected"})
-    if "identity verification" in text or "verify your identity" in text:
-        gates.append({"type": "identity_verification", "detail": "Identity verification required"})
+    if security_gate and security_gate["type"] != "captcha":
+        gates.append(security_gate)
     return gates
 
 

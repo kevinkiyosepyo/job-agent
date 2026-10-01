@@ -392,7 +392,7 @@ def test_submit_interruption_inspects_confirmation_and_never_replays(tmp_path):
     assert page.click_count == 1
 
 
-@pytest.mark.parametrize("gate", ["assessment", "identity_verification"])
+@pytest.mark.parametrize("gate", ["captcha", "email_verification", "passkey", "mfa_approval", "assessment", "identity_verification"])
 def test_submit_rejects_mandatory_human_gate_before_authorization_or_click(tmp_path, gate):
     import one_shot_submit
 
