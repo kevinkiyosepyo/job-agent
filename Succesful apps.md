@@ -11,6 +11,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | Application date | Employer | Role | ATS | Requisition | Result |
 | --- | --- | --- | --- | --- | --- |
 | October 3, 2026 (PDT) | Mindex | Software Engineer Co-Op - On-site | Workable | `84B10DB922` | Application and optional EEO survey confirmed submitted |
+| October 3, 2026 (PDT) | Meta | Data Engineer Intern, Product Analytics (Summer 2027) | Meta Careers | `1373603594867455` | Applied status verified; all three follow-up items completed |
 
 ---
 
@@ -82,6 +83,51 @@ The task-local intent record was not a substitute for the production controller'
 ### Final result
 
 **Confirmed submitted.** The agent completed resume upload and application submission end to end, recovered from the browser-control problems, verified both application and EEO acceptance, and delivered the result notification. No application-step blocker remained at the end of this run. Hiring outcome is unknown.
+
+---
+
+## Meta — Data Engineer Intern, Product Analytics (Summer 2027)
+
+### Job and execution context
+
+- **Official posting:** <https://www.metacareers.com/profile/job_details/1373603594867455/>
+- **Requisition:** `1373603594867455`.
+- **Locations:** Menlo Park, California; New York, New York; Seattle, Washington, United States.
+- **Submission date shown by the portal:** October 3, 2026.
+- **Execution mode:** An explicitly requested, concurrent application batch. One agent owned this exact employer/requisition and its normal-Chrome tabs; other agents worked on separate employers. A shared CDP connection routed commands to owned targets without starting replacement Chrome instances.
+
+This was an agent-operated application in a live user session, not proof that the repository's scheduled controller supports Meta end to end. The agent handled email verification, resume upload, submission, and the supplemental disclosure; the coordinator independently checked the employer's result afterward.
+
+### End-to-end flow
+
+1. **Verify the exact posting and eligibility.** Read the full official US internship requirements and compare the technical degree, programming, and work-authorization requirements with the applicant's private sources.
+2. **Check prior application evidence and authenticate.** Check the confirmed ledger, relevant browser history, and prior task evidence. Complete the site's email-code account flow through the authorized inbox and verify the authenticated account before filling the application.
+3. **Upload and complete the actual form.** Attach the profile-selected current resume; select real offered locations; fill the rendered contact, current-location, website, and self-identification controls. The page did not request separate education and employment-history entries; the resume supplied that background.
+4. **Review the rendered application.** Verify the exact resume filename and metadata, committed selections, applicant identity, and required visible controls. Keep unrelated shared-form placeholders distinct from questions actually presented by this version of the application; do not alter validation or invent hidden answers.
+5. **Submit once.** Persist submission intent before dispatch. The response took approximately twelve seconds; the agent waited and read the page instead of clicking Submit again.
+6. **Confirm the employer receipt.** Verify the exact role and dated Applied status on Meta's Applications page, then immediately add the confirmed application to the private ledger using the shared lock and an atomic write.
+7. **Complete and verify follow-up items.** Resolve the government-employment disclosure from the canonical answer source, save it, and read it back through View responses. Verify that government employment disclosure, voluntary self-identification, and resume upload all show Completed. Check the saved resume filename through its separate View route.
+8. **Independently reconcile the result.** The coordinator read the live application detail and Applications list, verified the single ledger entry, and delivered a Discord batch result with exact message read-back. Google Sheets synchronization was intentionally skipped.
+
+### Trips, issues, and successful recoveries
+
+| Issue observed | What resolved it | Lesson |
+| --- | --- | --- |
+| The configured mail API authorization was revoked. | Used the existing authorized Gmail session in a task-owned normal-Chrome tab to read the exact verification message without marking it read. | An unavailable API is not the same as an unavailable authorized inbox. Never print or persist verification codes or session secrets. |
+| The heavy knowledge-document renderer timed out. | Read the document's official text export and retained only the narrow, non-secret answer needed for the disclosure. | Recover through an authorized source; do not dump a document containing mixed private material. |
+| A shared validator described an unused employment-history placeholder. | Inspected the actual one-page section mapping and verified its rendered fields without changing validation or supplying fabricated history. | Distinguish actual application requirements from unrelated component defaults. |
+| Submit did not return immediately. | Preserved the original intent and waited for the server-created application and receipt. | A slow response is not permission for another Submit. |
+| Submission created supplemental tasks. | Completed the ordinary disclosure and verified all three task statuses separately. | Application receipt and follow-up completeness are separate checks. |
+
+### Confirmation evidence and final result
+
+The live Applications page displayed the exact role followed by:
+
+> Applied Oct 3, 2026 • New York, NY, Menlo Park, CA, Seattle, WA
+
+The application detail showed **Completed** for all three items: government employment disclosure, voluntary self-identification form, and resume upload. The private application reference, review, one-shot journal, receipt, saved-answer read-back, resume evidence, and notification receipt are retained locally rather than published here.
+
+**Confirmed submitted, with the displayed follow-up items complete.** Only this verified submission from the concurrent batch is added to the success table. Blocked drafts are not counted as successful applications. No interview or hiring outcome is implied.
 
 ---
 
