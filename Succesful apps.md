@@ -15,6 +15,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 5, 2026 (PDT) | Epic Games | Backend Services Programmer Intern | Greenhouse | `R27435` / `6183293004` | Exact-job confirmation and receipt text verified |
 | October 5, 2026 (PDT) | Epic Games | Data Science Intern | Greenhouse | `R27453` / `6202675004` | Exact-job confirmation and receipt text verified |
 | October 5, 2026 (PDT) | Epic Games | Technical Product Management Intern | Greenhouse | `R27432` / `6178818004` | Exact-job confirmation and receipt text verified |
+| October 6, 2026 (PDT) | Found Industries | Data Engineer Co-op | Greenhouse | `4719227006` | Exact-job confirmation and receipt text verified |
 
 ---
 
@@ -186,6 +187,54 @@ Each of the three exact Greenhouse job targets displayed:
 All three confirmation routes matched their own job IDs. Each had exactly one confirmed ledger entry, and the delivered Discord summary matched its read-back. The private reviews, intent records, per-job confirmations, aggregate verification, and notification receipt remain local. Applicant data, browser/session identifiers, private message IDs, and raw artifacts are not published here.
 
 **Three new applications confirmed submitted.** No application-step blocker remained for these three roles. Prior or excluded postings are not new successes; no interview, offer, email-receipt verification, or hiring outcome is implied.
+
+---
+
+## Found Industries — Data Engineer Co-op
+
+### Job and execution context
+
+- **Official posting:** <https://job-boards.greenhouse.io/foundenergy/jobs/4719227006>.
+- **Requisition:** `4719227006`; the board retains the Found Energy name while the posting identifies the employer as Found Industries.
+- **Location:** Cambridge, Massachusetts, United States.
+- **Term:** A six-month January–June co-op; the posting also allows an earlier start and possible extensions.
+- **Submission date:** October 6, 2026 (PDT).
+- **Execution mode:** A user-requested application completed by the agent through exact-target CDP in the existing normal Chrome. The agent uploaded the resume, filled and reviewed the form, submitted once, and read the employer's receipt. No replacement Chrome profile was launched.
+
+This documents an agent-operated live browser run, not newly established scheduled-controller support. The successful-application log was updated as part of the same task rather than waiting for a separate documentation request.
+
+### End-to-end flow
+
+1. **Verify the official posting.** Read the current Greenhouse API payload and the complete rendered job page. Checked the US location, related-degree requirement, six-month term, and distinction between required and preferred skills against the applicant's private sources and accepted co-op availability.
+2. **Check for duplicates.** Reconciled the canonical confirmed-submission ledger and existing manual intents. The relevant automation-profile history had no exact match; the normal-Chrome History UI reported no exact matches for this job ID. A local History database copy was unusable, so it was not treated as a successful negative query.
+3. **Recover the exact application target.** An initial tab contained untrusted prefilled information, including an older attachment and a different discipline. That target disappeared before any submission. Opened the same verified posting in a new task-owned tab through the existing browser connection, without restarting Chrome or replaying any submission.
+4. **Upload the designated resume.** Attached the private profile's canonical resume through the real file input and verified its rendered filename. Retained the selected local path, byte size, and hash privately. Greenhouse removed the original file input before browser File metadata could be captured; no attachment-download or browser-byte hash verification is claimed.
+5. **Fill truthful answers and real options.** Used profile-backed contact and portfolio details and resume-grounded answers to the interest and prior-internship questions. Selected the correct school directory entry and a real Other discipline when Data Science was absent. Bound the experience, full-term availability, source, location, and explicit AI-usage survey controls. Disclosed that an AI agent was completing the form rather than selecting a human-only answer. Omitted the optional cover letter.
+6. **Review the complete form.** Independently reread the actual fields, selected chips, source checkbox, country/phone pairing, and canonical resume filename. Compared the narrative claims with the current resume and the factual answers with the saved sources. No invalid controls, visible errors, or unresolved human-verification challenge remained.
+7. **Submit once.** Rechecked the ledger under the shared lock, created an exclusive per-requisition intent record, and marked activation before the single Submit action. The first read still showed the form during processing; waited read-only instead of clicking again.
+8. **Verify employer acceptance and record it.** Read the exact job's `/confirmation` route, its confirmation title, and the rendered receipt below. Immediately added the verified submission to the private ledger and retained the intent, review, and confirmation evidence locally. Google Sheets synchronization was intentionally omitted.
+
+### Trips, issues, and successful recoveries
+
+| Issue observed | What resolved it | Lesson |
+| --- | --- | --- |
+| Ordinary web extraction returned only a short description. | Used the full official Greenhouse API payload and rendered posting. | Do not interpret a partial extract as the complete qualification list. |
+| The initial application target disappeared, producing missing-session and missing-target errors. | Verified the target no longer existed, then opened only the exact still-unsubmitted posting using the existing broker connection. | Distinguish a gone tab from a rejected browser connection, and check submission intent before recovery. |
+| Resume parsing changed education IDs while a directory search was running. | Re-inventoried the current input IDs after parsing, then selected the correct school. | Uploaded filename visibility does not mean asynchronous parsing has finished. |
+| Directory results arrived after the first search read. | Read the scoped rendered options after they loaded and clicked the exact option. | An initially empty async list is not a final no-results response. |
+| Data Science was unavailable in the discipline directory. | Verified the empty exact search and selected the offered Other option. | Do not substitute an unrelated major to satisfy validation. |
+| The phone control reformatted the input. | Verified normalized digits and the separately committed country. | Formatting changes alone do not mean the value failed to bind. |
+| The first post-submit read still showed the form. | Preserved the original intent and reread until the actual confirmation appeared. | A pending response is not permission to submit again. |
+
+### Confirmation evidence and final result
+
+The exact requisition's confirmation page displayed:
+
+> Thank you for applying.
+>
+> Your application has been received. If there is a fit, someone will be getting back to you.
+
+**Confirmed submitted.** The receipt belongs to job `4719227006`; the other requested employer was not counted as a success merely because its old description remained retrievable. Private applicant details, resume contents, browser identifiers, and raw evidence are not published here. No email-receipt verification, interview, offer, or hiring outcome is implied.
 
 ---
 
