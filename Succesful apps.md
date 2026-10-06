@@ -12,6 +12,9 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | --- | --- | --- | --- | --- | --- |
 | October 3, 2026 (PDT) | Mindex | Software Engineer Co-Op - On-site | Workable | `84B10DB922` | Application and optional EEO survey confirmed submitted |
 | October 3, 2026 (PDT) | Meta | Data Engineer Intern, Product Analytics (Summer 2027) | Meta Careers | `1373603594867455` | Applied status verified; all three follow-up items completed |
+| October 5, 2026 (PDT) | Epic Games | Backend Services Programmer Intern | Greenhouse | `R27435` / `6183293004` | Exact-job confirmation and receipt text verified |
+| October 5, 2026 (PDT) | Epic Games | Data Science Intern | Greenhouse | `R27453` / `6202675004` | Exact-job confirmation and receipt text verified |
+| October 5, 2026 (PDT) | Epic Games | Technical Product Management Intern | Greenhouse | `R27432` / `6178818004` | Exact-job confirmation and receipt text verified |
 
 ---
 
@@ -128,6 +131,61 @@ The live Applications page displayed the exact role followed by:
 The application detail showed **Completed** for all three items: government employment disclosure, voluntary self-identification form, and resume upload. The private application reference, review, one-shot journal, receipt, saved-answer read-back, resume evidence, and notification receipt are retained locally rather than published here.
 
 **Confirmed submitted, with the displayed follow-up items complete.** Only this verified submission from the concurrent batch is added to the success table. Blocked drafts are not counted as successful applications. No interview or hiring outcome is implied.
+
+---
+
+## Epic Games — three confirmed internship applications
+
+### Jobs and execution context
+
+All three positions were live, full-time internships in **Cary, North Carolina, United States**, with flexible starts in 2027. The submission times below come from the private confirmation records, converted to Pacific time.
+
+| Role | Requisition / job ID | Official posting | Confirmed submission |
+| --- | --- | --- | --- |
+| Backend Services Programmer Intern | `R27435` / `6183293004` | [Epic posting](https://www.epicgames.com/site/careers/jobs/6183293004?lang=en-US) | October 5, 2026, 8:16 p.m. PDT |
+| Data Science Intern | `R27453` / `6202675004` | [Epic posting](https://www.epicgames.com/site/careers/jobs/6202675004?lang=en-US) | October 5, 2026, 8:18 p.m. PDT |
+| Technical Product Management Intern | `R27432` / `6178818004` | [Epic posting](https://www.epicgames.com/site/careers/jobs/6178818004?lang=en-US) | October 5, 2026, 8:19 p.m. PDT |
+
+**Execution mode:** An explicitly requested, agent-operated batch using exact-target CDP in the existing normal Chrome. The agent prepared and submitted the forms sequentially, using one persistent browser connection. No replacement Chrome instance was launched. The user approved requesting a fresh browser connection after the first connection was rejected; the agent did not approve a browser permission prompt on the user's behalf.
+
+This was a supervised live session, not an uninterrupted scheduled-controller run. The agent performed the resume uploads, field entry, option selection, review, submission, and confirmation checks. These results do not establish unattended production-controller support for Epic's branded form.
+
+### End-to-end flow
+
+1. **Screen every supplied posting.** Ordinary retrieval of Epic's branded pages returned blocked or incomplete content. Recovered complete current requirements and question schemas from Epic's public Greenhouse board API, then verified the eligible postings in normal Chrome. Checked each job's location, internship term, and degree/enrollment requirements independently rather than assuming sibling roles had identical eligibility.
+2. **Reconcile duplicate evidence.** Checked the canonical confirmed-submission ledger and relevant browser history. The six-link request contained one prior exact-job confirmation and two eligibility exclusions; none was counted as a newly completed application or added as a success entry here.
+3. **Recover the authorized browser connection.** Paused when Chrome rejected the first connection. After the user authorized a fresh connection, established a persistent approved browser WebSocket and restricted application operations to the task's exact targets. No security prompt was bypassed.
+4. **Use the actual Greenhouse form.** Opened Epic's branded Apply control, identified its distinct custom-form structure, and moved to the underlying Greenhouse embed route for the same verified board and job IDs. Rechecked exact role, employer, and location before filling. The branded form was not submitted.
+5. **Inspect and attach the current resume.** Inventoried each untouched Greenhouse form and education controls, resolved the designated resume from the private profile, and attached it to the observed resume input. Verified the displayed filename in each application and again during pre-submit review. Greenhouse removed the original file input after attachment; the original browser File metadata was not retained, and no downloaded-attachment hash verification is claimed.
+6. **Fill truthful facts and commit real options.** Entered profile-backed identity, contact, location, education, current role, employer, and portfolio information. Selected real offered options for prior employment, referral source, sponsorship, work authorization, availability, experience, project samples, acknowledgements, and voluntary self-identification preferences. Used a truthful Other discipline option when the directory did not offer Data Science; no unrelated major was substituted. Re-inventoried after asynchronous parsing and preserved already-correct values.
+7. **Review each complete form independently of the fill actions.** Read back actual values and committed chips, compared them with canonical applicant sources, and verified the intended resume, education dates, required consent, and exact job identity. Native invalid-control lists and visible validation alerts were empty; no visible human-verification challenge remained. Optional cover letters were omitted.
+8. **Submit once per requisition.** Rechecked the confirmed ledger under a lock and created an exclusive per-requisition intent record before each Submit. Dispatched one application submission for each of the three roles. Waited read-only through navigation rather than replaying a click.
+9. **Verify and record immediately.** Required the exact job's Greenhouse confirmation route and the rendered receipt text, then recorded that confirmed submission in the private ledger before progressing. After the last submission, independently read all three preserved confirmation targets again. Delivered the sanitized batch result to Discord and verified its exact message content by read-back. Sheets synchronization was intentionally skipped.
+10. **Stop the controller.** Ended the task-local browser-control process after completion while leaving the confirmation pages intact. A delayed readiness notification was checked against the stopped process and did not restart application work.
+
+### Trips, issues, and successful recoveries
+
+| Issue observed | What resolved it | Lesson |
+| --- | --- | --- |
+| Branded-page requests returned HTTP 403, timeouts, or truncated qualification text. | Read the full official Greenhouse API payload and verified exact posting identity in the real browser. | Missing bullets are incomplete source evidence, not an absence of requirements. |
+| Chrome rejected the initial automation connection. | Paused for user approval of a fresh connection; the renewed connection succeeded. | Keep the human permission boundary explicit instead of describing a supervised recovery as fully unattended. |
+| Epic's custom form used different controls from modern Greenhouse. | Used the underlying Greenhouse form for the exact verified board and requisition before entering application data. | A shared ATS backend does not mean the branded wrapper supports the same selectors. |
+| A previously backgrounded form completed resume parsing after activation, changing education IDs from `--0` to `--1` and prefilling dates and a contact link. | Re-inventoried the live form, resolved each unique current education control before use, and preserved correct values. | The first inventory and a successful upload filename do not mean asynchronous parsing has finished. |
+| Country selection committed a `+1` chip, and the phone field reformatted the digits. | Checked the adjacent country label and normalized phone digits rather than insisting on the original typed formatting. | Abbreviated display and normal formatting are not failed bindings. |
+| The discipline directory did not offer Data Science. | Selected its actual non-asserting Other option and verified the committed value. | Never substitute a different degree discipline just to complete a picker. |
+| The first confirmation navigation briefly had an empty body. | Waited for the rendered receipt, then read it again without another Submit. | A new URL or page title is not sufficient by itself; preserve intent while the success page renders. |
+
+### Confirmation evidence and final result
+
+Each of the three exact Greenhouse job targets displayed:
+
+> Thank you for applying.
+>
+> Your application has been received and if it seems like a good fit for the position, we will contact you soon.
+
+All three confirmation routes matched their own job IDs. Each had exactly one confirmed ledger entry, and the delivered Discord summary matched its read-back. The private reviews, intent records, per-job confirmations, aggregate verification, and notification receipt remain local. Applicant data, browser/session identifiers, private message IDs, and raw artifacts are not published here.
+
+**Three new applications confirmed submitted.** No application-step blocker remained for these three roles. Prior or excluded postings are not new successes; no interview, offer, email-receipt verification, or hiring outcome is implied.
 
 ---
 
