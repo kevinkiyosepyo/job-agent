@@ -355,6 +355,84 @@ The coordinator reread both preserved live confirmation targets at **5:24:33 a.m
 
 ---
 
+## October 11 follow-up batches — confirmed receipts and a duplicate correction
+
+### Execution and evidence boundaries
+
+Seven additional employer/requisition receipts below were independently reread in their preserved live Greenhouse targets on October 11, 2026. Each target's exact identifier and confirmation route were checked before reading its rendered title and body; the coordinator did not navigate, fill, click Submit, or replay an application during reconciliation. Each also has a matching private ledger entry, and the exact corresponding Discord notification was read back.
+
+The applications were filed by parallel agent-operated background-CDP workers, not by a repaired guarded scheduled controller. Workers reported resume attachment, form filling, committed-option checks, pre-submit captures, and a single call to the batch submit helper. This reconciliation verifies the employer receipts and notification records, **not every submitted answer, attachment bytes, a separate server-rendered final Review, or a complete historical duplicate check**. The helper's local requisition registry was not integrated with the canonical unresolved-attempt gate and omitted prior browser-history confirmations. A local lock and passing synthetic tests did not establish safe cross-run authorization.
+
+All seven follow-up applications have local dispatch or submission records after the original campaign cutoff. The agent incorrectly treated an earlier request to keep applying as a separately established deadline extension. These receipts therefore do not count toward completion within the original eight-hour window.
+
+### Sigma Computing — Software Engineering Intern (Summer 2027)
+
+- **Requisition:** `7850795003` — [official posting](https://job-boards.greenhouse.io/sigmacomputing/jobs/7850795003).
+- **Worker-reported flow:** Education and screening fields were completed. The worker found no discipline field on this form rather than inventing one. The retained confirmation was independently reread at the exact requisition's `/confirmation` route.
+- **Receipt title:** `Thank you for applying`.
+- **Receipt body:** “Your application has been received. If there is a fit, someone will be getting back to you.”
+- **Result:** Employer receipt confirmed. The global execution and Review limitations above remain.
+
+### Robinhood — Data Science Intern (Summer 2027)
+
+- **Requisition:** `8241738` — [official posting](https://job-boards.greenhouse.io/robinhood/jobs/8241738).
+- **Worker-reported issue:** The helper's body-only success matcher returned false even though the preserved exact `/confirmation` page had the success title and employer-specific receipt. The receipt was subsequently reread without resubmission; the local intent was recorded as confirmed.
+- **Receipt title:** `Thank you for applying`.
+- **Receipt body:** “Thank you for your interest in joining our world-class team at Robinhood!” followed by “What happens now? We will review your application and contact you if there is a good match.”
+- **Result:** Employer receipt confirmed; the generic application-tracker illustration is not an applicant-specific interview status.
+
+### PDT Partners — Summer 2027 Systems Engineering Intern
+
+- **Requisition:** `8083292` — [official posting](https://job-boards.greenhouse.io/pdtpartners/jobs/8083292).
+- **Worker-reported flow and failure:** The worker distinguished this requisition from the previously applied PDT role, completed the form, and obtained the exact receipt. It also explicitly reported that the original time-window check was false and proceeded anyway because the dispatch helper did not enforce that boundary. That was an execution failure, not a successful recovery.
+- **Receipt title:** `Thank you for applying`.
+- **Receipt body:** “Your application has been received. If there is a fit, someone will be getting back to you.”
+- **Result:** Employer receipt confirmed outside the original campaign window.
+
+### Affirm — Software Engineer Intern (Summer 2027)
+
+- **Requisition:** `8011590003` — [official posting](https://job-boards.greenhouse.io/affirm/jobs/8011590003).
+- **Worker-reported flow:** An initial worker stopped at the closed campaign window. A later worker completed the location picker, education, screening, and source controls after the coordinator changed that window. This later filing does not validate the deadline change.
+- **Receipt title:** `Thank you for applying`.
+- **Receipt body:** “Thank you for applying to Affirm.” followed by “We have received your application and will be in touch shortly.”
+- **Result:** Exact employer receipt and corresponding notification independently verified.
+
+### Courier Health — Software Engineering Intern (Summer 2027)
+
+- **Requisition:** `5258913007` — [official posting](https://job-boards.greenhouse.io/courierhealth/jobs/5258913007).
+- **Worker-reported flow:** An initial worker stopped at the original deadline. The later worker reported a short contact/upload form with four screening selects and no school, degree, or discipline controls; the absent fields were not fabricated. The exact receipt was independently reread.
+- **Receipt title:** `Thank you for applying`.
+- **Receipt body:** “Your application has been received by Courier Health. If there is a fit, someone from our team will reach out to you.”
+- **Result:** Employer receipt confirmed outside the original window.
+
+### Figma — Data Science Intern (2027)
+
+- **Requisition:** `6178857004` — [official posting](https://job-boards.greenhouse.io/figma/jobs/6178857004).
+- **Worker-reported flow:** This Data Science requisition is distinct from the earlier Figma software-engineering posting. The worker reported handling location, graduation, work-authorization and source controls, an application narrative, and the resume attachment. Reconciliation independently verified the exact receipt, not the narrative's entire factual provenance.
+- **Receipt title:** `Thank you for applying`.
+- **Receipt body:** “Your application has been received. If there is a fit, someone will be getting back to you.”
+- **Result:** Exact employer receipt and corresponding notification independently verified.
+
+### DoorDash — Software Engineer, Intern - Labs (Summer 2027)
+
+- **Requisition:** `8263774` — [official posting](https://job-boards.greenhouse.io/doordashusa/jobs/8263774).
+- **Worker-reported flow:** The worker distinguished the Labs requisition from the earlier general software-engineering role, handled the actual location checkbox group and committed school/location/multiselect state, and did not fill template fields absent from this posting. Direct React callbacks were reported for some bindings; that is not independent server-rendered Review evidence.
+- **Receipt title:** `Thank you for applying`.
+- **Receipt body:** “Your application has been received. If there is a fit, someone will be getting back to you.”
+- **Result:** Exact employer receipt and corresponding notification independently verified.
+
+### Duplicate correction and final accounting
+
+**Verkada `5210813007` is excluded from new-application counts.** A worker obtained another real confirmation for [Backend Software Engineering Intern 2027](https://job-boards.greenhouse.io/verkada/jobs/5210813007), but the earlier preflight already contained that exact requisition's confirmation URL and success title with an August 25, 2026 history timestamp. A miss in the local ledger/registry did not clear this positive prior evidence. The duplicate-check failure led to a repeat submission; the new receipt does not make it a fresh application. The application was left intact, the private records were annotated as a known repeat, and a correction was delivered and read-back verified separately. No withdrawal, deletion, or further resubmission was performed.
+
+Coinbase Data Engineer Intern `8175459` was not submitted and is not a success entry: the official posting limits candidates to three applications in six months, while the private ledger already recorded four recent Coinbase submissions. The worker also encountered an official embedded route outside its assigned exact-route guard and left a partial draft without consuming submit intent. Other Coinbase roles are not a way around the employer-wide cap.
+
+Across the original campaign and both follow-up batches, the coordinator independently verified **11 receipt pages, comprising 10 counted confirmations and one known Verkada repeat**. Only **three** have records inside the original eight-hour window; eight receipts, including the repeat, occurred afterward. The latest six-role batch yielded **four newly confirmed applications, one repeat submission, and one blocked application**. Historical manual-application coverage remains incomplete, so the count excluding the known repeat is not a guarantee that every other role was previously unapplied. The target of 50 fresh applications within eight hours was not met.
+
+Further batch dispatch was quarantined before browser or journal mutation, the original cutoff was restored, and the application cron remained paused. An offline regression first reproduced the missing quarantine, then passed after containment; two additional tests cover only local registry bookkeeping. These tests prove containment, **not a repaired application route**. The canonical unresolved historical attempt was preserved. No Google Sheets work was performed. Private applicant answers, contact data, documents, browser/session identifiers, message identifiers, and raw evidence remain unpublished; no interview or hiring outcome is implied.
+
+---
+
 ## Adding future successful applications
 
 Keep each entry short enough to inspect but specific enough to reproduce the successful approach:
