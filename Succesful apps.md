@@ -17,6 +17,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 5, 2026 (PDT) | Epic Games | Technical Product Management Intern | Greenhouse | `R27432` / `6178818004` | Exact-job confirmation and receipt text verified |
 | October 6, 2026 (PDT) | Found Industries | Data Engineer Co-op | Greenhouse | `4719227006` | Exact-job confirmation and receipt text verified |
 | October 11, 2026 (PDT) | Figma | Software Engineer Intern (Summer 2027) | Greenhouse | `6143238004` | Exact-job confirmation and receipt text verified |
+| October 11, 2026 (PDT) | DoorDash | Software Engineer, Intern (Summer 2027) - US | Greenhouse | `8171041` | Exact-job confirmation and receipt text verified |
 
 ---
 
@@ -265,6 +266,37 @@ The exact requisition's Greenhouse confirmation page displayed:
 > Your application has been received. If there is a fit, someone will be getting back to you.
 
 The retained artifact set includes the target, private filing record, confirmation capture, ledger entry, and delivered Discord read-back. It does not retain a separate server-rendered final Review-page capture; this log therefore does not claim independent reconstruction of every pre-submit field from that page. The employer receipt, not a click or navigation alone, is the basis for the confirmed-submission entry. No interview, offer, or hiring outcome is implied.
+
+---
+
+## DoorDash — Software Engineer, Intern (Summer 2027) - US
+
+### Job and execution context
+
+- **Official posting:** <https://job-boards.greenhouse.io/doordashusa/jobs/8171041>.
+- **Requisition:** `8171041`.
+- **ATS:** Greenhouse.
+- **Confirmed submission recorded:** October 11, 2026, approximately 3:39 a.m. PDT.
+- **Execution mode:** Agent-operated, direct background CDP in the existing normal Chrome. This was not evidence of a fully guarded unattended-controller run.
+
+### Observed flow, issues, and recovery
+
+1. **Complete the form through the actual browser controls.** The retained pre-submit read-back records the rendered resume attachment name, selected school and degree, screening selections, and selected checkbox groups. It is a form-state snapshot, not a separate server-rendered final Review page or verification of the uploaded resume's bytes.
+2. **Correct the school and multiselect errors before submission.** A parser mismatch had selected the wrong school; the retained ledger notes its correction, and the saved read-back records the bound intended school. Multiselect handling was also corrected, with the final snapshot recording committed multiselect choices. Applicant answer values are intentionally omitted here.
+3. **Retain the actual review limitations.** The saved snapshot still lists native validity warnings for unchecked checkbox inputs. It therefore does not support a claim that every native validity check passed or that a complete server-rendered Review was independently verified. The later employer receipt establishes acceptance, not independent reconstruction of every saved answer.
+4. **Journal one Submit action.** The task-local intent was marked consumed before the single recorded application Submit click and explicitly prohibited replay. The retained review in that intent matches the separate pre-submit snapshot. This local journal is not proof of the production controller's transactional authorization or cross-run submission fencing.
+5. **Require the exact employer receipt.** The saved post-submit capture shows job `8171041` at its `/confirmation` route, the title `Thank you for applying`, and the receipt quoted below. The canonical private ledger contains one matching DoorDash entry for this posting.
+6. **Keep reconciliation separate from filing.** The Discord result was read-back verified separately; Google Sheets synchronization was intentionally skipped. This documentation-only reconciliation did not access the browser or repeat the application submission.
+
+### Confirmation evidence and final result
+
+The exact requisition's Greenhouse confirmation page displayed:
+
+> Thank you for applying.
+>
+> Your application has been received. If there is a fit, someone will be getting back to you.
+
+**One DoorDash application confirmed submitted.** The basis is the observed employer receipt, not the Submit click, a notification, or navigation alone. This account does not establish fully guarded unattended Greenhouse support, a clean native-validity result, or a complete server-rendered final Review. Private applicant answers, resume contents, browser identifiers, local evidence paths, and message identifiers are not published. No receipt-email verification, interview, offer, or hiring outcome is implied.
 
 ---
 
