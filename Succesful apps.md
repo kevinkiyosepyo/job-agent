@@ -16,6 +16,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 5, 2026 (PDT) | Epic Games | Data Science Intern | Greenhouse | `R27453` / `6202675004` | Exact-job confirmation and receipt text verified |
 | October 5, 2026 (PDT) | Epic Games | Technical Product Management Intern | Greenhouse | `R27432` / `6178818004` | Exact-job confirmation and receipt text verified |
 | October 6, 2026 (PDT) | Found Industries | Data Engineer Co-op | Greenhouse | `4719227006` | Exact-job confirmation and receipt text verified |
+| October 11, 2026 (PDT) | Figma | Software Engineer Intern (Summer 2027) | Greenhouse | `6143238004` | Exact-job confirmation and receipt text verified |
 
 ---
 
@@ -235,6 +236,35 @@ The exact requisition's confirmation page displayed:
 > Your application has been received. If there is a fit, someone will be getting back to you.
 
 **Confirmed submitted.** The receipt belongs to job `4719227006`; the other requested employer was not counted as a success merely because its old description remained retrievable. Private applicant details, resume contents, browser identifiers, and raw evidence are not published here. No email-receipt verification, interview, offer, or hiring outcome is implied.
+
+---
+
+## Figma — Software Engineer Intern (Summer 2027)
+
+### Job and execution context
+
+- **Official posting:** <https://job-boards.greenhouse.io/figma/jobs/6143238004>.
+- **Requisition:** `6143238004`.
+- **ATS:** Greenhouse.
+- **Confirmed submission time:** October 11, 2026, approximately 2:59 a.m. PDT.
+- **Execution mode:** A scheduled agent-operated run using the exact Greenhouse CDP target. This records the observed employer receipt and post-submission reconciliation; it does not establish general unattended-controller support for Greenhouse or any other employer.
+
+### Observed flow and reconciliation
+
+1. The exact Figma Greenhouse target was identified as **Software Engineer Intern (Summer 2027)** and the private filing record designated the current approved resume, `October 26.pdf`.
+2. The Greenhouse target reached its exact `/confirmation` route after the single recorded filing. The confirmation artifact retains the role, requisition, route, rendered title, and receipt text.
+3. The confirmed submission was immediately present in the private canonical ledger with the exact employer, role, requisition, official URL, Greenhouse ATS, timestamp, receipt evidence, and resume basename.
+4. The sanitized Discord result was independently read back. It identifies the same Figma requisition and receipt wording. Google Sheets tracker synchronization was intentionally skipped.
+
+### Confirmation evidence and limitation
+
+The exact requisition's Greenhouse confirmation page displayed:
+
+> Thank you for applying.
+>
+> Your application has been received. If there is a fit, someone will be getting back to you.
+
+The retained artifact set includes the target, private filing record, confirmation capture, ledger entry, and delivered Discord read-back. It does not retain a separate server-rendered final Review-page capture; this log therefore does not claim independent reconstruction of every pre-submit field from that page. The employer receipt, not a click or navigation alone, is the basis for the confirmed-submission entry. No interview, offer, or hiring outcome is implied.
 
 ---
 
