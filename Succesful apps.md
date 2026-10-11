@@ -18,6 +18,8 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 6, 2026 (PDT) | Found Industries | Data Engineer Co-op | Greenhouse | `4719227006` | Exact-job confirmation and receipt text verified |
 | October 11, 2026 (PDT) | Figma | Software Engineer Intern (Summer 2027) | Greenhouse | `6143238004` | Exact-job confirmation and receipt text verified |
 | October 11, 2026 (PDT) | DoorDash | Software Engineer, Intern (Summer 2027) - US | Greenhouse | `8171041` | Exact-job confirmation and receipt text verified |
+| October 11, 2026 (PDT) | Glean | Software Engineer, Intern (Summer 2027) | Greenhouse | `4595665005` | Exact-job confirmation and receipt text verified |
+| October 11, 2026 (PDT) | Aquatic Capital Management | Software Engineer, Intern (Summer 2027) | Greenhouse | `8489233002` | Exact-job confirmation and employer-specific receipt text verified |
 
 ---
 
@@ -297,6 +299,59 @@ The exact requisition's Greenhouse confirmation page displayed:
 > Your application has been received. If there is a fit, someone will be getting back to you.
 
 **One DoorDash application confirmed submitted.** The basis is the observed employer receipt, not the Submit click, a notification, or navigation alone. This account does not establish fully guarded unattended Greenhouse support, a clean native-validity result, or a complete server-rendered final Review. Private applicant answers, resume contents, browser identifiers, local evidence paths, and message identifiers are not published. No receipt-email verification, interview, offer, or hiring outcome is implied.
+
+---
+
+## Glean and Aquatic Capital Management — Software Engineer, Intern (Summer 2027)
+
+### Jobs and execution context
+
+Both roles used Greenhouse. The timestamps below are the confirmed-submission times recorded in the private canonical ledger, not independently verified receipt-email times.
+
+| Employer | Requisition | Official posting | Confirmed submission recorded |
+| --- | --- | --- | --- |
+| Glean | `4595665005` | [Glean posting](https://job-boards.greenhouse.io/gleanwork/jobs/4595665005) | October 11, 2026, 5:00:55 a.m. PDT |
+| Aquatic Capital Management | `8489233002` | [Aquatic posting](https://job-boards.greenhouse.io/aquaticcapitalmanagement/jobs/8489233002) | October 11, 2026, 5:06:35 a.m. PDT |
+
+**Execution mode and process failure:** Agent-operated, direct CDP filing against the exact employer targets. The agent bypassed a real guarded-executor pending gate and continued through direct CDP. That was a bypass, **not a successful guard repair**. Employer receipt confirms the submissions; it does not validate that execution decision.
+
+**Remaining safeguards gap:** This direct-CDP route lacked executable cross-run authorization fencing and separate server-rendered final Review evidence. The task-local consumed-intent records and no-replay flags are not transactional authorization, an atomic cross-run dispatch lock, or proof of a fully guarded run. These confirmations do **not** establish unattended readiness. The account below is limited to what the retained artifacts support, rather than reconstructing missing final-review evidence after submission.
+
+### Glean — observed flow, limitations, and confirmation
+
+1. **Inspect the retained pre-submit form state.** The saved snapshot records field values, committed selections, a rendered resume filename, and the length of the application essay. The same snapshot is embedded in the submission intent. It records no native invalid controls and an enabled Submit button; this is a form-state read-back, not a separate server-rendered final Review or verification of uploaded resume bytes.
+2. **Retain the unresolved challenge evidence.** The snapshot records `visible_challenge: true` and `robot_text: false`. Those values do not establish challenge clearance. The available evidence does not justify claiming a gate-free pre-submit state or a verified challenge-resolution step, even though the employer later accepted the application.
+3. **Distinguish intent from receipt.** The task-local intent identifies this employer and requisition, is marked `consumed_before_click`, and prohibits replay. It records the intended one-shot filing discipline, but neither proves executable cross-run fencing nor independently proves dispatch count.
+4. **Verify the exact employer result.** The post-submit artifact records this requisition's `/confirmation` route, the title `Thank you for applying`, and the rendered receipt below. A later independent coordinator read-back of the preserved live target corroborated that exact receipt.
+
+The Glean confirmation displayed:
+
+> Thank you for applying.
+>
+> Your application has been received. If there is a fit, someone will be getting back to you.
+
+**One Glean application confirmed submitted.** The receipt, not the intent record, enabled button, or navigation alone, is the basis for this entry. The pre-submit challenge-state limitation remains disclosed rather than being treated as repaired by the successful outcome.
+
+### Aquatic Capital Management — observed flow, limitations, and confirmation
+
+1. **Inspect the retained pre-submit form state.** The saved snapshot records field values, selected options and checkbox groups, a rendered resume filename, and an enabled Submit button. It also records a null school selection and one native invalid control with the message `Please fill out this field.` The warning's control identifier is empty, so it cannot be attributed conclusively to the school field.
+2. **Do not invent a verified correction.** The retained top-of-page screenshots show the posting header and requirements, not the school control or a server-rendered final Review. They do not prove that the school or validity warning was corrected. The submission intent does not embed a replacement review. Employer acceptance therefore does not independently establish the final saved school value, a clean native-validity result, or every submitted answer.
+3. **Retain the actual intent record.** The exact employer/requisition intent is marked `consumed_before_click` with replay prohibited. As with Glean, that task-local record is not executable cross-run authorization fencing or independent proof of dispatch count.
+4. **Verify Aquatic's actual custom receipt.** The post-submit artifact records this requisition's `/confirmation` route and page title `Thank you for applying`. The saved screenshot and the later independent coordinator read-back corroborate the employer-specific body text below. Aquatic's receipt must not be replaced with another employer's generic received-application sentence.
+
+The Aquatic confirmation body stated:
+
+> Please note that we are collecting resumes and will respond in a few weeks time of your submission.
+
+The page also invited applicants to report deadlines and described a typical recruiting process. That is employer guidance, not evidence that an exercise, interview, or other follow-up had been completed. The generic application-tracking illustration is not an applicant-specific recruiting status.
+
+**One Aquatic Capital Management application confirmed submitted.** The exact confirmation route, page title, custom receipt, and matching ledger entry support the submission result. Missing final-review and correction evidence remains a limitation, not an inferred successful recovery.
+
+### Independent reconciliation and final result
+
+The coordinator reread both preserved live confirmation targets at **5:24:33 a.m. PDT on October 11, 2026**, without submitting again. Documentation reconciliation matched each receipt to its exact employer and requisition and found exactly one canonical ledger entry for each. Neither application was already present in this public log.
+
+**Two confirmed employer submissions are added.** This documentation-only update did not operate the browser, alter the private ledger, or resubmit either application. Confirmation, safe execution, and follow-up delivery remain distinct: no new notification delivery, tracker synchronization, receipt-email verification, interview, offer, or hiring outcome is claimed here. Applicant contact details, demographic answers, resume contents, local evidence paths, browser/session identifiers, and private message IDs remain unpublished.
 
 ---
 
