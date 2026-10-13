@@ -27,6 +27,40 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 12, 2026 (PDT) | Qualcomm | Product Management Internship - Summer 2027 | Eightfold | `3095762` | Exact-job receipt and authenticated Application Processing entry verified |
 | October 13, 2026 (PDT) | Qualcomm | Qualcomm Government Technologies (QGOV) Engineering Internship – Summer 2027 | Eightfold | `3095745` | Exact-job receipt and authenticated Application Processing entry verified |
 | October 13, 2026 (PDT) | Watts Water Technologies | Product Management Co-op, Jan-June 2027 | Workday | `10017702` | Application Submitted and Application Under Review verified |
+| October 13, 2026 (PDT) | Expedia Group | Mobile Engineering Intern - 2027 - Austin, San Jose, Seattle | Workday | `R-110306` | Application Submitted and exact dated Candidate Home row verified |
+| October 13, 2026 (PDT) | Expedia Group | Security Engineering Intern - 2027 - Seattle | Workday | `R-110310` | Application Submitted and exact dated Candidate Home row verified |
+
+---
+
+## Expedia Group — Mobile Engineering and Security Engineering internships
+
+- **Mobile Engineering posting:** <https://expedia.wd108.myworkdayjobs.com/en-US/search/job/Austin-Domain-11---HomeAway/Mobile-Engineering-Intern---2027---Austin--San-Jose--Seattle_R-110306-1>
+- **Security Engineering posting:** <https://expedia.wd108.myworkdayjobs.com/en-US/search/job/Washington---Seattle-Campus/Security-Engineering-Intern---2027---Seattle_R-110310-1>
+- **Requisitions:** `R-110306` and `R-110310`.
+- **Submission date:** October 13, 2026 (PDT), for both roles.
+- **Execution route:** User-requested, agent-operated background Chrome/CDP. The agent completed both submissions; the applicant supplied a missing screening fact during the run. This supervised route does not establish fully unattended scheduled-controller support.
+
+### Flow and recoveries
+
+1. Read the official postings and reconciled the exact requisitions against the private ledger and authenticated candidate application state. An existing application to a different Expedia requisition was left unchanged and is not counted as either of these submissions.
+2. Recovered the tenant account through the approved password-reset and sign-in workflow. Reused saved application data, corrected structured resume-parser fields, and verified the current approved resume attachment.
+3. Preserved both drafts while a material screening answer was missing. After the applicant supplied it, saved the answer privately for future applications and resumed the existing drafts rather than starting duplicates.
+4. Recovered an expired wizard session by reauthenticating and reopening the exact canonical application route. Resaved each step and re-entered answers that had not persisted; a displayed account name and locally filled controls were not treated as proof of server acceptance.
+5. Selected real dropdown options and verified the saved questionnaire values. When a self-identification checkbox input click did not bind, clicked its associated visible label and verified the checked state before continuing.
+6. Reviewed all four intended experience records, education, contact information, screening answers, and the resume. Compared the displayed attachment and server-reported filename and size with the approved local file. Kept applicant details and raw evidence private.
+7. Recorded a separate one-shot intent for each reviewed application and clicked each Submit button once. Read the confirmation and exact candidate row, then immediately recorded each confirmed submission in the private ledger. No uncertain submission was replayed.
+
+### Employer confirmation
+
+Both applications displayed:
+
+> Application Submitted
+>
+> Thank you for your application!
+
+Authenticated Candidate Home then showed both exact requisitions with status **In Progress** and submission date **October 13, 2026**. The application's own read-back marked each as **not a draft** and showed no pending tasks. In this portal, “In Progress” is the post-submission application status; the earlier drafts explicitly read “Not Submitted.” These confirmations establish employer receipt, not an interview or hiring decision.
+
+The Discord completion notification was sent and verified by exact message read-back. Google Sheets synchronization was intentionally omitted. The public log excludes applicant contact information, disclosure values, credentials, and private application identifiers.
 
 ---
 
