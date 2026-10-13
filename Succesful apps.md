@@ -26,6 +26,38 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 12, 2026 (PDT) | Qualcomm | Machine Learning & Artificial Intelligence Engineering Internship – Summer 2027 | Eightfold | `3095746` | Exact-job receipt and authenticated Application Processing entry verified |
 | October 12, 2026 (PDT) | Qualcomm | Product Management Internship - Summer 2027 | Eightfold | `3095762` | Exact-job receipt and authenticated Application Processing entry verified |
 | October 13, 2026 (PDT) | Qualcomm | Qualcomm Government Technologies (QGOV) Engineering Internship – Summer 2027 | Eightfold | `3095745` | Exact-job receipt and authenticated Application Processing entry verified |
+| October 13, 2026 (PDT) | Watts Water Technologies | Product Management Co-op, Jan-June 2027 | Workday | `10017702` | Application Submitted and Application Under Review verified |
+
+---
+
+## Watts Water Technologies — Product Management Co-op, Jan-June 2027
+
+- **Official posting:** <https://wattswater.wd5.myworkdayjobs.com/Intern-External/job/Menomonee-Falls-WI/Product-Management-Co-op--Jan-June-2027_10017702>
+- **Location and term:** Menomonee Falls, Wisconsin; full-time, on-site, January–June 2027.
+- **Requisition:** `10017702`.
+- **Submission date:** October 13, 2026 (PDT).
+- **Execution route:** User-requested, agent-operated background Chrome/CDP using the existing automation profile. This was a supervised application, not proof of unattended scheduled-controller support.
+
+### Flow and recoveries
+
+1. Read the complete official Workday posting, including required qualifications and the on-site term; confirmed the public endpoint reported the exact requisition as open.
+2. Checked the private application ledger and available Chrome history, then created the tenant account with the configured credential and verified the authenticated Candidate Home had no applications. The normal-profile history snapshot was stale, so it was not treated as authoritative duplicate evidence.
+3. Uploaded the applicant's current approved resume and verified its displayed filename, successful-upload state, and size on the application and final Review.
+4. Corrected parsed job titles, employer fields, dates, and education; removed a duplicate/incomplete work record and a project incorrectly parsed as employment, then restored the missing actual work record. Preserved existing parsed description text under the applicant's standing instruction, including a trailing parser label; final Review contained all four intended work records.
+5. Enumerated the tenant's option-backed controls and selected real values. Its required source menu offered school-related choices rather than the usual social-media choices. Its complete major directory lacked the preferred fallback labels, so the closest truthful computer/information-science entry was selected. These tenant-specific labels are not assertions that the resume uses identical wording.
+6. Obtained the applicant's explicit answer to the self-funded relocation question and saved it as a reusable future-application preference. Updated both relocation-related answers consistently before submission.
+7. Recovered after an interruption by reading the preserved Review state, reauthenticating in a separate background Candidate Home tab, and reconciling the live application list. No application was submitted during the interruption.
+8. Verified final Review, the current resume, required answers, and the absence of invalid controls or an active challenge. The static handler recognized the attachment but not this Review shell; the agent inspected the live Review directly rather than claiming the handler supported it.
+9. Recorded one submit intent and clicked Submit once. Read the resulting confirmation and the exact requisition/status row, then immediately recorded the confirmed result in the private ledger.
+10. Sent the Discord result and verified the delivered content by exact message read-back. Google Sheets synchronization was intentionally skipped.
+
+### Employer confirmation
+
+> Application Submitted
+
+> Thank you for your Application!
+
+The authenticated Candidate Home row showed **Product Management Co-op, Jan-June 2027 — 10017702 — Application Under Review — October 13, 2026**. These messages establish receipt, not an interview or hiring decision. Raw application evidence and applicant data remain private.
 
 ---
 
