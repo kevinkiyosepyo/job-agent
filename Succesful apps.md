@@ -21,6 +21,10 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 11, 2026 (PDT) | Glean | Software Engineer, Intern (Summer 2027) | Greenhouse | `4595665005` | Exact-job confirmation and receipt text verified |
 | October 11, 2026 (PDT) | Aquatic Capital Management | Software Engineer, Intern (Summer 2027) | Greenhouse | `8489233002` | Exact-job confirmation and employer-specific receipt text verified |
 | October 12, 2026 (PDT) | Wawa | Information Technology Development Internship | Workday | `JR122392` | Application receipt and Candidate Home status verified; notification read back |
+| October 12, 2026 (PDT) | Qualcomm | Information Technology (IT) Internship – Summer 2027 | Eightfold | `3095758` | Exact-job receipt and authenticated Applied entry verified |
+| October 12, 2026 (PDT) | Qualcomm | Software Engineering Internship - Summer 2027 | Eightfold | `3095748` | Exact-job receipt and authenticated Applied entry verified |
+| October 12, 2026 (PDT) | Qualcomm | Machine Learning & Artificial Intelligence Engineering Internship – Summer 2027 | Eightfold | `3095746` | Exact-job receipt and authenticated Application Processing entry verified |
+| October 12, 2026 (PDT) | Qualcomm | Product Management Internship - Summer 2027 | Eightfold | `3095762` | Exact-job receipt and authenticated Application Processing entry verified |
 
 ---
 
@@ -472,6 +476,45 @@ The Workday confirmation page displayed:
 > Your application has been received.
 
 The authenticated Candidate Home row showed the exact requisition and **Under consideration**. Notification delivery was read-back verified separately. No interview, offer, hiring outcome, or transportation availability is implied.
+
+---
+
+## Qualcomm — four Summer 2027 internships
+
+### Jobs and execution context
+
+| Role | Requisition | Official posting |
+| --- | --- | --- |
+| Information Technology (IT) Internship – Summer 2027 | `3095758` | <https://careers.qualcomm.com/careers/job/446720741716?domain=qualcomm.com> |
+| Software Engineering Internship - Summer 2027 | `3095748` | <https://careers.qualcomm.com/careers/job/446720740529?domain=qualcomm.com> |
+| Machine Learning & Artificial Intelligence Engineering Internship – Summer 2027 | `3095746` | <https://careers.qualcomm.com/careers/job/446720740525?domain=qualcomm.com> |
+| Product Management Internship - Summer 2027 | `3095762` | <https://careers.qualcomm.com/careers/job/446720741706?domain=qualcomm.com> |
+
+- **Submission date:** October 12, 2026 (PDT), also displayed by the authenticated application list.
+- **Location and term:** U.S. internships, Summer 2027; the postings require 11–14 weeks during May–September. Software and ML/AI list multiple U.S. locations.
+- **Execution mode:** User-requested, agent-operated background Chrome CDP, with an exact owned target and submission-intent journal for each requisition. The agent filled, reviewed, and submitted the applications; the user did not need to click Submit. This is not evidence of connected scheduled-controller support.
+
+### End-to-end flow and recoveries
+
+1. **Preflight and reconcile.** Read the official postings, separated minimum qualifications from preferences, and checked the authenticated application list and private ledger. Reconciled the batch's repeated link rather than sending a duplicate application.
+2. **Reuse the verified account and canonical resume.** Confirmed the authenticated candidate session. Each application selected the exact current resume filename from the private profile. Checked the selected resume again on the persisted draft before submission.
+3. **Bind real options.** Country and other searchable controls needed per-target focus emulation plus trusted keyboard input to open their rendered lists. Selected real options and checked each control's own committed option state; did not treat typed search text as a saved choice.
+4. **Verify saved answers independently for each job.** Later applications reused ordinary saved answers, but the agent re-inventoried the full form and compared saved contact information, screening answers, location preferences, and expected graduation with approved facts. Reloaded the autosaved draft and waited for conditional fields to hydrate before review. Required consent reset after reload and was selected again only after reviewing the form.
+5. **Submit once per requisition.** Checked native validity, the absence of invalid controls, the required consent, exact job identity, and the enabled Submit control. Recorded a separate one-shot intent and dispatched one Submit action for each application.
+6. **Verify employer acceptance.** Read each exact-job success route and its rendered receipt. Independently refreshed the authenticated Applications page: it showed four submitted applications, each with its own requisition and application date. Recorded only these confirmed submissions in the private ledger.
+7. **Complete bookkeeping.** Sent the concise batch result to Discord and compared the delivered content by exact read-back. Google Sheets synchronization was intentionally omitted. Raw browser evidence and notification identifiers remain private.
+
+### Confirmation evidence and limitations
+
+Every exact-job success page displayed:
+
+> Thank you for your application, Kevin!
+
+The refreshed Applications list showed **Applied** for IT (`3095758`) and Software (`3095748`), and **Application Processing** for ML/AI (`3095746`) and Product Management (`3095762`). These are submission statuses, not interviews or hiring outcomes.
+
+The authenticated resume-preview byte check returned HTTP 403, so this record claims verified selected filenames, **not** a successful server-download byte comparison. No application was resubmitted to improve evidence. Other unsubmitted postings in the requested batch are deliberately excluded from the successful-application table.
+
+**Result:** Four employer-confirmed applications, four exact-requisition ledger entries, and a read-back-verified Discord result. No user application-form intervention was required for these four submissions.
 
 ---
 
