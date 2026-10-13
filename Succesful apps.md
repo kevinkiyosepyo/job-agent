@@ -25,6 +25,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 12, 2026 (PDT) | Qualcomm | Software Engineering Internship - Summer 2027 | Eightfold | `3095748` | Exact-job receipt and authenticated Applied entry verified |
 | October 12, 2026 (PDT) | Qualcomm | Machine Learning & Artificial Intelligence Engineering Internship – Summer 2027 | Eightfold | `3095746` | Exact-job receipt and authenticated Application Processing entry verified |
 | October 12, 2026 (PDT) | Qualcomm | Product Management Internship - Summer 2027 | Eightfold | `3095762` | Exact-job receipt and authenticated Application Processing entry verified |
+| October 13, 2026 (PDT) | Qualcomm | Qualcomm Government Technologies (QGOV) Engineering Internship – Summer 2027 | Eightfold | `3095745` | Exact-job receipt and authenticated Application Processing entry verified |
 
 ---
 
@@ -515,6 +516,26 @@ The refreshed Applications list showed **Applied** for IT (`3095758`) and Softwa
 The authenticated resume-preview byte check returned HTTP 403, so this record claims verified selected filenames, **not** a successful server-download byte comparison. No application was resubmitted to improve evidence. Other unsubmitted postings in the requested batch are deliberately excluded from the successful-application table.
 
 **Result:** Four employer-confirmed applications, four exact-requisition ledger entries, and a read-back-verified Discord result. No user application-form intervention was required for these four submissions.
+
+---
+
+## Qualcomm — QGOV Engineering Internship, Summer 2027
+
+- **Official posting:** <https://careers.qualcomm.com/careers/job/446720740540?domain=qualcomm.com>.
+- **Requisition:** `3095745`.
+- **Location:** San Diego, California, or Boulder, Colorado.
+- **Submission date:** October 13, 2026 (PDT), matching the authenticated application entry.
+- **Execution mode:** Agent-operated background exact-target CDP, continuing the same requested batch. The applicant supplied missing material screening facts; the agent then filled, reviewed, and submitted the application. This was not an uninterrupted autonomous scheduled run.
+
+### Flow, recovery, and evidence
+
+1. Resumed the existing unsubmitted draft after confirming no prior submission intent. The form added required disclosures not answered by the other internship applications. Held those fields rather than infer facts from citizenship or unrelated employer disclosures; continued only after the applicant explicitly supplied the missing answers. The private profile and answer bank were updated for future reuse.
+2. Selected the actual rendered disclosure options and both approved U.S. location preferences. Initial location checkbox clicks did not survive a draft reload. Used per-target focus emulation and trusted Space on each exact checkbox, allowed the debounced save to finish, and verified both choices after reloading.
+3. Reviewed the complete saved form, including all conditional controls and the selected canonical resume filename. Reselected the required consent after reload. Submit remained briefly disabled while the page settled, so no submit intent was consumed; a later read showed it enabled with no validation errors.
+4. Recorded one submission intent and dispatched one Submit action. The exact requisition's success page displayed **“Thank you for your application, Kevin!”**. The separately refreshed Applications page showed `3095745`, **Application Processing**, and **Applied on Oct 13, 2026**, bringing the requested batch to five submitted applications.
+5. Recorded the confirmed application in the private ledger and sent a separate QGOV completion notification, verified by exact Discord read-back. Google Sheets synchronization was skipped. The first four application's receipts and notification remained intact.
+
+**Result:** Confirmed submitted. The required clarification was resolved before submission; no claim of an existing clearance or government adjudication is made here. The batch's unsubmitted Ireland posting is excluded from the success table. No interview or hiring outcome is implied.
 
 ---
 
