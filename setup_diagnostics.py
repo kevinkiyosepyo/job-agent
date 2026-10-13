@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import stat
 from pathlib import Path
 from typing import Callable
 
 import browser_health
 
-BASE = Path.home() / "Documents/job-agent"
+BASE = Path(__file__).resolve().parent
 DEFAULT_OAUTH_TOKEN = Path.home() / ".hermes/google_token.json"
 
 BrowserProbe = Callable[[str], dict]
@@ -23,23 +24,57 @@ def _profile_check(profile_path: Path) -> dict:
             "message": f"Profile not found: {profile_path}",
         }
 
-    profile = json.loads(profile_path.read_text())
-    resume_path = Path(profile.get("resume", {}).get("primary", "")).expanduser()
-    if not str(resume_path):
+    try:
+        profile = json.loads(profile_path.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        return {
+            "status": "blocking",
+            "error_code": "invalid_profile",
+            "message": f"Cannot read profile JSON: {profile_path} ({exc})",
+        }
+
+    if not isinstance(profile, dict) or any(
+        not isinstance(profile.get(section, {}), dict) for section in ("resume", "contact")
+    ):
+        return {
+            "status": "blocking",
+            "error_code": "invalid_profile",
+            "message": "Profile must be a JSON object with resume and contact objects",
+        }
+
+    resume_value = profile.get("resume", {}).get("primary")
+    if not isinstance(resume_value, str) or not resume_value.strip():
         return {
             "status": "blocking",
             "error_code": "missing_resume_path",
-            "message": "Profile is missing resume.primary",
+            "message": "Profile must provide a nonempty resume.primary path",
         }
-    if not resume_path.exists():
+    resume_path = Path(resume_value).expanduser()
+    try:
+        resume_stat = resume_path.stat()
+    except (OSError, ValueError) as exc:
+        return {
+            "status": "blocking",
+            "error_code": "missing_resume_file" if isinstance(exc, (FileNotFoundError, NotADirectoryError))
+                          else "unreadable_resume_file",
+            "message": f"Cannot inspect resume file: {resume_path} ({exc})",
+        }
+    if not stat.S_ISREG(resume_stat.st_mode):
         return {
             "status": "blocking",
             "error_code": "missing_resume_file",
-            "message": f"Resume file not found: {resume_path}",
+            "message": f"Resume path is not an existing file: {resume_path}",
         }
 
-    email = (profile.get("contact", {}).get("email") or "").strip()
-    if not email:
+    if resume_stat.st_size == 0:
+        return {
+            "status": "blocking",
+            "error_code": "empty_resume_file",
+            "message": f"Resume file is empty: {resume_path}",
+        }
+
+    email = profile.get("contact", {}).get("email")
+    if not isinstance(email, str) or not email.strip():
         return {
             "status": "blocking",
             "error_code": "missing_contact_email",
@@ -59,7 +94,7 @@ def _oauth_check(oauth_token_path: Path) -> dict:
         return {
             "status": "ready",
             "error_code": None,
-            "message": f"OAuth token present: {oauth_token_path}",
+            "message": f"OAuth token present: {oauth_token_path}; API access not verified",
         }
     return {
         "status": "blocking",
@@ -73,11 +108,20 @@ def run_checks(
     *,
     browser_base_url: str = "http://127.0.0.1:9222",
     probe_browser: BrowserProbe = browser_health.probe_cdp_health,
-    oauth_token_path: Path = DEFAULT_OAUTH_TOKEN,
+    oauth_token_path: Path | None = None,
+    require_sheets: bool = False,
     skip_browser: bool = False,
 ) -> dict:
     profile = _profile_check(Path(profile_path))
-    oauth = _oauth_check(Path(oauth_token_path))
+    if require_sheets or oauth_token_path is not None:
+        token_path = DEFAULT_OAUTH_TOKEN if oauth_token_path is None else Path(oauth_token_path)
+        oauth = _oauth_check(token_path)
+    else:
+        oauth = {
+            "status": "skipped",
+            "error_code": "sheets_not_required",
+            "message": "Google Sheets is optional; use --require-sheets to check its token",
+        }
 
     if skip_browser:
         browser = {
@@ -111,14 +155,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile", default=str(BASE / "profile.json"))
     parser.add_argument("--browser-base-url", default="http://127.0.0.1:9222")
-    parser.add_argument("--oauth-token", default=str(DEFAULT_OAUTH_TOKEN))
+    parser.add_argument("--oauth-token", help="Check an explicit Google Sheets token path")
+    parser.add_argument("--require-sheets", action="store_true",
+                        help="Require the optional Google Sheets OAuth token presence check")
     parser.add_argument("--skip-browser", action="store_true")
     args = parser.parse_args(argv)
 
     payload = run_checks(
         Path(args.profile),
         browser_base_url=args.browser_base_url,
-        oauth_token_path=Path(args.oauth_token),
+        oauth_token_path=Path(args.oauth_token) if args.oauth_token is not None else None,
+        require_sheets=args.require_sheets,
         skip_browser=args.skip_browser,
     )
     print(json.dumps(payload, indent=2))

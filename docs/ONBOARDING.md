@@ -3,10 +3,28 @@
 After cloning the repo and installing `requirements.txt`, run:
 
 ```bash
-python onboarding.py
+python onboarding.py --preset early-career
 ```
 
 No Chrome, Google Sheets, employer login, or application submission is needed for setup. Use Python 3.11 or newer. Password storage requires macOS Keychain; you can complete the questionnaire without it.
+
+## Optional early-career preset
+
+`--preset early-career` proposes a small set of common answers, not the repository owner's profile:
+
+| Saved fact | Proposed answer |
+|---|---|
+| Currently have a company non-disclosure agreement (NDA) | No |
+| Subject to a restrictive covenant, such as a non-compete | No |
+| Willing to relocate | Yes |
+| Need relocation assistance | No |
+| Can relocate without assistance / at your own expense | Yes |
+
+These are distinct disclosures. **No NDA does not imply no non-compete or other legal obligation.** Review and change anything that does not describe you; enter `unknown` if unsure. Current NDA status does not answer whether you have *ever* signed one, would sign a new one, or are free of every possible agreement.
+
+Run `python onboarding.py` without a flag for custom setup. A new profile gets an optional preset offer (default No); existing profiles are not silently opted in. Presets only fill absent facts: existing answers, explicit unknowns, malformed values, and conflicts remain yours to resolve. Every path still requires a final review and explicit save. Rerunning with a preset does not reset answers you previously changed or cleared.
+
+The preset does **not** supply identity, resume, citizenship, work authorization, sponsorship, OPT/CPT, employer/family history, demographics, salary, education, or dates. Those must come from the applicant. Willingness to move does not prove self-funding, local residence, eligibility to work abroad, or acceptance of a particular job's onsite schedule.
 
 ## What it asks
 
@@ -14,9 +32,9 @@ No Chrome, Google Sheets, employer login, or application submission is needed fo
 |---|---|---|
 | Basics | Name, contact information, location, school, degree, major, GPA, resume | Avoid repeating personal details on each form |
 | US eligibility | US citizenship, US work authorization, sponsorship now and in the future, OPT and CPT | Keep legally different questions separate |
-| Disclosures | Company affiliations, outside business activities, restrictive covenants | Reuse your own answers instead of guessing |
+| Disclosures | Current company NDA, company affiliations, outside business activities, restrictive covenants | Reuse your own answers instead of guessing |
 | Employer history | Current employment, former employment, and relatives at each named company | Prevent an answer for one employer from being reused for another |
-| Availability and preferences | Graduation, start dates, relocation, target roles, compensation | Reduce routine follow-up questions |
+| Availability and preferences | Graduation, start dates, willingness to relocate, relocation funding, target roles, compensation | Reduce routine follow-up questions |
 | Optional demographics | Your chosen disclosure answers | Leave unanswered rather than infer personal attributes |
 | Account setup | An optional reusable job-portal password, including Workday | Avoid repeatedly asking you to choose a password for new portal accounts |
 
@@ -45,6 +63,16 @@ python onboarding.py --profile /path/to/private/profile.json --check
 
 The default profile is `profile.json` beside the script. It is gitignored and saved atomically with owner-only file permissions (`0600`). If you use a custom destination, keep it outside version control or add that exact path to your ignore rules before use. Tracked/example files and unsafe destinations are refused. Do not paste profile contents into issues or commit them. The final review contains your personal answers, so run setup in a private terminal rather than recording or streaming it.
 
+For a separate local diagnostic check:
+
+```bash
+python setup_diagnostics.py --skip-browser
+# Only if you explicitly want Google Sheets integration:
+python setup_diagnostics.py --skip-browser --require-sheets
+```
+
+Diagnostics default to the profile beside the script, matching onboarding. Sheets credentials are optional; asking for them checks file presence, not live authorization. Use `--profile /path/to/private/profile.json` with both commands for a custom location.
+
 `--check` is a setup checklist, not proof of live application readiness. It does not authorize submission, log into a portal, or verify that a browser can apply. Missing screening answers remain visible so you can resolve them together before a run.
 
 ## Workday and universal passwords
@@ -71,7 +99,8 @@ If macOS Keychain is unavailable or a write cannot be verified, the tool reports
 `QuestionAnswerEngine` and the canonical resolver read the same local profile used by application preparation:
 
 - `application_facts.us_citizen`, `needs_opt`, `needs_cpt`, `sponsorship_now`, and `sponsorship_future` are distinct facts.
-- `application_facts.has_company_affiliations` and `restrictive_covenant` are explicit general disclosures.
+- `application_facts.has_company_affiliations`, `has_company_nda`, and `restrictive_covenant` are separate explicit general disclosures.
+- `screening_defaults.willing_to_relocate`, `requires_relocation_assistance`, and `can_relocate_without_assistance` keep willingness and funding distinct. Assistance and self-funding have opposite Yes/No polarity; inconsistent aliases block resolution.
 - `company_disclosures` contains records keyed by exact company, including `current_employee`, `former_employee`, and `relatives_employed`.
 - `application_facts.available_start_date` and `full_time_start_date` preserve separate availability dates.
 - Existing contact, education, resume, preference, and screening keys remain usable.
@@ -80,12 +109,18 @@ The wizard migrates legacy combined sponsorship fields to separate timeframes so
 
 The application still has to select a real option from the employer's form and verify that it saved. Having an answer does not bypass review, CAPTCHA, identity checks, assessments, or submission policy. No questionnaire can safely pre-answer every future legal question.
 
+## After setup: live application prerequisites
+
+A saved preset reduces repeated questions; it does not install a browser worker or make every ATS fully automatic. Use your own signed-in browser and authorized credential/inbox integrations, exact supported form, Review evidence, and submission authorization. The optional password step stores references; it does not establish a Workday login. See [the operator runbook](OPERATIONS.md) and [the current autonomous scope](AUTONOMOUS-OPERATION.md#current-boundary).
+
+The controller example is disabled and contains no repository-owner browser socket or notification destination. Configure your own paths and channel before enabling anything. Its current production path fence still requires `~/Documents/job-agent/profile.json` and the associated runtime; standalone onboarding/diagnostics work from any checkout. This preset does not remove those live-execution prerequisites or broaden ATS support.
+
 ## For contributors
 
 Keep questionnaire facts connected to actual resolver and review code, not just a JSON form. Test absent and conflicting facts as well as Yes/No, and keep company disclosures scoped. Exercise the wizard with synthetic data only:
 
 ```bash
-python run_offline_tests.py tests/test_onboarding.py tests/test_onboarding_answers.py tests/test_onboarding_credentials.py -q
+python run_offline_tests.py tests/test_onboarding.py tests/test_onboarding_answers.py tests/test_onboarding_credentials.py tests/test_onboarding_preset.py tests/test_relocation_assistance.py tests/test_setup_diagnostics.py -q
 ```
 
 Credential tests use an injected in-memory backend; they do not touch a real Keychain, change a portal account, or establish live login success.
