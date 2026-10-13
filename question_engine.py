@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from canonical_answers import CanonicalAnswerError, resolve_fact, resolve_company_fact
 
 
@@ -86,7 +87,30 @@ class QuestionAnswerEngine:
 
     def _question_key(self, question: str) -> str:
         lowered = ' '.join(question.casefold().strip().rstrip('?*').split())
+        # Complete assistance questions only, never a compound or residence ask.
+        if re.fullmatch(
+            r'(?:do|will|would) you (?:need|require) (?:any )?relocation assistance'
+            r'(?: for this (?:role|position)| from (?:us|the (?:company|employer)))?'
+            r'|is relocation assistance (?:needed|required)', lowered
+        ):
+            return 'requires_relocation_assistance'
+        if re.fullmatch(
+            r'(?:can you|are you able to|will you be able to) relocate '
+            r'(?:without (?:any )?(?:relocation )?assistance|at your own expense)'
+            r'(?: for this (?:role|position))?', lowered
+        ):
+            return 'can_relocate_without_assistance'
         ordinary = {
+            # Present company agreements only; not past signing, consent to
+            # sign, company-specific scope, or a compound legal disclosure.
+            'do you currently have any company ndas': 'has_company_nda',
+            'do you currently have a company nda': 'has_company_nda',
+            'do you currently have a non-disclosure agreement with any company': 'has_company_nda',
+            'do you have any company ndas': 'has_company_nda',
+            'do you have any ndas with any companies': 'has_company_nda',
+            'do you currently have an nda with any company': 'has_company_nda',
+            'do you have a non-disclosure agreement with any company': 'has_company_nda',
+            'are you currently subject to a non-disclosure agreement with any company': 'has_company_nda',
             'do you have any company affiliations': 'has_company_affiliations',
             'do you need opt (optional practical training)': 'needs_opt',
             'do you need cpt (curricular practical training)': 'needs_cpt',

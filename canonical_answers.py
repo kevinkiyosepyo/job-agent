@@ -23,6 +23,10 @@ FACT_PATHS = {
     'sponsorship_future': ('requires_sponsorship', 'screening_defaults.require_sponsorship'),
     'is_18_or_older': ('screening_defaults.is_18_or_older',),
     'willing_to_relocate': ('screening_defaults.willing_to_relocate',),
+    'requires_relocation_assistance': ('screening_defaults.requires_relocation_assistance',),
+    'can_relocate_without_assistance': ('screening_defaults.can_relocate_without_assistance',),
+    'has_company_nda': ('application_facts.has_company_nda', 'screening_defaults.has_company_nda'),
+    'restrictive_covenant': ('application_facts.restrictive_covenant', 'screening_defaults.restrictive_covenant'),
     'outside_business_activities': ('screening_defaults.outside_business_activities',),
     'gender': ('gender', 'screening_defaults.demographic_disclosures.gender'),
     'race': ('race_ethnicity', 'screening_defaults.demographic_disclosures.race'),
@@ -40,7 +44,9 @@ FACT_PATHS = {
 
 BOOLEAN_FIELDS = frozenset({'work_authorization', 'sponsorship_now', 'sponsorship_future', 'sponsorship_now_or_future',
                             'is_18_or_older', 'willing_to_relocate', 'outside_business_activities',
+                            'requires_relocation_assistance', 'can_relocate_without_assistance',
                             'us_citizen', 'needs_opt', 'needs_cpt', 'has_company_affiliations',
+                            'has_company_nda',
                             'restrictive_covenant', 'current_employee', 'former_employee', 'relatives_employed'})
 TENANT_ALIASES = {
     'schonfeld': {
@@ -56,6 +62,21 @@ for alias, field in {'sponsorship': 'sponsorship_now', 'requires_sponsorship': '
                      'authorized_to_work_us': 'work_authorization'}.items():
     FACT_PATHS[alias] = FACT_PATHS[field]
 BOOLEAN_FIELDS = BOOLEAN_FIELDS | {'sponsorship', 'requires_sponsorship', 'authorized_to_work_us'}
+
+# Opposite polarities of assistance facts, not willingness or local residence.
+INVERSE_FACTS = {
+    'requires_relocation_assistance': 'can_relocate_without_assistance',
+    'can_relocate_without_assistance': 'requires_relocation_assistance',
+}
+
+
+def fact_paths(field: str) -> tuple[tuple[str, bool], ...]:
+    """All accepted paths and their inverse polarity, shared with onboarding."""
+    paths = [(path, False) for path in (*FACT_PATHS.get(field, ()), f'application_facts.{field}')]
+    inverse = INVERSE_FACTS.get(field)
+    if inverse:
+        paths.extend((path, True) for path in (*FACT_PATHS[inverse], f'application_facts.{inverse}'))
+    return tuple(dict.fromkeys(paths))
 
 
 def _normalize(field: str, value: object) -> str:
@@ -103,12 +124,14 @@ def resolve_fact(profile: dict, field: str, *, tenant: str | None = None) -> str
         timeframes = [resolve_fact(profile, key, tenant=tenant)
                       for key in ('sponsorship_now', 'sponsorship_future')]
         values.append('Yes' if 'Yes' in timeframes else 'No')
-    for path in (*FACT_PATHS.get(field, ()), f'application_facts.{field}'):
+    for path, inverse in fact_paths(field):
         value = profile
         for part in path.split('.'):
             value = value.get(part) if isinstance(value, dict) else None
         if value is not None:
             text = _normalize(field, value)
+            if inverse:
+                text = 'No' if text == 'Yes' else 'Yes'
             values.append(aliases.get(text, text))
     if not values:
         raise CanonicalAnswerError(f'canonical profile fact missing for {field}')

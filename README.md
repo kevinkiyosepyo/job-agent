@@ -8,7 +8,7 @@ A bot that fills out job applications for you while you sleep....... from creati
 
 Applying to internships means typing the same name, school, and phone number into hundreds of nearly identical forms. This project automates that typing. It finds job postings, opens the application form in a real Chrome browser, fills in the answers, verifies every one of them saved, and submits. It runs on its own, around the clock.
 
-Start with `python onboarding.py` after installing the dependencies. Answer the common application questions once, optionally set a dedicated reusable Workday password, and let future applications reuse your saved answers. [Setup guide](#step-2-answer-once-reuse-on-future-applications) · [Questionnaire and password details](docs/ONBOARDING.md).
+Start with `python onboarding.py --preset early-career` after installing the dependencies. The optional preset prefills **no company NDA**, **no restrictive covenant**, and **willing to relocate at your own expense**. Review or change each answer, add your own identity and resume, then save once for future applications. It does not assume your citizenship, work authorization, or sponsorship needs. [Setup guide](#step-2-answer-once-reuse-on-future-applications) · [Questionnaire and password details](docs/ONBOARDING.md).
 
 ## The design rule
 
@@ -20,7 +20,7 @@ A job application can only be submitted once. There is no undo button, no "recal
 
 That's what lets it run unattended. It doesn't need a human watching because it refuses to act on anything it can't prove.
 
-In the code you'll see this called *fail closed*. It means the default answer is "no." A step only proceeds when it has proof it should. If something is ambiguous (the page changed, a field didn't save, a question is unfamiliar), the program halts and reports why instead of pushing forward and hoping.
+In the code you'll see this called *fail closed*. It means **do not proceed without proof**, not answer "No" to an unknown application question. A step only proceeds when it has proof it should. If something is ambiguous (the page changed, a field didn't save, a question is unfamiliar), the program halts and reports why instead of pushing forward and hoping.
 
 ## How it works
 
@@ -154,7 +154,7 @@ Running it for real? Read [`docs/OPERATIONS.md`](docs/OPERATIONS.md) for the com
 
 ## Build your own: step by step
 
-This walks you from an empty folder to the agent applying on your behalf. Every command here was run in a fresh clone on a clean machine before it was written down. Budget about 30 minutes for steps 1–5; step 6 depends on how many job boards you want to watch.
+This walks you from a fresh clone to a reusable applicant profile, then browser/operator setup. The preset and questionnaire can be completed locally without employer accounts. **Profile setup is not live application readiness:** configure your own browser, credentials, destinations, and submission authorization before real applications. The connected autonomous controller currently covers a limited learned Greenhouse flow, not every posting on every listed ATS; see [its supported scope](docs/AUTONOMOUS-OPERATION.md#current-boundary).
 
 You need macOS, Google Chrome, and Python 3.11 or newer. No paid services.
 
@@ -187,17 +187,29 @@ The personal-profile check is skipped in a fresh clone. The guarded suite blocks
 Run the guided setup instead of editing JSON:
 
 ```bash
-python onboarding.py
+python onboarding.py --preset early-career
 ```
+
+The preset proposes these **editable** answers:
+
+| Question | Preset |
+|---|---|
+| Do you currently have a company NDA? | No |
+| Are you subject to a restrictive covenant, such as a non-compete? | No |
+| Are you willing to relocate? | Yes |
+| Do you need relocation assistance? | No |
+| Can you relocate without assistance? | Yes |
+
+Use it only if these describe you. NDA and restrictive-covenant answers are separate; having no NDA does not establish that you have no other agreement. Enter keeps a displayed answer; `unknown` clears it. Existing facts and explicit unknowns are not replaced by preset defaults. A final review and explicit save are required. For custom setup, run `python onboarding.py` and decline the optional preset offer.
 
 It asks for your contact details, school, resume, job preferences, and the questions that would otherwise interrupt an application:
 
 - Are you a US citizen? Are you authorized to work in the US?
 - Do you need employer sponsorship now? In the future?
 - Do you need OPT (Optional Practical Training) or CPT (Curricular Practical Training)?
-- Do you have affiliations with any companies, outside business activities, or a restrictive covenant?
+- Do you have a company NDA, company affiliations, outside business activities, or a restrictive covenant?
 - For each employer you add: are you a current/former employee, or do you have relatives there?
-- When can you start, are you willing to relocate, and what compensation should it use?
+- When can you start, are you willing to relocate without financial assistance, and what compensation should it use?
 
 Choose Yes, No, or unknown for screening questions. It never treats a skipped answer as No, and it does not infer immigration answers from your nationality. You review the answers before saving. Optional demographic disclosures are yours to choose, not guessed.
 
@@ -207,7 +219,10 @@ Check the saved profile without opening Chrome or connecting any accounts:
 
 ```bash
 python onboarding.py --check
+python setup_diagnostics.py --skip-browser
 ```
+
+Diagnostics use the checkout’s `profile.json`; Google Sheets OAuth is optional unless you pass `--require-sheets`. Skipping the browser does not verify a live browser.
 
 This checks profile setup, not permission to submit or live browser readiness. The report lists unanswered screening facts so you can fill gaps in one sitting. Rerun `python onboarding.py` whenever something changes; unrelated profile data is preserved. Use `--skip-credentials` if you want to configure the profile without accessing Keychain.
 
@@ -302,12 +317,15 @@ Real applications go through the `production_operator.py live` command family. E
 
 Each stage prints JSON. If any one says `human_required`, stop and look. That's the agent telling you it found something it couldn't prove. Nothing downstream will run until it's cleared.
 
-Once you've done one by hand and trust it, the autonomous version is the unattended controller. Copy the example configs, set your approved boards, and flip `production_enabled` to `true`:
+The unattended controller has a narrower, explicitly learned scope. Copy the disabled examples only when ready to configure it:
 
 ```bash
+mkdir -p runtime/autonomous-controller
 cp autonomous_config.example.json runtime/autonomous-controller/config.json
 cp autonomous_sources.example.json runtime/autonomous-controller/sources.json
 ```
+
+Keep `production_enabled: false` until your own worker, profile, exact supported form, Review, and one-shot submission checks are verified. The example has no owner-specific socket or Discord destination; notifications are off. Replace the worker placeholder, use your own channel if enabling notifications, and set `registry_path` to the actual sources file. The current production controller requires `~/Documents/job-agent/profile.json` and its canonical runtime even if onboarding ran elsewhere; do not assume moving a checkout enables production.
 
 [`docs/AUTONOMOUS-OPERATION.md`](docs/AUTONOMOUS-OPERATION.md) covers the controller, pacing limits, and what it does when it hits a CAPTCHA at 3 a.m. (Short version: on its connected Greenhouse flow it tries one supported checkbox, then checks the provider response and the application's actual gate state; unresolved challenges stay parked for you.)
 

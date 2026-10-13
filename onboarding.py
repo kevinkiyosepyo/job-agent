@@ -13,6 +13,17 @@ from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
+from canonical_answers import CanonicalAnswerError, FACT_PATHS, INVERSE_FACTS, fact_paths, resolve_fact
+
+
+EARLY_CAREER_PRESET = {
+    "application_facts.has_company_nda": False,
+    "application_facts.restrictive_covenant": False,
+    "screening_defaults.willing_to_relocate": True,
+    "screening_defaults.requires_relocation_assistance": False,
+    "screening_defaults.can_relocate_without_assistance": True,
+}
+
 
 def _boolean(text):
     if text.lower() in ("y", "yes"):
@@ -62,10 +73,49 @@ def _set(profile, path, value):
     profile[parts[-1]] = value
 
 
-def collect_profile(existing, *, input_fn=input, output_fn=print):
+def _present(profile, path):
+    """Presence, not truthiness: explicit unknown is not a missing fact."""
+    for key in path.split("."):
+        if not isinstance(profile, dict) or key not in profile:
+            return False
+        profile = profile[key]
+    return True
+
+
+def _remove(profile, path):
+    parts = path.split(".")
+    for key in parts[:-1]:
+        profile = profile.get(key) if isinstance(profile, dict) else None
+    if isinstance(profile, dict):
+        profile.pop(parts[-1], None)
+
+
+def collect_profile(existing, *, preset=None, offer_preset=None, input_fn=input, output_fn=print):
     """Return an edited copy; the caller decides whether to persist it."""
     profile = copy.deepcopy(existing)
     changed = set()
+    reconciled = set()
+    if preset not in (None, "early-career"):
+        raise ValueError("Unknown preset")
+    if offer_preset is None:
+        offer_preset = not existing
+    if preset or offer_preset:
+        output_fn("Optional early-career preset (reviewable, not a statement about every newcomer):\n"
+                  "  Current company NDAs: No. Restrictive covenants (such as non-competes): No.\n"
+                  "  Willing to relocate: Yes. Requires relocation assistance: No.\n"
+                  "  Can relocate without assistance, at your own expense: Yes.\n"
+                  "These are separate legal and relocation facts; no other answers are inferred.\n"
+                  "Existing answers, including unknowns and conflicts, are never replaced by the preset.\n"
+                  "Edit each answer with yes, no, or unknown. Review before the final save confirmation.")
+        if preset is None and input_fn("Use the early-career preset? [y/N]: ").strip().lower() in ("y", "yes"):
+            preset = "early-career"
+    if preset:
+        for path, value in EARLY_CAREER_PRESET.items():
+            field = path.split(".")[-1]
+            # Check the original snapshot: an existing alias, even null,
+            # blocks both polarities, while both absent defaults can be filled.
+            if not any(_present(existing, alias) for alias, _ in fact_paths(field)):
+                _set(profile, path, value)
 
     def ask(path, label, convert: Callable = str, target=None, *, preserve_missing=False):
         target = profile if target is None else target
@@ -85,6 +135,41 @@ def collect_profile(existing, *, input_fn=input, output_fn=print):
         if raw:
             changed.add(path)
         return value
+
+    def ask_fact(path, label):
+        """Enter preserves every alias; an explicit edit replaces the semantic fact."""
+        field = path.split(".")[-1]
+        paths = fact_paths(field)
+        try:
+            old = resolve_fact(profile, field)
+        except CanonicalAnswerError as exc:
+            old = "unknown"
+            if "conflicting" in str(exc) or "malformed" in str(exc):
+                old = "conflicting / invalid"
+                output_fn(f"Existing {field} aliases conflict or are invalid; Enter preserves them. "
+                          "Answer yes, no, or unknown to resolve explicitly.")
+        while True:
+            raw = input_fn(f"{label} [{old}]: ").strip()
+            if not raw:
+                if not any(_present(profile, alias) for alias, _ in paths):
+                    _set(profile, path, None)
+                return
+            try:
+                value = None if raw.lower() in ("unknown", "skip", "?") else _boolean(raw)
+                break
+            except ValueError:
+                output_fn(f"Invalid answer for {label}; enter yes, no, or unknown.")
+        for alias, _ in paths:
+            _remove(profile, alias)
+        _set(profile, path, value)
+        changed.add(path)
+        reconciled.add(field)
+        inverse = INVERSE_FACTS.get(field)
+        if inverse:
+            inverse_path = next(key for key in EARLY_CAREER_PRESET if key.endswith("." + inverse))
+            _set(profile, inverse_path, None if value is None else not value)
+            changed.add(inverse_path)
+            reconciled.add(inverse)
 
     output_fn("Enter keeps existing answers; unknown / skip / ? clears an answer. No implied No.")
     output_fn("Confidential answers stay in your local profile. This is not legal advice; skip uncertain answers.")
@@ -163,14 +248,24 @@ def collect_profile(existing, *, input_fn=input, output_fn=print):
         for alias in ("sponsorship_now_or_future", "sponsorship", "requires_sponsorship"):
             facts.pop(alias, None)
     output_fn("Conflicts, affiliations, and preferences")
+    output_fn("Company NDAs are separate from restrictive covenants; neither answers historical signing "
+              "or willingness to sign. Answer yes, no, or unknown.")
+    output_fn("Relocation assistance and ability to relocate without assistance are inverse facts: "
+              "editing or clearing either updates both, not willingness or your current address.")
     for path, label in (
         ("application_facts.has_company_affiliations", "Do you have any company affiliations?"),
+        ("application_facts.has_company_nda", "Do you currently have any company NDAs?"),
         ("application_facts.restrictive_covenant", "Are you subject to a restrictive covenant (such as a non-compete)?"),
         ("screening_defaults.is_18_or_older", "Are you at least 18 years old?"),
         ("screening_defaults.willing_to_relocate", "Are you willing to relocate?"),
+        ("screening_defaults.requires_relocation_assistance", "Do you require relocation assistance?"),
+        ("screening_defaults.can_relocate_without_assistance", "Can you relocate without assistance?"),
         ("screening_defaults.outside_business_activities", "Do you have outside business activities?"),
     ):
-        ask(path, label, _boolean)
+        if path in EARLY_CAREER_PRESET:
+            ask_fact(path, label)
+        else:
+            ask(path, label, _boolean)
     for path, label in (
         ("application_facts.available_start_date", "Earliest available start date (YYYY-MM-DD)"),
         ("application_facts.full_time_start_date", "Full-time start date (YYYY-MM-DD)"),
@@ -215,9 +310,10 @@ def collect_profile(existing, *, input_fn=input, output_fn=print):
         if path in changed:
             profile.pop({"race": "race_ethnicity", "veteran": "veteran_status"}.get(field, field), None)
             facts.pop(field, None)
-    from canonical_answers import FACT_PATHS
     for field, paths in FACT_PATHS.items():
-        if changed.intersection(paths):
+        # Reconciled facts already contain authoritative edits; popping their
+        # application_facts entries would erase the user's explicit answers.
+        if field not in reconciled and changed.intersection(paths):
             facts.pop(field, None)
     return profile
 
@@ -231,14 +327,20 @@ def _review(profile):
         "application_facts.us_citizen application_facts.needs_opt application_facts.needs_cpt "
         "application_facts.sponsorship_now application_facts.sponsorship_future "
         "application_facts.has_company_affiliations application_facts.restrictive_covenant "
+        "application_facts.has_company_nda "
         "application_facts.available_start_date application_facts.full_time_start_date "
         "screening_defaults.is_18_or_older screening_defaults.willing_to_relocate "
+        "screening_defaults.requires_relocation_assistance screening_defaults.can_relocate_without_assistance "
         "screening_defaults.outside_business_activities screening_defaults.desired_salary "
         "screening_defaults.how_did_you_hear screening_defaults.social_media_source "
         "screening_defaults.demographic_disclosures.gender screening_defaults.demographic_disclosures.race "
         "screening_defaults.demographic_disclosures.veteran screening_defaults.demographic_disclosures.disability "
         "preferences.target_roles preferences.target_levels preferences.target_timelines").split()
     review = {path: _get(profile, path) for path in paths}
+    for primary in EARLY_CAREER_PRESET:
+        for path, _ in fact_paths(primary.split(".")[-1]):
+            if _present(profile, path):
+                review[path] = _get(profile, path)
     review["company_disclosures"] = [{key: row.get(key) for key in
         ("company", "current_employee", "former_employee", "relatives_employed", "affiliation_details")}
         for row in profile.get("company_disclosures", [])]
@@ -285,6 +387,7 @@ def check_profile(profile, *, output_fn=print):
     output_fn("Optional screening (unknown answers are not No):")
     for field in ("us_citizen", "work_authorization", "sponsorship_now", "sponsorship_future", "needs_opt",
                   "needs_cpt", "has_company_affiliations", "restrictive_covenant", "is_18_or_older",
+                  "has_company_nda", "requires_relocation_assistance", "can_relocate_without_assistance",
                   "willing_to_relocate", "outside_business_activities", "available_start_date",
                   "full_time_start_date", "desired_salary", "gender", "race", "veteran", "disability"):
         try:
@@ -301,6 +404,7 @@ def main(argv=None, *, input_fn=input, output_fn=print):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=Path(__file__).resolve().parent / "profile.json")
     parser.add_argument("--skip-credentials", action="store_true")
+    parser.add_argument("--preset", choices=("early-career",), help="Prefill reviewable early-career answers, without replacing existing facts")
     parser.add_argument("--check", action="store_true", help="Read-only readiness checklist; no values printed")
     args = parser.parse_args(argv)
     path = args.profile.expanduser().absolute()
@@ -312,7 +416,8 @@ def main(argv=None, *, input_fn=input, output_fn=print):
             raise ValueError("Invalid profile shape")
         if args.check:
             return check_profile(existing, output_fn=output_fn)
-        profile = collect_profile(existing, input_fn=input_fn, output_fn=output_fn)
+        profile = collect_profile(existing, preset=args.preset, offer_preset=not path.exists(),
+                                  input_fn=input_fn, output_fn=output_fn)
         output_fn("Review (credentials and unrelated settings omitted):\n" + json.dumps(_review(profile), indent=2))
         if input_fn("Save this profile? [y/N]: ").strip().lower() not in ("y", "yes"):
             raise EOFError
