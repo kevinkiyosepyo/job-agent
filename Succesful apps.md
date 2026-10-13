@@ -20,6 +20,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 11, 2026 (PDT) | DoorDash | Software Engineer, Intern (Summer 2027) - US | Greenhouse | `8171041` | Exact-job confirmation and receipt text verified |
 | October 11, 2026 (PDT) | Glean | Software Engineer, Intern (Summer 2027) | Greenhouse | `4595665005` | Exact-job confirmation and receipt text verified |
 | October 11, 2026 (PDT) | Aquatic Capital Management | Software Engineer, Intern (Summer 2027) | Greenhouse | `8489233002` | Exact-job confirmation and employer-specific receipt text verified |
+| October 12, 2026 (PDT) | Wawa | Information Technology Development Internship | Workday | `JR122392` | Application receipt and Candidate Home status verified; notification read back |
 
 ---
 
@@ -430,6 +431,47 @@ Coinbase Data Engineer Intern `8175459` was not submitted and is not a success e
 Across the original campaign and both follow-up batches, the coordinator independently verified **11 receipt pages, comprising 10 counted confirmations and one known Verkada repeat**. Only **three** have records inside the original eight-hour window; eight receipts, including the repeat, occurred afterward. The latest six-role batch yielded **four newly confirmed applications, one repeat submission, and one blocked application**. Historical manual-application coverage remains incomplete, so the count excluding the known repeat is not a guarantee that every other role was previously unapplied. The target of 50 fresh applications within eight hours was not met.
 
 Further batch dispatch was quarantined before browser or journal mutation, the original cutoff was restored, and the application cron remained paused. An offline regression first reproduced the missing quarantine, then passed after containment; two additional tests cover only local registry bookkeeping. These tests prove containment, **not a repaired application route**. The canonical unresolved historical attempt was preserved. No Google Sheets work was performed. Private applicant answers, contact data, documents, browser/session identifiers, message identifiers, and raw evidence remain unpublished; no interview or hiring outcome is implied.
+
+---
+
+## Wawa — Information Technology Development Internship
+
+### Job and execution context
+
+- **Official posting:** <https://wawa.wd1.myworkdayjobs.com/en-US/careers/job/WAWA---Wawa-Inc---Corporate-Office/Information-Technology-Development-Internship_JR122392>.
+- **Requisition:** `JR122392`.
+- **Location and term:** Media, Pennsylvania; May 17–August 5, 2027; 37.5 hours per week, with four office days each week.
+- **Posted compensation:** $25/hour.
+- **Submission date:** October 12, 2026 (PDT); Candidate Home displayed October 13, 2026.
+- **Execution mode:** Agent-operated exact-target CDP in the authenticated Workday browser session. The user requested continuation; the agent completed the form and submitted it. This was not a scheduled-controller run and does not establish unattended production support.
+
+### End-to-end flow and recovery
+
+1. **Resume the existing draft.** The live Workday tab was already at My Experience. Review showed an older resume attachment and parser-created experience errors. The current private profile selected `October 26.pdf`; the stale attachment was removed and the exact current file was attached and verified as 146.54 KB.
+2. **Correct parser output against the approved resume.** Restored accurate Qualcomm and HDSI dates, repaired a blank Handshake AI employer, and corrected a duplicate HDSI card to the resume's Adobe Student Ambassador role. Read back all four experience records and the current attachment on Review.
+3. **Repair the expired application authorization without losing the draft.** Save and Continue initially returned HTTP 400 with Workday's message, “You are not authorized to this job application.” Signed in using the existing Wawa tenant credential, verified the account, and checked Candidate Home: the exact requisition was still `Not Submitted`. Resuming through the candidate-home action opened an empty shell; instead of rebuilding or resubmitting, returned to the original exact draft tab and retried its save after authentication. The server accepted the draft updates and advanced to Application Questions 1 of 2.
+4. **Complete screening and disclosures.** Bound the rendered options for work authorization, sponsorship, age, graduation year, schedule, and local housing. Used “Open to discuss” for desired salary. The optional transportation question remained unanswered because the saved profile did not establish commute access. Wrote a role-specific interest response grounded in the posting and current resume. Completed the voluntary demographic selections and required terms acknowledgment.
+5. **Review before submission.** The rendered Review page showed requisition-specific application answers, four experience entries, B.S., the current resume filename, and no visible validation alerts or CAPTCHA/assessment gate. The Field of Study list offered neither Data Science nor Other; `Computer and Information Science` was used as the closest available directory option, not represented as the literal major.
+6. **Submit once and confirm.** Dispatched one Submit action. Workday displayed “Application Submitted” and “Your application has been received.” A separate authenticated Candidate Home read-back showed `Information Technology Development Internship | JR122392 | Under consideration` (date displayed October 13, 2026). The exact application was added to the private ledger. The Discord result notification was independently read back; Google Sheets synchronization was skipped.
+
+### Trips and limitations
+
+| Issue | Resolution / remaining limitation |
+| --- | --- |
+| Expired draft authorization rejected the first save. | Reauthenticated, verified the draft was still Not Submitted, and saved successfully from the original draft tab. |
+| Resume parsing left a stale attachment and inaccurate work-history fields. | Replaced the resume and corrected the saved entries against the current approved resume before Review. |
+| The school directory had no Data Science or generic Other option. | Selected its closest Information Science option and disclosed that it was only a directory fallback. |
+| Commute access was not established in the saved profile. | Left the optional reliable-transportation question unanswered; no vehicle or commute claim is made. |
+
+### Confirmation evidence and result
+
+The Workday confirmation page displayed:
+
+> Application Submitted
+>
+> Your application has been received.
+
+The authenticated Candidate Home row showed the exact requisition and **Under consideration**. Notification delivery was read-back verified separately. No interview, offer, hiring outcome, or transportation availability is implied.
 
 ---
 
