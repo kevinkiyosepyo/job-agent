@@ -29,6 +29,30 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 13, 2026 (PDT) | Watts Water Technologies | Product Management Co-op, Jan-June 2027 | Workday | `10017702` | Application Submitted and Application Under Review verified |
 | October 13, 2026 (PDT) | Expedia Group | Mobile Engineering Intern - 2027 - Austin, San Jose, Seattle | Workday | `R-110306` | Application Submitted and exact dated Candidate Home row verified |
 | October 13, 2026 (PDT) | Expedia Group | Security Engineering Intern - 2027 - Seattle | Workday | `R-110310` | Application Submitted and exact dated Candidate Home row verified |
+| October 13, 2026 (PDT) | 7-Eleven | ServiceNow Intern | Workday | `R26_6017` | Application Submitted and exact dated In Progress row verified; answer-quality caveat recorded |
+
+---
+
+## 7-Eleven — ServiceNow Intern, Summer 2027
+
+- **Official posting:** <https://my7elevenhr.wd12.myworkdayjobs.com/Careers/job/SSC-Irving-TX/ServiceNow-Intern_R26_6017>.
+- **Requisition:** `R26_6017`; **location:** SSC-Irving-TX.
+- **Submission date:** October 13, 2026 (PDT). Workday displayed October 14, 2026 in its Date Submitted column; both observations are retained without treating the portal date as a second application.
+- **Execution mode:** Agent-operated background Chrome, explicitly requested by the applicant. A one-use, exact-role guarded submission was used. This does not establish fully unattended scheduled-controller support.
+
+### Flow and recoveries
+
+1. Verified the official posting, eligibility window, and authenticated account's application state. Established the tenant session, uploaded the canonical resume, and completed the wizard using actual rendered options.
+2. An unrelated historical submission policy delayed execution. Under the applicant's explicit instruction for this role, used a narrowly scoped exception for pre-existing unattributed history; preserved historical outcomes and the default global guard. Exact-role duplicate checks and a transactional one-shot fence remained in place. No campaign was enabled.
+3. Recovered an unavailable browser target with a new owned background tab at the canonical application route, then read and resaved the server-side draft. Waited for actual step fields rather than the early-rendering footer, and reselected consent after reopening. Distinguished a successful upload alert from a validation error.
+4. Compared saved Review content and observed attachment metadata, committed the evidence, and consumed one authorization. Dispatched Submit once, without replay.
+5. Read **“Application Submitted”** and **“Thank you for applying!”** from the employer's completion page. A separate read of its application table matched **ServiceNow Intern**, **R26_6017**, **In Progress**, and **October 14, 2026**. Recorded the verified receipt in the private application ledger and confirmed the exact Discord notification by read-back. Google Sheets was not used.
+
+### Answer-quality caveat
+
+A post-submit audit identified an overly narrow interpretation of a broad experience question and a clarification placed in an unrelated compensation field. The applicant was informed. This log records employer receipt, **not** a claim that every submitted answer was correct. The application was preserved without withdrawal or resubmission. Future reviews must match the actual scope of a question; an explanation elsewhere cannot repair an inaccurate categorical answer.
+
+**Result:** One employer-confirmed application and verified notification. No interview or hiring outcome is implied. Raw evidence, account details, resume contents, and private message identifiers remain private.
 
 ---
 
