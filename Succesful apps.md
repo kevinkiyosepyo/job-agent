@@ -667,6 +667,23 @@ The authenticated resume-preview byte check returned HTTP 403, so this record cl
 
 ---
 
+## October 17, 2026 — Commonwealth Fusion Systems — Lever fa87d365-ac8a-44c3-8fda-c9dec3ea8878
+
+- **Official posting:** <https://jobs.lever.co/cfsenergy/fa87d365-ac8a-44c3-8fda-c9dec3ea8878>.
+- **Role / location:** Intern — AI & Infrastructure Engineer, Spring 2027; Devens, Massachusetts; Lever.
+- **Execution:** Agent-operated background CDP in the automation Chrome profile, within the authorized @zero2sudo batch.
+
+### Flow and evidence
+
+1. Preflight confirmed the live U.S. Spring 2027 internship, current undergraduate eligibility, and no exact prior requisition in the canonical ledger or local browser-history evidence. Lever did not provide a candidate-home application list for an additional portal check.
+2. The approved current résumé was uploaded and read back as `October 26.pdf`; all required controls passed native validation and the final bound values were independently reviewed against the private candidate profile and policy.
+3. One Submit navigated to the exact Lever confirmation route and displayed **“Application submitted!”** for this role.
+4. A separate read-only Gmail UI receipt from Commonwealth Fusion Systems named the same **Intern — AI & Infrastructure Engineer — Spring 2027** position. The private ledger and verified Discord notification were then recorded; tracker synchronization was intentionally skipped.
+
+**Result:** Employer-confirmed submission. Not an interview or hiring outcome.
+
+---
+
 ## Adding future successful applications
 
 Keep each entry short enough to inspect but specific enough to reproduce the successful approach:
