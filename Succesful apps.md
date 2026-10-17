@@ -30,6 +30,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 13, 2026 (PDT) | Expedia Group | Mobile Engineering Intern - 2027 - Austin, San Jose, Seattle | Workday | `R-110306` | Application Submitted and exact dated Candidate Home row verified |
 | October 13, 2026 (PDT) | Expedia Group | Security Engineering Intern - 2027 - Seattle | Workday | `R-110310` | Application Submitted and exact dated Candidate Home row verified |
 | October 13, 2026 (PDT) | 7-Eleven | ServiceNow Intern | Workday | `R26_6017` | Application Submitted and exact dated In Progress row verified; answer-quality caveat recorded |
+| October 17, 2026 (PDT) | IBM | z/OS Core Technologies Back End Developer Intern 2027 - Poughkeepsie | IBM Careers (Avature) | `137428` | Thank-you page and authenticated Application Received row verified |
 
 ---
 
@@ -626,6 +627,25 @@ The authenticated resume-preview byte check returned HTTP 403, so this record cl
 5. Recorded the confirmed application in the private ledger and sent a separate QGOV completion notification, verified by exact Discord read-back. Google Sheets synchronization was skipped. The first four application's receipts and notification remained intact.
 
 **Result:** Confirmed submitted. The required clarification was resolved before submission; no claim of an existing clearance or government adjudication is made here. The batch's unsubmitted Ireland posting is excluded from the success table. No interview or hiring outcome is implied.
+
+---
+
+## October 17, 2026 — IBM — 137428
+
+- **Official posting:** <https://careers.ibm.com/en_US/careers/JobDetail?jobId=137428>.
+- **Role / location:** z/OS Core Technologies Back End Developer Intern 2027, Poughkeepsie, New York.
+- **Execution:** User-requested batch from a saved Instagram-story link snapshot ("apply to all of them, IBM first"). Agent-operated background CDP in the dedicated automation Chrome profile; not a scheduled unattended-controller run.
+
+### Flow and recoveries
+
+1. Preflight: the posting was live; its required qualification is a Bachelor's or Master's in Computer Science or a related field, which the applicant is pursuing. The authenticated Your Applications list had no row for this requisition before the attempt.
+2. The IBMid account rejected both stored shared credentials. Used IBM's Forgot-password flow once and read the 14-digit code from the authorized inbox. Set password stayed disabled with every visible checklist item green; reading the form's validation state showed a site-specific rule that the visible checklist does not display. Generated a compliant value and stored it under a tenant-specific keychain entry.
+3. Sign-in then required an emailed 6-digit code; entered the code whose prefix matched the one displayed on the page.
+4. The stored IBM profile had stale contact data (a campus mailing address and a username in the City field). Replaced it with the permanent address the form explicitly requires. Selected real rendered options in every select2 field (state, school, degree, specialization, source, EEO) and read back the committed values.
+5. Uploaded the approved resume; the summary page's PDF preview was fetched and matched the approved file byte for byte.
+6. One Submit produced **"Thank you for applying! Your application has been received."** The refreshed Your Applications list showed **137428 — Application Received**. Private ledger and Discord notification were written after confirmation.
+
+**Result:** Employer-confirmed submission. Not an interview or hiring outcome.
 
 ---
 
