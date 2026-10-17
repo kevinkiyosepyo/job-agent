@@ -31,6 +31,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 13, 2026 (PDT) | Expedia Group | Security Engineering Intern - 2027 - Seattle | Workday | `R-110310` | Application Submitted and exact dated Candidate Home row verified |
 | October 13, 2026 (PDT) | 7-Eleven | ServiceNow Intern | Workday | `R26_6017` | Application Submitted and exact dated In Progress row verified; answer-quality caveat recorded |
 | October 17, 2026 (PDT) | IBM | z/OS Core Technologies Back End Developer Intern 2027 - Poughkeepsie | IBM Careers (Avature) | `137428` | Thank-you page and authenticated Application Received row verified |
+| October 17, 2026 (PDT) | IBM | AI Software Engineer Spring Co-op 2027 | IBM Careers (Avature) | `137269` | Thank-you page and authenticated Application Received row verified |
 
 ---
 
@@ -644,6 +645,23 @@ The authenticated resume-preview byte check returned HTTP 403, so this record cl
 4. The stored IBM profile had stale contact data (a campus mailing address and a username in the City field). Replaced it with the permanent address the form explicitly requires. Selected real rendered options in every select2 field (state, school, degree, specialization, source, EEO) and read back the committed values.
 5. Uploaded the approved resume; the summary page's PDF preview was fetched and matched the approved file byte for byte.
 6. One Submit produced **"Thank you for applying! Your application has been received."** The refreshed Your Applications list showed **137428 — Application Received**. Private ledger and Discord notification were written after confirmation.
+
+**Result:** Employer-confirmed submission. Not an interview or hiring outcome.
+
+---
+
+## October 17, 2026 — IBM — 137269
+
+- **Official posting:** <https://careers.ibm.com/en_US/careers/JobDetail?jobId=137269>.
+- **Role / locations:** AI Software Engineer Spring Co-op 2027 (16 weeks, Jan 19 – May 7, 2027); Poughkeepsie NY, Durham NC, San Jose CA, New York NY.
+- **Execution:** Same user-requested batch as 137428. The applicant explicitly told the agent to submit it immediately instead of waiting for the hourly slot. Agent-operated background CDP in the automation Chrome profile; reused the IBMid session from 137428.
+
+### Flow and evidence
+
+1. Preflight: the requisition requires current Bachelor's enrollment, full-time availability for the spring co-op term, and a full-time start between December 2027 and August 2028; the applicant's June 2028 graduation fits. The authenticated Your Applications list (both pages) had no row for 137269 before the attempt.
+2. This requisition adds job-specific questions not present on 137428: relocation willingness, a ranked location list, full-time start month/year, graduation month/year, and five self-rated proficiency scales. The agent picked the ratings conservatively from evidence on the approved resume (for example, routine or demonstrated levels, never expert).
+3. Re-read every committed value on the summary page and fetched the embedded resume preview; it matched the approved file byte for byte.
+4. One Submit produced **"Thank you for applying! Your application has been received."** The refreshed list showed **137269 — Application Received** alongside 137428. Ledger and Discord written after confirmation.
 
 **Result:** Employer-confirmed submission. Not an interview or hiring outcome.
 
