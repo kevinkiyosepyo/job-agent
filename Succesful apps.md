@@ -32,6 +32,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 13, 2026 (PDT) | 7-Eleven | ServiceNow Intern | Workday | `R26_6017` | Application Submitted and exact dated In Progress row verified; answer-quality caveat recorded |
 | October 17, 2026 (PDT) | IBM | z/OS Core Technologies Back End Developer Intern 2027 - Poughkeepsie | IBM Careers (Avature) | `137428` | Thank-you page and authenticated Application Received row verified |
 | October 17, 2026 (PDT) | IBM | AI Software Engineer Spring Co-op 2027 | IBM Careers (Avature) | `137269` | Thank-you page and authenticated Application Received row verified |
+| October 17, 2026 (PDT) | Angel City FC | Data Analytics Intern | Greenhouse | `6226220004` | Exact Greenhouse confirmation page verified; Discord notification read back |
 
 ---
 
@@ -681,6 +682,23 @@ The authenticated resume-preview byte check returned HTTP 403, so this record cl
 4. A separate read-only Gmail UI receipt from Commonwealth Fusion Systems named the same **Intern — AI & Infrastructure Engineer — Spring 2027** position. The private ledger and verified Discord notification were then recorded; tracker synchronization was intentionally skipped.
 
 **Result:** Employer-confirmed submission. Not an interview or hiring outcome.
+
+---
+
+## October 17, 2026 — Angel City FC — Data Analytics Intern
+
+- **Official posting:** <https://job-boards.greenhouse.io/wfclainc/jobs/6226220004>.
+- **Requisition:** `6226220004`; **location:** Santa Monica, California.
+- **Execution:** Agent-operated background CDP in the dedicated automation Chrome profile during the authorized @zero2sudo story batch. This confirmed filing does not establish universal unattended-controller support.
+
+### Flow and evidence
+
+1. Rechecked the live U.S. Greenhouse posting, current-student eligibility, the private application ledger, and both relevant Chrome-history profiles. No exact prior requisition confirmation was found. A prior cloud attempt had stopped at Greenhouse's email-verification step; a targeted, read-only Gmail check found no employer receipt before this fresh submission.
+2. Uploaded the current approved résumé and verified the rendered filename **October 26.pdf**. Rebound and reviewed the contact fields, U.S. country selection, phone number, and LinkedIn URL against the current private profile. Native validation reported no invalid controls and no visible CAPTCHA.
+3. Ran the shared application-policy read-back review before dispatch. One background Submit click navigated to the exact Greenhouse `/confirmation` route and displayed **“Thank you for applying.”** and **“Your application has been received.”**
+4. Recorded the confirmed result in the private ledger and sent the Discord completion notification with an exact read-back verification. Google Sheets synchronization was intentionally skipped. A post-submit read-only Gmail search had not yet shown a matching receipt; the exact employer confirmation page remains the receipt evidence retained for this public record.
+
+**Result:** Employer-confirmed submission. No interview, offer, or hiring outcome is implied.
 
 ---
 
