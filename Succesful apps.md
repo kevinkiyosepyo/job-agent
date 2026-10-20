@@ -34,6 +34,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 17, 2026 (PDT) | IBM | AI Software Engineer Spring Co-op 2027 | IBM Careers (Avature) | `137269` | Thank-you page and authenticated Application Received row verified |
 | October 17, 2026 (PDT) | Angel City FC | Data Analytics Intern | Greenhouse | `6226220004` | Exact Greenhouse confirmation page verified; Discord notification read back |
 | October 19, 2026 (PDT) | Nintendo of America | Intern - Business Intelligence | Greenhouse | `4421623009` | Exact Greenhouse confirmation page verified; Discord notification read back |
+| October 20, 2026 (PDT) | Nintendo of America | Intern - IT Software Engineer | Greenhouse | `4421632009` | Exact Greenhouse confirmation page verified; Discord notification read back |
 
 ---
 
@@ -718,6 +719,29 @@ The authenticated resume-preview byte check returned HTTP 403, so this record cl
 5. Recorded the result in the private ledger and sent the Discord completion notification with an exact read-back. Google Sheets synchronization was intentionally skipped.
 
 **Result:** Employer-confirmed submission. No interview, offer, or hiring outcome is implied.
+
+---
+
+## October 20, 2026 — Nintendo of America — Intern - IT Software Engineer
+
+- **Official posting:** <https://careers.nintendo.com/jobs/4421632009/> (Greenhouse requisition `4421632009`, filed through Greenhouse's embedded application route for the same job).
+- **Location:** Redmond, Washington; Summer 2027 internship program.
+- **Execution:** Agent-operated background CDP in the dedicated automation Chrome profile during the authorized @zero2sudo story batch. This confirmed filing does not establish universal unattended-controller support.
+
+### Flow and evidence
+
+1. Rechecked the live U.S. Greenhouse posting and compared its May 2027–June 2028 graduation window, 3.0 GPA minimum, onsite term, and work-authorization condition with current applicant facts. The applicant's June 2028 graduation, 3.284 GPA, U.S. work authorization, and no-sponsorship status fit the stated requirements. The private ledger had no exact requisition, and no browser-history confirmation existed; a task-owned public-form visit was correctly not treated as a duplicate.
+2. The hosted Nintendo URL redirects to an employer page whose application sits in an iframe. Used Greenhouse's official embedded route for the same requisition. Uploaded the current approved résumé and verified the rendered filename **October 26.pdf**.
+3. Bound and reread every required field. The live education and custom-major directories did not offer Data Science, so their real non-asserting **Other** and **Other Technical** options were used instead of substituting Computer Science. The range selected for the current 3.284 GPA was **3.25—3.49**. The private review retained these directory/range translations alongside the profile-backed facts.
+4. Native form validation reported no invalid controls or visible errors. One exact-target submit intent preceded one background Submit action; no CAPTCHA or email-code gate appeared.
+
+### Employer confirmation
+
+The exact Greenhouse confirmation route displayed:
+
+> Thank you for applying. Your application has been received.
+
+The private ledger entry and the concise Discord completion message were both written after confirmation; Discord delivery was verified by exact read-back. Google Sheets synchronization was intentionally skipped. This confirms employer receipt, not an interview, offer, or hiring outcome.
 
 ---
 
