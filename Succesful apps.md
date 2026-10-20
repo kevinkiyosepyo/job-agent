@@ -33,6 +33,7 @@ This log starts with the verified Mindex run below. It is not a complete histori
 | October 17, 2026 (PDT) | IBM | z/OS Core Technologies Back End Developer Intern 2027 - Poughkeepsie | IBM Careers (Avature) | `137428` | Thank-you page and authenticated Application Received row verified |
 | October 17, 2026 (PDT) | IBM | AI Software Engineer Spring Co-op 2027 | IBM Careers (Avature) | `137269` | Thank-you page and authenticated Application Received row verified |
 | October 17, 2026 (PDT) | Angel City FC | Data Analytics Intern | Greenhouse | `6226220004` | Exact Greenhouse confirmation page verified; Discord notification read back |
+| October 19, 2026 (PDT) | Nintendo of America | Intern - Business Intelligence | Greenhouse | `4421623009` | Exact Greenhouse confirmation page verified; Discord notification read back |
 
 ---
 
@@ -697,6 +698,24 @@ The authenticated resume-preview byte check returned HTTP 403, so this record cl
 2. Uploaded the current approved résumé and verified the rendered filename **October 26.pdf**. Rebound and reviewed the contact fields, U.S. country selection, phone number, and LinkedIn URL against the current private profile. Native validation reported no invalid controls and no visible CAPTCHA.
 3. Ran the shared application-policy read-back review before dispatch. One background Submit click navigated to the exact Greenhouse `/confirmation` route and displayed **“Thank you for applying.”** and **“Your application has been received.”**
 4. Recorded the confirmed result in the private ledger and sent the Discord completion notification with an exact read-back verification. Google Sheets synchronization was intentionally skipped. A post-submit read-only Gmail search had not yet shown a matching receipt; the exact employer confirmation page remains the receipt evidence retained for this public record.
+
+**Result:** Employer-confirmed submission. No interview, offer, or hiring outcome is implied.
+
+---
+
+## October 19, 2026 — Nintendo of America — Intern - Business Intelligence
+
+- **Official posting:** <https://careers.nintendo.com/jobs/4421623009/> (Greenhouse requisition `4421623009`, filed through Greenhouse's embedded application route for the same job).
+- **Location:** Redmond, Washington; Summer 2027 internship program.
+- **Execution:** Agent-operated background CDP in the dedicated automation Chrome profile during a @zero2sudo story run. This confirmed filing does not establish universal unattended-controller support.
+
+### Flow and evidence
+
+1. Preflight read the official posting through Greenhouse's public job API: a live U.S. internship whose stated graduation window includes the applicant's expected graduation month. No prior requisition appeared in the private ledger or automation-Chrome history; Greenhouse offers no candidate application list for a portal check.
+2. **Trip:** the hosted job-board URL redirected to Nintendo's careers site, where the form sits inside an iframe, so the background tab exposed no application controls. **Recovery:** opened Greenhouse's embedded application route for the same requisition directly.
+3. Uploaded the current approved résumé and verified the rendered filename **October 26.pdf**. Bound the education block and every custom question with exact-option selection and read-backs. Neither the Greenhouse discipline directory nor Nintendo's major list offers Data Science, so the truthful non-asserting Other options were chosen instead of substituting a different major. Native validation reported no invalid controls and no visible CAPTCHA.
+4. Ran the shared application-policy read-back review before dispatch; directory and bracket labels that its exact-match checker cannot equate (graduation month, range options) were verified manually against the private profile and the university's official academic calendar. One background Submit navigated to the Greenhouse `/confirmation` route and displayed **“Thank you for applying.”** and **“Your application has been received.”**
+5. Recorded the result in the private ledger and sent the Discord completion notification with an exact read-back. Google Sheets synchronization was intentionally skipped.
 
 **Result:** Employer-confirmed submission. No interview, offer, or hiring outcome is implied.
 
