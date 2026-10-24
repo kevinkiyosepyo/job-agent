@@ -757,3 +757,46 @@ Keep each entry short enough to inspect but specific enough to reproduce the suc
 6. **Final result:** Count only confirmed submissions. Describe any remaining follow-up without implying an interview or offer.
 
 Do not publish credentials, session tokens, applicant contact details, home addresses, demographic answers, resume contents, local home-directory paths, private message identifiers, or raw browser/network logs. Keep unconfirmed attempts out of the success table and do not resubmit an application just to obtain better documentation.
+
+
+### October 24, 2026 — Adobe — AI & Architecture (R172998)
+
+- Confirmed submission for 2027 Intern - AI & Architecture, San Jose.
+- Posting: https://adobe.wd5.myworkdayjobs.com/external_experienced/job/San-Jose/XMLNAME-2027-Intern---AI---Architecture_R172998
+- Workday displayed Application Submitted and the exact Candidate Home row In Process dated October 24, 2026.
+- User-directed in-app browser application with the approved October 26.pdf. One Submit action; no tracker synchronization.
+
+
+### October 24, 2026 — Adobe — 2027 Intern - Applied and Research Scientist/Engineer (R172064)
+
+- Posting: https://adobe.wd5.myworkdayjobs.com/external_experienced/job/San-Jose/XMLNAME-2027-Intern---Applied-and-Research-Scientist-Engineer_R172064
+- Workday confirmed Application Submitted; exact Candidate Home row In Process dated October 24, 2026.
+- User-directed in-app browser application with approved October 26.pdf; one Submit action; tracker synchronization skipped.
+
+
+### October 24, 2026 — Adobe — 2027 Intern - Enterprise Architecture Analyst (R171856)
+
+- Posting: https://adobe.wd5.myworkdayjobs.com/external_experienced/job/New-York/XMLNAME-2027-Intern---Enterprise-Architecture-Analyst_R171856
+- Workday confirmed Application Submitted; exact Candidate Home row In Process dated October 24, 2026.
+- User-directed in-app browser application with approved October 26.pdf; one Submit action; tracker synchronization skipped.
+
+
+### October 24, 2026 — Adobe — 2027 Intern - Solutions Consulting Analyst (R171696)
+
+- Posting: https://adobe.wd5.myworkdayjobs.com/external_experienced/job/New-York/XMLNAME-2027-Intern---Solutions-Consulting-Analyst_R171696
+- Workday confirmed Application Submitted; exact Candidate Home row In Process dated October 24, 2026.
+- User-directed in-app browser application with approved October 26.pdf; one Submit action; tracker synchronization skipped.
+
+
+### October 24, 2026 — Adobe — 2027 Intern - Security Engineer (R173000)
+
+- Posting: https://adobe.wd5.myworkdayjobs.com/external_experienced/job/Lehi/XMLNAME-2027-Intern---Security-Engineer_R173000
+- Workday confirmed Application Submitted; exact Candidate Home row In Process dated October 24, 2026.
+- User-directed in-app browser application with approved October 26.pdf; one Submit action; tracker synchronization skipped.
+
+
+### October 24, 2026 — Adobe — 2027 Intern - Security Engineer (R173001)
+
+- Posting: https://adobe.wd5.myworkdayjobs.com/external_experienced/job/San-Jose/XMLNAME-2027-Intern---Security-Engineer_R173001
+- Workday confirmed Application Submitted; exact Candidate Home row In Process dated October 24, 2026.
+- User-directed in-app browser application with approved October 26.pdf; one Submit action; tracker synchronization skipped.
