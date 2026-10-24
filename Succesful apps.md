@@ -800,3 +800,48 @@ Do not publish credentials, session tokens, applicant contact details, home addr
 - Posting: https://adobe.wd5.myworkdayjobs.com/external_experienced/job/San-Jose/XMLNAME-2027-Intern---Security-Engineer_R173001
 - Workday confirmed Application Submitted; exact Candidate Home row In Process dated October 24, 2026.
 - User-directed in-app browser application with approved October 26.pdf; one Submit action; tracker synchronization skipped.
+
+---
+
+## October 24, 2026 — ten applications from the fixed story batch
+
+**Execution:** User-directed, agent-operated background Chrome/CDP. The user explicitly removed hourly pacing for this fixed batch; its continuation remained paused. Four workers completed the forms, uploads, account handling, and submissions. The coordinator independently read employer receipt pages or candidate application rows, checked exact-requisition ledger entries, and read back ten Discord messages. These receipts establish submission, not an interview, offer, complete qualification fit, or connected scheduled-controller readiness.
+
+| Employer | Exact role | Public requisition | Employer confirmation |
+| --- | --- | --- | --- |
+| MongoDB | 2027 - Software Engineering Intern, AMER | `8209134` | “Thanks for taking the time to apply to MongoDB!” |
+| CVS Health | Innovation & Technology Internship - Software Engineering: Data & Intelligence, Summer 2027 Undergrad | `R1081114` | Exact requisition: Application Received, October 24, 2026 |
+| KLA | Software Engineering Intern (On-Demand Containerized Test Environments) | `2642189` | Application Submitted; exact requisition Under review |
+| First Citizens Bank | 2027 Summer Intern - Quantitative Analyst | `36154` / `2026-36154` | “Your application was submitted successfully. Thank you for applying.” |
+| Palantir Technologies | Forward Deployed Software Engineer, Internship - Warp Speed | `b3d81928-6c26-432f-8a0a-36602c2eefcb` | “Application submitted!” on the exact role's thanks page |
+| IBM | Product Manager Spring Co-op 2027 | `133133` | Exact role and requisition: Application Received |
+| Addepar | Product Manager - Early Career, AI Platform | `8910404002` | “Thank you for applying to Addepar; we have received your application.” |
+| L3Harris Technologies | Associate, Software Engineer | Public `102210148240` / ATS `43283` | Successfully Applied to Associate, Software Engineer (43283); Application Received in profile |
+| Shield AI | June 2027 Co-op - Reliability Engineering #5953 | `bef440ce-0365-4de7-9b1e-b1288cdaf7f3` | “Application submitted!” on the exact role's thanks page |
+| Ursa Major | 2027 Summer Software Development Intern | `4746827005` | “Thank you for applying. Your application has been received.” |
+
+### Flow, recoveries, and limitations
+
+- **Preflight:** Used the fixed story snapshot. Workers checked official posting state and available exact-requisition history. Guest Greenhouse/Lever checks did not provide complete authenticated manual-application history. Excluded and screened-out roles are not counted here.
+- **Greenhouse:** Handled MongoDB and Ursa Major redirects through official embedded forms, verified the approved resume and committed options, then obtained exact confirmations. Addepar's first click fell outside the viewport; the worker found no submitted request, corrected the scroll and hit-test, and obtained the receipt.
+- **Lever:** Bound location choices, uploaded the approved resume, and checked form validity. Both role-specific thanks pages confirmed submission. No challenge was bypassed.
+- **Workday:** Followed CVS's official Workday route behind Phenom. Established tenant accounts, checked candidate history, repaired parser errors, and reviewed saved fields and the resume. KLA and CVS displayed exact requisitions with post-submission statuses.
+- **First Citizens:** Completed iCIMS. The coordinator read success text inside the application iframe; the branded outer page alone did not expose it.
+- **IBM:** Recovered the login through the authorized reset flow, reviewed the exact requisition, and compared server resume bytes with the approved document. One Submit reached Applied, followed by the exact Application Received row.
+- **L3Harris:** Followed the posting to SuccessFactors requisition 43283, corrected stale saved data, and verified the saved draft. The receipt and candidate-profile status were retained separately. Nonasserting options were used for unsupported disclosures; private answers are not published.
+- **Shield AI qualification caveat:** Required qualifications include electrical-design software and test-tool experience not established by reviewed applicant evidence. The form did not ask for an assertion of those skills, but that does not make the requirement optional. The application was received; the earlier blanket eligibility clearance was too broad. It was preserved without withdrawal or resubmission, and the caveat was recorded for the applicant.
+
+**Bookkeeping:** Ten exact-requisition ledger entries and ten Discord read-backs were verified. The older canonical unknown attempt was preserved; these receipts do not resolve it or establish guarded unattended submission readiness. Google Sheets was not used. Raw evidence, applicant answers, documents, credentials, session identifiers, and notification identifiers remain private.
+
+### Official posting links
+
+- MongoDB — `8209134`: <https://job-boards.greenhouse.io/mongodb/jobs/8209134>
+- CVS Health — `R1081114`: <https://jobs.cvshealth.com/us/en/job/CVSCHLUSR1081114EXTERNALENUS/Innovation-Technology-Internship-Software-Engineering-Data-Intelligence-Summer-2027-Undergrad>
+- KLA — `2642189`: <https://kla.wd1.myworkdayjobs.com/UR/job/Milpitas-CA/Software-Engineering-Intern_2642189>
+- First Citizens Bank — `36154`: <https://jobs.firstcitizens.com/jobs/36154?lang=en-us>
+- Palantir Technologies — `b3d81928-6c26-432f-8a0a-36602c2eefcb`: <https://jobs.lever.co/palantir/b3d81928-6c26-432f-8a0a-36602c2eefcb>
+- IBM — `133133`: <https://careers.ibm.com/en_US/careers/JobDetail?jobId=133133>
+- Addepar — `8910404002`: <https://job-boards.greenhouse.io/addepar1/jobs/8910404002>
+- L3Harris Technologies — `102210148240`: <https://careers.l3harris.com/en/job/colorado-springs/associate-software-engineer/4832/102210148240>
+- Shield AI — `bef440ce-0365-4de7-9b1e-b1288cdaf7f3`: <https://jobs.lever.co/shieldai/bef440ce-0365-4de7-9b1e-b1288cdaf7f3>
+- Ursa Major — `4746827005`: <https://job-boards.greenhouse.io/ursamajor/jobs/4746827005>
