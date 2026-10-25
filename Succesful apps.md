@@ -845,3 +845,29 @@ Do not publish credentials, session tokens, applicant contact details, home addr
 - L3Harris Technologies — `102210148240`: <https://careers.l3harris.com/en/job/colorado-springs/associate-software-engineer/4832/102210148240>
 - Shield AI — `bef440ce-0365-4de7-9b1e-b1288cdaf7f3`: <https://jobs.lever.co/shieldai/bef440ce-0365-4de7-9b1e-b1288cdaf7f3>
 - Ursa Major — `4746827005`: <https://job-boards.greenhouse.io/ursamajor/jobs/4746827005>
+
+---
+
+## October 25, 2026 — Sony Interactive Entertainment (PlayStation) — R-125825
+
+- **Role:** Software Engineering Intern – Undergraduate.
+- **Location:** San Mateo, California; **ATS:** Greenhouse.
+- **Requisition:** `R-125825`; **Greenhouse posting:** `6221817004`.
+- **Official posting:** <https://job-boards.greenhouse.io/usinternshipspubliccareerssite/jobs/6221817004>.
+- **Submission date:** October 25, 2026 (PDT).
+- **Execution:** User-directed, agent-operated approved Chrome/CDP flow. The agent uploaded, filled, reviewed, and submitted the application; no person manually filled the form or had to wait at a human handoff. This is not evidence of unattended scheduled-controller readiness.
+
+### Flow, late-confirmation recovery, and evidence
+
+1. Uploaded the current approved resume and verified its actual browser-native file bytes. Independently reviewed all 29 actual form fields against canonical applicant sources before submission; applicant answers and document contents remain private.
+2. Used the canonical single-use guarded submission route and dispatched Submit once. The initial bounded observer returned before the employer confirmation rendered, so its early result was not treated as proof of failure or permission to retry.
+3. A later read-only inspection of the same original browser target found the exact `/jobs/6221817004/confirmation` route, with the application form gone and the rendered receipt below. This required no navigation, new authorization, second Submit, manual form filling, or human-wait handoff. Preserved the original submit intent and reconciled that original attempt to confirmed.
+4. Verified one exact-requisition private ledger entry and the delivered Discord result by exact read-back. Google Sheets synchronization was intentionally skipped. No other pending or subsequent applications are counted in this entry.
+
+### Employer confirmation
+
+> Thank you for applying.
+>
+> Your application has been received.
+
+**Result:** One employer-confirmed application. The early observer remains a timing limitation, not a demonstrated controller fix. No interview, offer, or hiring outcome is implied. Raw evidence, applicant details, resume contents, session identifiers, and private notification identifiers remain private.
