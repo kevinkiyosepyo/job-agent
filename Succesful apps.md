@@ -943,3 +943,74 @@ Do not publish credentials, session tokens, applicant contact details, home addr
 > Your application has been received.
 
 **Result:** One employer-confirmed application. No interview, offer, or hiring outcome is implied. Raw evidence, applicant information, document contents, browser/session identifiers, and private notification details remain private.
+
+
+---
+
+## October 25, 2026 — Sony Interactive Entertainment (PlayStation) — R-125831
+
+- **Role:** Software Development Engineer in Test Intern - Undergraduate.
+- **Location:** San Mateo, California; **ATS:** Greenhouse.
+- **Requisition:** `R-125831`; **Greenhouse posting:** `6221772004`.
+- **Official posting:** <https://job-boards.greenhouse.io/usinternshipspubliccareerssite/jobs/6221772004>.
+- **Submission date:** October 25, 2026 (PDT).
+- **Execution:** User-directed, agent-operated Chrome/CDP flow with independent parent-agent review and no human form input. This records the application run that actually executed, not unattended scheduled-controller readiness.
+
+### Verified flow and employer receipt
+
+1. The agent prepared the form and uploaded the current approved resume. The parent agent independently compared all 33 actual bound form fields with canonical applicant sources, verified the resume's browser-native bytes, and checked required answers and the absence of invalid controls or unresolved gates before submission.
+2. The parent agent used the existing canonical single-use guarded route to dispatch Submit once. The original observer recorded confirmation; a separate read-only inspection of that same original application target independently verified the exact `/jobs/6221772004/confirmation` route, the rendered receipt below, and that no application form remained.
+3. Reconciled the original attempt to confirmed without navigation or another Submit. Verified one exact-posting private ledger entry and the delivered Discord result by exact read-back. Google Sheets synchronization was intentionally skipped; publication did not repeat any application or notification.
+
+> Thank you for applying.
+>
+> Your application has been received.
+
+**Result:** One employer-confirmed application. No interview, offer, or hiring outcome is implied. Applicant data, raw evidence, resume contents, browser/session identifiers, and private notification identifiers remain private.
+
+---
+
+## October 25, 2026 — Sony Interactive Entertainment (PlayStation) — R-125834
+
+- **Role:** Software Engineering Intern – Undergraduate.
+- **Location:** San Mateo, California; **ATS:** Greenhouse.
+- **Requisition:** `R-125834`; **Greenhouse posting:** `6221793004`.
+- **Official posting:** <https://job-boards.greenhouse.io/usinternshipspubliccareerssite/jobs/6221793004>.
+- **Submission date:** October 25, 2026 (PDT).
+- **Execution:** User-directed, agent-operated Chrome/CDP flow with independent parent-agent review and no human form input. This records the application run that actually executed, not unattended scheduled-controller readiness.
+
+### Flow, confirmation-attribution recovery, and evidence
+
+1. The agent prepared the form and uploaded the current approved resume. The parent agent independently compared all 34 actual bound form fields with canonical applicant sources, verified the resume's browser-native bytes, and checked required answers and the absence of invalid controls or unresolved gates before submission.
+2. The parent agent dispatched Submit once through the existing canonical single-use guarded route. The initial observer could not attribute a valid confirmation and returned an unconfirmed result; its original record and consumed one-shot intent were preserved. That observer result was not treated as proof the employer rejected the application or permission to retry.
+3. A separate, read-only parent inspection of the same original application target found the exact `/jobs/6221793004/confirmation` route, the rendered receipt below, and no remaining application form. This established employer receipt for the original attempt without navigation, another Submit, replacement authorization, or an invented replacement transition. The original attempt was reconciled to confirmed; the earlier observer limitation remains part of its history, not a demonstrated controller fix.
+4. Verified one exact-posting private ledger entry and the delivered Discord result by exact read-back. Google Sheets synchronization was intentionally skipped; publication did not repeat any application or notification.
+
+> Thank you for applying.
+>
+> Your application has been received.
+
+**Result:** One employer-confirmed application. No interview, offer, or hiring outcome is implied. Applicant data, raw evidence, resume contents, browser/session identifiers, and private notification identifiers remain private.
+
+---
+
+## October 25, 2026 — Sony Interactive Entertainment (PlayStation) — R-125822
+
+- **Role:** Technical Program Management Intern - Undergraduate.
+- **Location:** Aliso Viejo, California; **ATS:** Greenhouse.
+- **Requisition:** `R-125822`; **Greenhouse posting:** `6221742004`.
+- **Official posting:** <https://job-boards.greenhouse.io/usinternshipspubliccareerssite/jobs/6221742004>.
+- **Submission date:** October 25, 2026 (PDT).
+- **Execution:** User-directed, agent-operated Chrome/CDP flow with independent parent-agent review and no human form input. This records the application run that actually executed, not unattended scheduled-controller readiness.
+
+### Verified flow and employer receipt
+
+1. The agent prepared the form and uploaded the current approved resume. The parent agent independently compared all 34 actual bound form fields with canonical applicant sources, verified the resume's browser-native bytes, and checked required answers and the absence of invalid controls or unresolved gates before submission.
+2. The parent agent used the existing canonical single-use guarded route to dispatch Submit once. The original observer recorded confirmation; a separate read-only inspection of that same original application target independently verified the exact `/jobs/6221742004/confirmation` route, the rendered receipt below, and that no application form remained.
+3. Reconciled the original attempt to confirmed without navigation or another Submit. Verified one exact-posting private ledger entry and the delivered Discord result by exact read-back. Google Sheets synchronization was intentionally skipped; publication did not repeat any application or notification.
+
+> Thank you for applying.
+>
+> Your application has been received.
+
+**Result:** One employer-confirmed application. No interview, offer, or hiring outcome is implied. Applicant data, raw evidence, resume contents, browser/session identifiers, and private notification identifiers remain private.
