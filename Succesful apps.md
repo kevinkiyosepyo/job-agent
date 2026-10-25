@@ -1106,3 +1106,30 @@ The authenticated Candidate Home row for this exact role and requisition showed,
 > Date Submitted: October 25, 2026
 
 **Result:** One newly employer-confirmed application. No interview, offer, or hiring outcome is implied. The reader repair and offline regression results do not establish unattended scheduled-controller readiness. Raw evidence, private paths, applicant details and answers, resume contents, account/application/attempt identifiers, browser/session identifiers, and private notification identifiers remain private.
+## October 25, 2026 — Salesforce — JR365111
+
+- **Role:** Summer 2027 Intern - AI Research.
+- **Location:** San Francisco / Palo Alto, California, United States; **ATS:** Workday.
+- **Requisition:** `JR365111`.
+- **Official posting:** <https://salesforce.wd12.myworkdayjobs.com/Futureforce_Internships/job/California---Palo-Alto/Summer-2027-Intern---AI-Research_JR365111>.
+- **Submission date:** **October 25, 2026**, as displayed by the employer.
+- **Execution:** User-directed, agent-operated browser flow with independent parent-agent review and no human form input. This records the completed application, not guaranteed unattended scheduled-controller support.
+
+### Flow, native-reader recovery, and evidence
+
+1. The agent completed the ordinary account reset and sign-in using approved protected credentials, inspected the authenticated application history, and found no existing submission for this exact requisition. The native Workday application was completed without inventing qualifications. Applicant answers and education details remain private.
+2. Independent parent-agent Review checked **18 material sections** and **14 required questionnaire answers** against current authoritative applicant sources. The sole approved resume's browser-native File bytes were verified before upload, and a fresh server metadata read checked attachment continuity. This establishes the selected local file and observed persisted metadata; it is **not** a claim that the stored server attachment was downloaded and independently checksummed.
+3. The Candidate Home reader initially assumed the wrong completed-task row structure. The repair followed the actual native task layout and table headers, narrowly accounting for an already-known inactive row. A fresh, separately owned authenticated Candidate Home read then passed **before Submit** and showed this exact application as **Not Submitted**. Offline fixtures alone were not treated as browser proof.
+4. The parent dispatched the original canonical Submit **once**. The initial observer did not recognize Salesforce's **In Consideration** status and therefore returned an unconfirmed result. The consumed submission intent and original attempt were preserved; the observer's wording limitation did not authorize another Submit.
+5. Actual authenticated Candidate Home inspection showed this exact role and requisition as **In Consideration**, with **Date Submitted: October 25, 2026**. An independent, separately owned Candidate Home reload corroborated the persisted row and the same original application. A Salesforce-only, date-bearing confirmation predicate repaired the reader; other employers' generated predicates and the no-replay protections were unchanged. **264 offline regression tests passed**, but employer acceptance is established by the real persisted row and independent reload, not by those tests. The original attempt was reconciled to confirmed without a second Submit or replacement submission intent.
+6. The private ledger entry and delivered result notification were already verified by exact read-back. This documentation-only publication did not repeat any application, account, or notification action. All ten predecessor entries and all earlier public bytes were preserved; deferred, closed, and historical applications were not relabeled as new successes.
+
+### Employer confirmation
+
+The authenticated Candidate Home row for this exact role and requisition showed, and retained after independent reload:
+
+> In Consideration
+>
+> Date Submitted: October 25, 2026
+
+**Result:** One newly employer-confirmed application. No interview, offer, or hiring outcome is implied. Raw evidence, applicant details and answers, resume contents, credential metadata, private paths, account/application/attempt identifiers, browser/session identifiers, and private notification identifiers remain private.
