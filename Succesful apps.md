@@ -1043,3 +1043,36 @@ The authenticated Candidate Home row for this exact role and requisition showed:
 > Date Submitted: October 25, 2026
 
 **Result:** One newly employer-confirmed application. No interview, offer, or hiring outcome is implied. The demonstrated reader repair and independent confirmation do not establish unattended scheduled-controller readiness. Raw evidence, applicant details, resume contents, attachment/application identifiers, browser/session identifiers, and private notification identifiers remain private.
+
+
+---
+
+## October 25, 2026 — Texas Instruments — 25019103
+
+- **Role:** Software Engineering Intern - Compiler.
+- **Location:** Sugar Land, Texas, United States; **ATS:** Oracle Recruiting.
+- **Requisition:** `25019103`.
+- **Official posting:** <https://edbz.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/job/25019103>.
+- **Submission date:** October 25, 2026 (PDT); the employer recorded the original submission on the same date.
+- **Execution:** User-directed, agent-operated Chrome/CDP flow with independent parent-agent review and no human form input. This records the application run that actually executed, not a human handoff or unattended scheduled-controller readiness.
+
+### Flow, native-state verification, and confirmation-reader recovery
+
+1. The agent restored the authenticated employer account/session, checked the exact requisition against My Applications, and resumed the saved application. Review was grounded in the employer's persisted native state rather than unsaved DOM values or a synthetic fixture.
+2. The parent agent independently compared all **35 material bound fields** with current canonical applicant sources, inventoried **57 native controls** and **17 screening records**, and reviewed the actual conditional sections. Hidden, inapplicable branches were not populated with invented answers. The current approved resume was retained; an authenticated download through the employer's native Download control returned **150,059 bytes**, independently checksummed to match the approved file exactly. This was byte verification, not filename-only or attachment-metadata-only verification.
+3. A narrowly scoped route-binding repair covered only the observed native application page within the existing fixed batch. The parent then used the canonical authorization and single-intent guarded route to dispatch the native Submit action **once**. No replacement application or second Submit was used.
+4. The initial finite confirmation reader expected the older **Application/Resume Received** wording and returned an unconfirmed result even though the employer had recorded this application as **Under Consideration**. The original observer outcome and consumed one-shot intent were preserved. A failing regression test reproduced the status-wording gap; the narrow reader repair made that test pass. An unconfirmed observer result was never treated as permission to resubmit.
+5. Independent authenticated My Applications inspection matched this exact requisition and role, the original submission date, and the employer's positive confirmation state with **Under Consideration**. A separate reload corroborated the same persisted receipt. The original canonical attempt was reconciled to confirmed without another Submit; the earlier observer limitation remains part of the record.
+6. The exact private ledger entry and delivered Discord result had already been verified by read-back. Google Sheets synchronization was intentionally skipped. This documentation-only publication did not repeat any application or notification; concurrent public entries were preserved.
+
+### Employer confirmation
+
+The authenticated My Applications record for this exact role and requisition showed:
+
+> Under Consideration
+>
+> Texas Instruments 25019103 Applied on 10/25/2026
+
+**Evidence boundary:** `NativeSourceVerified` here denotes the real employer-native saved state, authenticated resume download, and durable employer receipt observed in this run. Offline regression tests cover the reader repair; they are not themselves employer acceptance or proof of unattended scheduled-controller readiness.
+
+**Result:** One newly employer-confirmed application. No interview, offer, or hiring outcome is implied. Raw evidence, applicant answers and contact details, resume contents, private paths, account/application identifiers, browser/session identifiers, and private notification identifiers remain private.
