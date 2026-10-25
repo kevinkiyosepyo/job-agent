@@ -1076,3 +1076,33 @@ The authenticated My Applications record for this exact role and requisition sho
 **Evidence boundary:** `NativeSourceVerified` here denotes the real employer-native saved state, authenticated resume download, and durable employer receipt observed in this run. Offline regression tests cover the reader repair; they are not themselves employer acceptance or proof of unattended scheduled-controller readiness.
 
 **Result:** One newly employer-confirmed application. No interview, offer, or hiring outcome is implied. Raw evidence, applicant answers and contact details, resume contents, private paths, account/application identifiers, browser/session identifiers, and private notification identifiers remain private.
+
+
+---
+
+## October 25, 2026 — General Motors — JR-202621896
+
+- **Role:** 2027 Summer Intern - GM OneOps Deploy Engineer.
+- **Location:** Warren, Michigan, United States; **ATS:** Workday.
+- **Requisition:** `JR-202621896`.
+- **Official posting:** <https://generalmotors.wd5.myworkdayjobs.com/Careers_GM/job/Warren-Michigan-United-States-of-America/XMLNAME-2027-Summer-Intern---GM-OneOps-Deploy-Engineer_JR-202621896>.
+- **Submission date:** October 25, 2026 (PDT), also displayed by the employer as **October 25, 2026**. The earlier source-batch date is not the submission date.
+- **Execution:** User-directed, agent-operated Chrome/CDP flow with independent parent-agent review and no human form input. This records the completed application run, not unattended scheduled-controller readiness.
+
+### Flow, dated-receipt recovery, and evidence
+
+1. The agent prepared the Workday application and attached the current approved resume. Before submission, a separate parent-agent inspection checked the exact Candidate Home state as **Not Submitted** and refreshed the persisted attachment metadata. The parent independently compared all **13 material Review sections**, including **12 persisted screening questions**, against current canonical applicant sources rather than treating saved values or the preparing agent's summary as sufficient.
+2. The browser-native selected-file bytes matched the current approved resume. The employer's attachment metadata retained the same attachment identifier, approved filename, and **150,059-byte** length. This verifies the selected local file and observed server-metadata continuity; it is **not** a claim that the stored server attachment was downloaded and independently checksummed. Applicant answers, education details, the filename, and attachment identifiers remain private.
+3. The parent dispatched Submit **once** through the canonical single-use guarded route. The initial confirmation reader's status allowlist did not recognize GM's **Review** hiring-stage status, so its unconfirmed observation and consumed submission intent were preserved. That reader limitation was not treated as permission to submit again. A failing regression test reproduced the gap; a GM-specific, dated-receipt predicate repaired it, with **117 tests passing**. Other employers' status predicates were left unchanged.
+4. Independent authenticated Candidate Home inspection matched this exact role and requisition with **Review** and **Date Submitted: October 25, 2026**, retaining the same original application identifier. A separate owned Candidate Home reload corroborated the persisted row. Here **Review** is the employer's post-submission hiring stage, **not** the unsent application wizard's Review step. The original attempt was reconciled to confirmed without a second Submit, replacement application, or replacement submission intent.
+5. The exact private ledger entry and delivered Discord result were already verified by read-back. This documentation-only publication did not repeat any application or notification. The seven earlier Sony entries, Toro entry, Texas Instruments entry, and all older public content were preserved; historical applications were not relabeled as new submissions.
+
+### Employer confirmation
+
+The authenticated Candidate Home row for this exact role and requisition showed, and retained after independent reload:
+
+> Review
+>
+> Date Submitted: October 25, 2026
+
+**Result:** One newly employer-confirmed application. No interview, offer, or hiring outcome is implied. The reader repair and offline regression results do not establish unattended scheduled-controller readiness. Raw evidence, private paths, applicant details and answers, resume contents, account/application/attempt identifiers, browser/session identifiers, and private notification identifiers remain private.
