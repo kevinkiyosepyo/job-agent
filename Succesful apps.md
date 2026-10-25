@@ -1014,3 +1014,32 @@ Do not publish credentials, session tokens, applicant contact details, home addr
 > Your application has been received.
 
 **Result:** One employer-confirmed application. No interview, offer, or hiring outcome is implied. Applicant data, raw evidence, resume contents, browser/session identifiers, and private notification identifiers remain private.
+
+---
+
+## October 25, 2026 — The Toro Company — JR17498
+
+- **Role:** Cloud Software Development Intern - The Toro Company.
+- **Location:** Frederick, Colorado; **ATS:** Workday.
+- **Requisition:** `JR17498`.
+- **Official posting:** <https://ttc.wd1.myworkdayjobs.com/Toro_External_Careers/job/Frederick-CO/Cloud-Software-Development-Intern---The-Toro-Company_JR17498>.
+- **Submission date:** October 25, 2026 (PDT), also displayed by the employer as **October 25, 2026**. The October 21 source-batch date is not the submission date.
+- **Execution:** User-directed, agent-operated Chrome/CDP flow with independent parent-agent review and no human form input. This records the application run that actually executed, not unattended scheduled-controller readiness.
+
+### Flow, confirmation-reader recovery, and evidence
+
+1. The agent prepared the Workday application and attached the current approved resume through the approved browser-native upload path. The parent agent independently compared all 14 material Review sections against current canonical applicant sources and the approved resume before submission. Portal taxonomy choices were explicitly reviewed without changing the approved resume; applicant answers and education details remain private.
+2. Resume verification used observed server metadata: the filename matching the approved upload, a reported length of **150,059 bytes**, and an attachment identifier retained privately. This is not a claim that the server attachment was downloaded and its bytes independently checksummed.
+3. The parent agent dispatched Submit exactly once through the canonical single-use guarded route. The initial confirmation reader recognized Submitted wording but missed the employer's **Application Received** status. Its unconfirmed result was not treated as permission to retry. A failing regression test reproduced that wording gap; the reader was repaired and the regression test passed.
+4. Read-only authenticated Candidate Home inspection matched the exact role and requisition with **Application Received** and **Date Submitted: October 25, 2026**. An independent reload corroborated the persisted row. The original canonical attempt was reconciled to confirmed without a second Submit or a replacement application.
+5. The private ledger and delivered Discord result had already been verified by exact read-back. This documentation-only publication did not repeat any application or notification. The seven earlier Sony entries remain separate; historical applications are not counted as new submissions here.
+
+### Employer confirmation
+
+The authenticated Candidate Home row for this exact role and requisition showed:
+
+> Application Received
+>
+> Date Submitted: October 25, 2026
+
+**Result:** One newly employer-confirmed application. No interview, offer, or hiring outcome is implied. The demonstrated reader repair and independent confirmation do not establish unattended scheduled-controller readiness. Raw evidence, applicant details, resume contents, attachment/application identifiers, browser/session identifiers, and private notification identifiers remain private.
