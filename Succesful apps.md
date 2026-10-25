@@ -871,3 +871,75 @@ Do not publish credentials, session tokens, applicant contact details, home addr
 > Your application has been received.
 
 **Result:** One employer-confirmed application. The early observer remains a timing limitation, not a demonstrated controller fix. No interview, offer, or hiring outcome is implied. Raw evidence, applicant details, resume contents, session identifiers, and private notification identifiers remain private.
+
+
+---
+
+## October 25, 2026 — Sony Interactive Entertainment (PlayStation) — R-125839
+
+- **Role:** Backend Software Engineering Intern - Undergraduate.
+- **Location:** San Mateo, California; **ATS:** Greenhouse.
+- **Requisition:** `R-125839`; **Greenhouse posting:** `6221802004`.
+- **Official posting:** <https://job-boards.greenhouse.io/usinternshipspubliccareerssite/jobs/6221802004>.
+- **Submission date:** October 25, 2026 (PDT).
+- **Execution:** User-directed, agent-operated approved Chrome/CDP flow, with no human form input. This records an observed application run, not unattended scheduled-controller support.
+
+### Verified flow and employer receipt
+
+1. Independently reviewed all 32 actual form fields and verified the current approved resume's browser-native bytes before submission.
+2. Submitted once through the guarded single-use route. A subsequent independent, read-only inspection of the original application target verified the exact posting's `/confirmation` route, the receipt below, and that the application form was gone.
+3. Reconciled one exact-posting confirmed entry in the private application ledger. Google Sheets synchronization was intentionally skipped. No other application is counted by this record.
+
+> Thank you for applying.
+>
+> Your application has been received.
+
+**Result:** One employer-confirmed application. No interview, offer, or hiring outcome is implied. Raw evidence, applicant information, document contents, browser/session identifiers, and private notification details remain private.
+
+
+---
+
+## October 25, 2026 — Sony Interactive Entertainment (PlayStation) — R-125829
+
+- **Role:** Software Development Engineer in Test Intern - Undergraduate.
+- **Location:** San Mateo, California; **ATS:** Greenhouse.
+- **Requisition:** `R-125829`; **Greenhouse posting:** `6221820004`.
+- **Official posting:** <https://job-boards.greenhouse.io/usinternshipspubliccareerssite/jobs/6221820004>.
+- **Submission date:** October 25, 2026 (PDT).
+- **Execution:** User-directed, agent-operated approved Chrome/CDP flow, with no human form input. This records an observed application run, not unattended scheduled-controller support.
+
+### Verified flow and employer receipt
+
+1. Independently reviewed the actual form values and verified the current approved resume's browser-native file before submission.
+2. Submitted once through the guarded single-use route. A subsequent independent, read-only inspection of the original application target verified the exact posting's `/confirmation` route, the receipt below, and that the application form was gone.
+3. Reconciled one exact-posting confirmed entry in the private application ledger. Google Sheets synchronization was intentionally skipped. No other application is counted by this record.
+
+> Thank you for applying.
+>
+> Your application has been received.
+
+**Result:** One employer-confirmed application. No interview, offer, or hiring outcome is implied. Raw evidence, applicant information, document contents, browser/session identifiers, and private notification details remain private.
+
+
+---
+
+## October 25, 2026 — Sony Interactive Entertainment (PlayStation) — R-125823
+
+- **Role:** Software Engineering Intern – Undergraduate.
+- **Location:** San Mateo, California; **ATS:** Greenhouse.
+- **Requisition:** `R-125823`; **Greenhouse posting:** `6221787004`.
+- **Official posting:** <https://job-boards.greenhouse.io/usinternshipspubliccareerssite/jobs/6221787004>.
+- **Submission date:** October 25, 2026 (PDT).
+- **Execution:** User-directed, agent-operated approved Chrome/CDP flow, with no human form input. This records an observed application run, not unattended scheduled-controller support.
+
+### Verified flow and employer receipt
+
+1. Independently reviewed the actual form values and verified the current approved resume's browser-native file before submission.
+2. Submitted once through the guarded single-use route. A subsequent independent, read-only inspection of the original application target verified the exact posting's `/confirmation` route, the receipt below, and that the application form was gone.
+3. Reconciled one exact-posting confirmed entry in the private application ledger. Google Sheets synchronization was intentionally skipped. No other application is counted by this record.
+
+> Thank you for applying.
+>
+> Your application has been received.
+
+**Result:** One employer-confirmed application. No interview, offer, or hiring outcome is implied. Raw evidence, applicant information, document contents, browser/session identifiers, and private notification details remain private.
