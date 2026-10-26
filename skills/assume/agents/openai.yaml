@@ -1,0 +1,6 @@
+interface:
+  display_name: "Assume"
+  short_description: "Reuse saved job-application answers"
+
+policy:
+  allow_implicit_invocation: false
