@@ -1133,3 +1133,30 @@ The authenticated Candidate Home row for this exact role and requisition showed,
 > Date Submitted: October 25, 2026
 
 **Result:** One newly employer-confirmed application. No interview, offer, or hiring outcome is implied. Raw evidence, applicant details and answers, resume contents, credential metadata, private paths, account/application/attempt identifiers, browser/session identifiers, and private notification identifiers remain private.
+
+---
+
+## October 27, 2026 — Simbe Robotics — d8e862ca-212d-4a88-af74-de400b0c6bf8
+
+- **Role:** Computer Vision / Applied AI Intern - Summer 2027.
+- **ATS:** Lever.
+- **Requisition:** `d8e862ca-212d-4a88-af74-de400b0c6bf8`.
+- **Official posting:** <https://jobs.lever.co/SimbeRobotics/d8e862ca-212d-4a88-af74-de400b0c6bf8>.
+- **Submission date:** October 27, 2026 (PDT). The employer receipt was observed at **07:09:52 UTC** on the same date.
+- **Execution:** Fully agent-operated, user-directed normal-Chrome flow through an exact-process-bound, single-use submission guard. There was no human form input or human handoff. This records the route that actually executed, not unattended scheduled-controller support.
+
+### Flow, review recovery, and evidence
+
+1. The agent prepared this exact employer application using current authoritative applicant sources and the approved resume. Independent source review and two live captures verified **15 controls** and the current approved resume bytes. The official source posting remained unchanged, and current application policy was reviewed before submission. Applicant answers, resume contents, filenames, and file hashes remain private.
+2. Recovery addressed internal typed-history handling and the review of native radio controls hidden by CSS. **427 offline regression tests passed** for the internal repairs and associated regression coverage; the suite was not exclusively browser-specific. These tests were not employer acceptance evidence and did not replace live review.
+3. The agent used the exact-process-bound normal-Chrome one-shot guard to submit this application once. The successful run was agent-operated throughout; ordinary internal recovery did not require handing the form to the applicant.
+4. The post-submit read-back matched the exact employer, role, and requisition at the official posting's `/thanks` route. It displayed **Application submitted!** and contained **zero forms**. The receipt was captured at **2026-10-27 07:09:52 UTC**, establishing employer confirmation rather than inferring success from a click or navigation alone.
+5. The original canonical submission record was confirmed, and independent private bookkeeping read-back found exactly one entry for this requisition. This public-log update did not revisit the form, repeat Submit, or change application records.
+
+### Employer confirmation
+
+The exact-requisition Lever confirmation page displayed:
+
+> Application submitted!
+
+**Result:** One newly employer-confirmed application. This entry does not assert completion of any other application or batch, an interview or hiring outcome, or full unattended-controller readiness. Raw evidence, applicant contact information and answers, resume contents and identifiers, private paths, credentials, account/application/attempt identifiers, and browser/session identifiers remain private.
