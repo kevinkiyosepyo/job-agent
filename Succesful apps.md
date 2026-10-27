@@ -1160,3 +1160,43 @@ The exact-requisition Lever confirmation page displayed:
 > Application submitted!
 
 **Result:** One newly employer-confirmed application. This entry does not assert completion of any other application or batch, an interview or hiring outcome, or full unattended-controller readiness. Raw evidence, applicant contact information and answers, resume contents and identifiers, private paths, credentials, account/application/attempt identifiers, and browser/session identifiers remain private.
+
+---
+
+## October 27, 2026 — Scout AI — 3b639e39-abd7-4a0c-9bea-e1cd0a72db99
+
+- **Role:** AI Engineer Intern - Fury Team (Summer 2027).
+- **ATS:** Ashby.
+- **Official posting:** <https://jobs.ashbyhq.com/scout-ai/3b639e39-abd7-4a0c-9bea-e1cd0a72db99>.
+- **Submission date:** October 27, 2026 (PDT); exact employer receipt independently observed at **2026-10-27 07:27:28 UTC**.
+- **Execution:** Fully agent-operated, user-directed normal-Chrome application through the existing exact-target, single-use guard. No human form input or handoff, and no claim of scheduled-controller support.
+
+### Review and confirmation
+
+The agent checked the official live posting and current applicant sources, then independently compared seven typed fields, including both native sponsorship-radio booleans. Two genuine live captures matched; saved form values and the approved resume File bytes were verified. The review repair covered CSS-hidden native choices with visible associated labels without dropping unchecked options.
+
+The guarded route submitted once. The exact role page then displayed the confirmation below, with no application field entries or Submit button remaining. The original canonical attempt and the confirmed-application ledger were read back as confirmed; the delivered Discord result was separately verified.
+
+> Your application was successfully submitted. We'll contact you if there are next steps.
+
+**Result:** One newly employer-confirmed application. Raw applicant answers, resume details, private evidence and identifiers remain private.
+
+---
+
+## October 27, 2026 — Skydio — d39c46ce-a4e9-45d2-99bf-17e3b7dac34b
+
+- **Role:** Autonomy Engineer Intern, 2027.
+- **ATS:** Ashby.
+- **Official posting:** <https://jobs.ashbyhq.com/skydio/d39c46ce-a4e9-45d2-99bf-17e3b7dac34b>.
+- **Submission date:** October 27, 2026 (PDT); exact employer receipt independently observed at **2026-10-27 07:29:19 UTC**.
+- **Execution:** Fully agent-operated, user-directed normal-Chrome application through the existing exact-target, single-use guard. No human form input or handoff, and no claim of scheduled-controller support.
+
+### Review and confirmation
+
+The agent verified the official listing, current source-grounded qualifications and answers, and the employer application limit against available history. Uncertain older attempts were preserved and were not replayed. Two actual live reviews matched across 21 typed fields, including all 14 radio booleans; the separate backing checkbox remained covered by the full control inventory. Saved values and the approved resume File bytes were checked.
+
+The guarded route submitted once. Skydio used a different success phrase than the generic Ashby observer expected. Instead of submitting again, the agent independently read the exact job page: it showed **Success** and the wording below, with no application field entries or Submit button. That employer receipt—not the first observer status—established acceptance. The original attempt and application ledger were reconciled to confirmed, and the Discord result was separately read back.
+
+> Thank you for submitting your application.
+
+**Result:** One newly employer-confirmed application, without a second Submit. Raw applicant answers, resume details, private evidence and identifiers remain private.
