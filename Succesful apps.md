@@ -1200,3 +1200,30 @@ The guarded route submitted once. Skydio used a different success phrase than th
 > Thank you for submitting your application.
 
 **Result:** One newly employer-confirmed application, without a second Submit. Raw applicant answers, resume details, private evidence and identifiers remain private.
+
+### October 28, 2026 — Glean — Software Engineer, Intern (Summer 2027) — requisition 1180
+
+- Posting: https://job-boards.greenhouse.io/gleanwork/jobs/4747670005
+- Outcome: employer-confirmed application received. The natural Greenhouse confirmation page displayed: "Your application has been received."
+- Route: agent-operated native GUI in the existing Chrome session, with actual field/attachment Review and a canonical one-shot submission intent. This is not certification of a fully unattended scheduled executor.
+- Recovery: a coordinate input initially reached a non-submit dropdown. Before/after geometry established the actual target; the original intent was retained, Review was refreshed, and the first actual Submit was activated once. A post-navigation accessibility-sidecar error was reconciled using the genuine receipt screenshot and a second read-only observation, without another Submit.
+- Limitations retained: the institution picker needed its real Other fallback, and the posting and form described different hybrid-office wording. The confirmed application was not withdrawn or resubmitted to alter these points.
+- Private confirmed history and the exact notification delivery were independently read back. No tracker synchronization was requested.
+
+### October 28, 2026 — ID.me — Summer Intern 2027 - Analytics Engineer Intern — requisition 1838
+
+- Posting: https://job-boards.greenhouse.io/idmeuniversityrecruiting/jobs/8041991003
+- Outcome: employer-confirmed application received. The actual customized receipt says: "Thank you for applying!" and "We’ve received your application".
+- Route: agent-operated native GUI in the existing Chrome, sharing short exclusive desktop-input groups with other application workers while preserving its own tab and canonical one-shot intent.
+- Recovery: the initial classifier did not recognize the employer's customized acceptance text. The original attempt was reconciled from the genuine captured receipt and exact native document URL, without another Submit.
+- Limitation retained: the institution directory needed a real Other fallback. A country chip was verified visually while the unavailable accessibility value stayed explicitly unavailable rather than being invented.
+- The parent independently inspected the receipt screenshot and read the original confirmed database/history records. Notification delivery was read back separately; tracker synchronization was not requested.
+
+### October 28, 2026 — Simbe Robotics — Data Analytics & Data Science Intern — Spring & Summer 2027
+
+- Requisition/posting: 96ee45fb-f094-4751-a43d-3e376f32667f
+- Posting: https://jobs.lever.co/SimbeRobotics/96ee45fb-f094-4751-a43d-3e376f32667f
+- Outcome: the natural exact-posting thanks page displayed "Application submitted!" after one native Submit. This analytics/data role was verified distinct from an earlier computer-vision application.
+- Route: agent-operated native GUI in the existing Chrome, with complete control/attachment Review, short exclusive input groups and the canonical one-shot ledger guard.
+- Recovery: resume autofill and native-picker issues were corrected against current sources. The receipt's visible acceptance heading was omitted by accessibility text, so the parent independently verified the genuine screenshot and exact original confirmed attempt rather than manufacturing a tree or resubmitting.
+- Limitation retained: inconsistent remote/header and onsite/body wording remained documented. Notification delivery was read back separately; no tracker synchronization or recurring service activation was performed.
