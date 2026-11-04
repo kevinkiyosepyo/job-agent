@@ -1227,3 +1227,12 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Route: agent-operated native GUI in the existing Chrome, with complete control/attachment Review, short exclusive input groups and the canonical one-shot ledger guard.
 - Recovery: resume autofill and native-picker issues were corrected against current sources. The receipt's visible acceptance heading was omitted by accessibility text, so the parent independently verified the genuine screenshot and exact original confirmed attempt rather than manufacturing a tree or resubmitting.
 - Limitation retained: inconsistent remote/header and onsite/body wording remained documented. Notification delivery was read back separately; no tracker synchronization or recurring service activation was performed.
+
+### November 4, 2026 — Amazon — Program Manager Intern – Summer 2027 (10575248)
+
+- Posting: https://www.amazon.jobs/en/jobs/10575248/program-manager-intern-summer-2027
+- Execution: user-directed, supervised native UI in the existing signed-in Chrome session; no remote debugging or claim of unattended scheduled execution.
+- Flow: reviewed the official role, reconciled the saved contact and education sections, completed role-specific and work-eligibility questions, verified the approved résumé attachment, and obtained the final acknowledgement approval before one Submit action.
+- Recovery: corrected a date-display mismatch through the native calendar and rechecked the saved review. An unintended attachment was replaced before submission; the final downloaded résumé matched the approved file. Retention of the replaced upload in server storage was not verified.
+- Confirmation: Amazon's exact requisition success page displayed: “Thank you for applying! Your application for Program Manager Intern – Summer 2027 (Job ID: 10575248) has been submitted.” No required follow-up task was shown.
+- Outcome: confirmed employer receipt and private application history recorded. Public success-log publication was completed as a separate follow-up; no tracker synchronization or unrelated notification was performed.
