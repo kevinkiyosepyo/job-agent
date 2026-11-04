@@ -1236,3 +1236,16 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Recovery: corrected a date-display mismatch through the native calendar and rechecked the saved review. An unintended attachment was replaced before submission; the final downloaded résumé matched the approved file. Retention of the replaced upload in server storage was not verified.
 - Confirmation: Amazon's exact requisition success page displayed: “Thank you for applying! Your application for Program Manager Intern – Summer 2027 (Job ID: 10575248) has been submitted.” No required follow-up task was shown.
 - Outcome: confirmed employer receipt and private application history recorded. Public success-log publication was completed as a separate follow-up; no tracker synchronization or unrelated notification was performed.
+
+## November 4, 2026 — William Blair — 5242282007
+
+- **Role:** Working in Technology (WiT) - Agentic AI Development- Summer 2027.
+- **ATS:** Greenhouse, embedded employer application.
+- **Official posting:** <https://www.williamblair.com/Careers/job-description?gh_jid=5242282007>.
+- **Outcome:** Existing submission independently confirmed from the employer's application-acknowledgment email, which names this exact role. No new application or second Submit was performed during reconciliation.
+- **Confirmation received:** November 4, 2026, 5:59:14 a.m. Pacific Standard Time (13:59:14 UTC). This is the employer email receipt time, not a measured Submit-click timestamp.
+- **Verification and recovery:** The actual employer email was read through the authenticated mailbox and verified in the existing Chrome session. Missing private acceptance evidence was saved, and the canonical application entry's provisional timestamp was replaced with the observed employer receipt time. The exact employer/requisition remains recorded once.
+- **Evidence retained:** Employer acknowledgment text and a current screenshot of that real email are stored privately. Applicant contact data, message identifiers, answers, attachments and private paths are not published.
+- **Limitations:** The original browser confirmation screenshot was not retained by the prior run. This receipt reconciliation does not independently reverify every historical form answer or certify unattended scheduled execution.
+
+**Result:** Employer-confirmed application; missing records reconciled without resubmission.
