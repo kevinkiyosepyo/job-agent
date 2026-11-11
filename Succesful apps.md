@@ -1249,3 +1249,35 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - **Limitations:** The original browser confirmation screenshot was not retained by the prior run. This receipt reconciliation does not independently reverify every historical form answer or certify unattended scheduled execution.
 
 **Result:** Employer-confirmed application; missing records reconciled without resubmission.
+
+## November 11, 2026 — McDonald's — Software Development Engineer Intern — requisition 5694
+
+- Official posting: https://jobs.mcdonalds.com/job/Chicago-Software-Development-Engineer-Intern-IL-60607/1449046600/?ats=successfactors
+- Route: automated, task-owned isolated local headless browser; finite retry after a pre-submission browser-route authorization mismatch. No recurring scheduler was started.
+- Flow: The existing employer account was authenticated, the approved resume was attached, and every displayed answer was checked. One normal Apply action replaced the form with a sent receipt while the original exact-requisition title remained.
+- Employer confirmation: “Your application has been sent. Thank you!”
+- Verification: exact employer target/requisition, current approved resume, one-shot intent, private receipt and canonical application ledger were reconciled. Raw applicant data and session evidence remain private.
+
+## November 11, 2026 — McDonald's — Software Development Engineer Intern — requisition 5693
+
+- Official posting: https://jobs.mcdonalds.com/job/Chicago-Software-Development-Engineer-Intern-IL-60607/1449058700/?ats=successfactors
+- Route: automated, task-owned isolated local headless browser; finite retry after a pre-submission browser-route authorization mismatch. No recurring scheduler was started.
+- Flow: The existing employer account was authenticated, the approved resume was attached, and every displayed answer was checked. This was a separate requisition from the previously confirmed application. One normal Apply action produced the sent receipt.
+- Employer confirmation: “Your application has been sent. Thank you!”
+- Verification: exact employer target/requisition, current approved resume, one-shot intent, private receipt and canonical application ledger were reconciled. Raw applicant data and session evidence remain private.
+
+## November 11, 2026 — Elire — Summer 2027 AI Data Science Consulting Internship — requisition oppLAfwT
+
+- Official posting: https://jobs.jobvite.com/elire/job/oppLAfwT?nl=1&nl=1&fr=false
+- Route: automated, task-owned isolated local headless browser; finite retry after a pre-submission browser-route authorization mismatch. No recurring scheduler was started.
+- Flow: The personal, voluntary-disclosure and screening pages were completed and reviewed, including supported SQL/data-analysis experience and a documented statistics course. One normal Send Application action reached the posting-specific confirmation page.
+- Employer confirmation: “Application Sent!”
+- Verification: exact employer target/requisition, current approved resume, one-shot intent, private receipt and canonical application ledger were reconciled. Raw applicant data and session evidence remain private.
+
+## November 11, 2026 — Hunt Oil Company — Application Developer Intern - Summer 2027 — requisition 1104
+
+- Official posting: https://fa-eqcd-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/1104
+- Route: automated, task-owned isolated local headless browser; finite retry after a pre-submission browser-route authorization mismatch. No recurring scheduler was started.
+- Flow: The Oracle form accepted the actual Data Science major and in-progress degree. Saved education, address choices, eligibility answers and the approved resume were reviewed before one Submit. The same target then opened My Applications with the exact requisition Under Consideration and an application date.
+- Employer confirmation: “Under Consideration; Applied on 11/11/2026”
+- Verification: exact employer target/requisition, current approved resume, one-shot intent, private receipt and canonical application ledger were reconciled. Raw applicant data and session evidence remain private.
