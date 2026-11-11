@@ -1281,3 +1281,19 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Flow: The Oracle form accepted the actual Data Science major and in-progress degree. Saved education, address choices, eligibility answers and the approved resume were reviewed before one Submit. The same target then opened My Applications with the exact requisition Under Consideration and an application date.
 - Employer confirmation: “Under Consideration; Applied on 11/11/2026”
 - Verification: exact employer target/requisition, current approved resume, one-shot intent, private receipt and canonical application ledger were reconciled. Raw applicant data and session evidence remain private.
+
+## November 11, 2026 — General Dynamics Information Technology — GDIT Summer Internship Program – Summer 2027 AI/ML Business Intelligence Development Internship — requisition RQ228935
+
+- Official posting: https://gdit.wd5.myworkdayjobs.com/gdit_earlytalent/job/USA-LA-Bossier-City/GDIT-Summer-Internship-Program---Summer-2027-AI-ML-Business-Intelligence-Development-Internship_RQ228935
+- Route: automated, task-owned isolated local headless browser; finite retry after a pre-submission browser-route authorization mismatch. No recurring scheduler was started.
+- Flow: The Workday account and exact unsubmitted draft were verified. Actual education, employment, screening answers and the approved resume were reviewed before one Submit. Candidate Home then showed the exact requisition as New Candidate with a submission date and an Application Submitted confirmation.
+- Employer confirmation: “Application Submitted”
+- Verification: exact employer target/requisition, current approved resume, one-shot intent, private receipt and canonical application ledger were reconciled. Raw applicant data and session evidence remain private.
+
+## November 11, 2026 — General Motors — 2027 Summer Intern - Machine Learning Engineer, Embodied AI — requisition JR-202624034
+
+- Official posting: https://generalmotors.wd5.myworkdayjobs.com/en-CA/Careers_GM/job/Sunnyvale-California-United-States-of-America/XMLNAME-2027-Summer-Intern---Machine-Learning-Engineer--Embodied-AI_JR-202624034
+- Route: automated, task-owned isolated local headless browser; finite retry after a pre-submission browser-route authorization mismatch. No recurring scheduler was started.
+- Flow: The Workday account and exact unsubmitted draft were verified. The form retained Degree In Progress and the actual Data Science field of study. After complete review and one Submit, Candidate Home showed the exact requisition in Review with a submission date and an Application Submitted confirmation.
+- Employer confirmation: “Application Submitted”
+- Verification: exact employer target/requisition, current approved resume, one-shot intent, private receipt and canonical application ledger were reconciled. Raw applicant data and session evidence remain private.
