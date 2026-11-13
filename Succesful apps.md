@@ -1297,3 +1297,30 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Flow: The Workday account and exact unsubmitted draft were verified. The form retained Degree In Progress and the actual Data Science field of study. After complete review and one Submit, Candidate Home showed the exact requisition in Review with a submission date and an Application Submitted confirmation.
 - Employer confirmation: “Application Submitted”
 - Verification: exact employer target/requisition, current approved resume, one-shot intent, private receipt and canonical application ledger were reconciled. Raw applicant data and session evidence remain private.
+
+## November 13, 2026 — T-Mobile — Summer 2027 T-Ads Software Engineering Internship — requisition REQ381225
+
+- Official posting: https://tmobile.wd1.myworkdayjobs.com/External/job/Philadelphia-Pennsylvania/Summer-2027-T-Ads-Software-Engineering-Internship_REQ381225
+- Route: agent-operated, task-owned isolated local headless browser; a finite requested application batch, not a recurring scheduled run.
+- Flow: The existing employer account and exact Not Submitted draft were verified. The approved resume was attached; saved education, experience, skills, screening answers and consents were reread before one Submit.
+- Employer confirmation: “Application Submitted”; the exact requisition changed from Not Submitted to Review with a November 13, 2026 submission date.
+- Observation: The initial observer read an empty transitional document. Read-only inspection of the original completed target then verified the submitted receipt and the original application ID; Submit was not repeated.
+- Verification: the original exact application identity, employer receipt, screenshot, private applied ledger and canonical attempt were reconciled. Raw applicant and session data remain private. This status is an application receipt, not an interview or offer.
+
+## November 13, 2026 — T-Mobile — Summer 2027 Business Analytics & Reporting Internship — requisition REQ381319
+
+- Official posting: https://tmobile.wd1.myworkdayjobs.com/External/job/Bellevue-Washington/Summer-2027-Business-Analytics---Reporting-Internship_REQ381319
+- Route: agent-operated, task-owned isolated local headless browser; a finite requested application batch, not a recurring scheduled run.
+- Flow: The existing employer account and exact Not Submitted draft were verified. The approved resume was attached; saved education, experience, skills, screening answers and consents were reread before one Submit.
+- Employer confirmation: “Application Submitted”; the exact requisition changed from Not Submitted to Review with a November 13, 2026 submission date.
+- Observation: The receipt observer waited for the completed page to hydrate, then matched the original application ID in Candidate Home.
+- Verification: the original exact application identity, employer receipt, screenshot, private applied ledger and canonical attempt were reconciled. Raw applicant and session data remain private. This status is an application receipt, not an interview or offer.
+
+## November 13, 2026 — T-Mobile — Summer 2027 T-Ads Software Engineering Internship — requisition REQ381219
+
+- Official posting: https://tmobile.wd1.myworkdayjobs.com/External/job/Philadelphia-Pennsylvania/Summer-2027-T-Ads-Software-Engineering-Internship_REQ381219
+- Route: agent-operated, task-owned isolated local headless browser; a finite requested application batch, not a recurring scheduled run.
+- Flow: The existing employer account and exact Not Submitted draft were verified. The approved resume was attached; saved education, experience, skills, screening answers and consents were reread before one Submit.
+- Employer confirmation: “Application Submitted”; the exact requisition changed from Not Submitted to Review with a November 13, 2026 submission date.
+- Observation: The receipt observer waited for the completed page to hydrate, then matched the original application ID in Candidate Home.
+- Verification: the original exact application identity, employer receipt, screenshot, private applied ledger and canonical attempt were reconciled. Raw applicant and session data remain private. This status is an application receipt, not an interview or offer.
