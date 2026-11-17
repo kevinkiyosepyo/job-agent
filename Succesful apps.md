@@ -1324,3 +1324,13 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Employer confirmation: “Application Submitted”; the exact requisition changed from Not Submitted to Review with a November 13, 2026 submission date.
 - Observation: The receipt observer waited for the completed page to hydrate, then matched the original application ID in Candidate Home.
 - Verification: the original exact application identity, employer receipt, screenshot, private applied ledger and canonical attempt were reconciled. Raw applicant and session data remain private. This status is an application receipt, not an interview or offer.
+
+## November 17, 2026 — NVIDIA — Enterprise Sales Intern - Summer 2027 — requisition JR2029682
+
+- Official posting: https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Enterprise-Sales-Intern---Summer-2027_JR2029682
+- Route: agent-operated native Chrome in the existing signed-in profile. This was a requested individual application, not unattended scheduled or cloud automation.
+- Flow: Signed into the existing NVIDIA account through Google, reused the previous application, and reattached the current approved resume. The entire form was reviewed, including 14 source-supported skills, before exactly one Submit.
+- Corrections before submission: Inherited employment dates were corrected against the approved source. The parser's false-positive Oracle Database skill was removed because the source referred to an ATS, not database experience.
+- Employer confirmation: “Application Submitted” and “Your application has been successfully submitted.”
+- Receipt cross-check: Candidate Home displayed the exact role and requisition JR2029682 with “Application Received” and a November 17, 2026 submission date. Submit was not repeated.
+- Result and limits: One employer-confirmed application, not an interview, offer, or hiring outcome. This run does not establish unattended scheduled-controller readiness. Raw evidence and applicant information remain private.
