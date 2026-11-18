@@ -1352,3 +1352,12 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Employer confirmation: “Thank You For Applying. Your application has been received. If there is a fit, someone will be getting back to you.”
 - Observation: An initial post-click observer could not match the redirected URL. Read-only inspection verified the exact posting-specific thank-you page; Submit was not repeated.
 - Verification: Exact employer receipt, screenshot, private applied history and canonical one-attempt ledger were reconciled. Raw applicant and session data remain private. This is an application receipt, not an interview or offer.
+
+## November 17, 2026 — Bosch Group — AI Application Intern (8 months/40 hours per week)  — requisition REF295237S
+
+- Official posting: https://jobs.smartrecruiters.com/BoschGroup/744000162076254
+- Route: agent-operated existing native Chrome, in a finite requested batch; not a recurring scheduled run.
+- Flow: Current applicant facts and the approved resume were used. Actual fields, selections, consent and the uploaded attachment were reread before one Submit.
+- Employer confirmation: “Application submitted! Your application for AI Application Intern (8 months/40 hours per week) at Bosch Group has been submitted successfully. You’ll receive a confirmation email shortly.”
+- Observation: The normal application flow reached the posting-specific confirmation page.
+- Verification: Exact employer receipt, screenshot, private applied history and canonical one-attempt ledger were reconciled. Raw applicant and session data remain private. This is an application receipt, not an interview or offer.
