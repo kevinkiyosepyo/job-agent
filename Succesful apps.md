@@ -1361,3 +1361,12 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Employer confirmation: “Application submitted! Your application for AI Application Intern (8 months/40 hours per week) at Bosch Group has been submitted successfully. You’ll receive a confirmation email shortly.”
 - Observation: The normal application flow reached the posting-specific confirmation page.
 - Verification: Exact employer receipt, screenshot, private applied history and canonical one-attempt ledger were reconciled. Raw applicant and session data remain private. This is an application receipt, not an interview or offer.
+
+## November 17, 2026 — Cloudflare — AI & Automation Intern, Communications (Winter 2027) — requisition 8394342
+
+- Official posting: https://boards.greenhouse.io/cloudflare/jobs/8394342?gh_jid=8394342
+- Route: agent-operated existing native Chrome, in a finite requested batch; not a recurring scheduled run.
+- Flow: Current applicant facts and the approved resume were used. Actual fields, selections, consent and the uploaded attachment were reread before one Submit.
+- Employer confirmation: “Thank you for applying! Your application has been received and we will review it shortly.”
+- Observation: The normal application flow reached the posting-specific confirmation page.
+- Verification: Exact employer receipt, screenshot, private applied history and canonical one-attempt ledger were reconciled. Raw applicant and session data remain private. This is an application receipt, not an interview or offer.
