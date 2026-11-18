@@ -1370,3 +1370,12 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Employer confirmation: “Thank you for applying! Your application has been received and we will review it shortly.”
 - Observation: The normal application flow reached the posting-specific confirmation page.
 - Verification: Exact employer receipt, screenshot, private applied history and canonical one-attempt ledger were reconciled. Raw applicant and session data remain private. This is an application receipt, not an interview or offer.
+
+## November 17, 2026 — Attain Partners — Summer 2027 Data Analytics Intern — requisition 456
+
+- Official posting: https://job-boards.greenhouse.io/attainpartners/jobs/5485427008
+- Route: agent-operated existing native Chrome, in a finite requested batch; not a recurring scheduled run.
+- Flow: Current applicant facts and the approved resume were used. Actual fields, selections, consent and the uploaded attachment were reread before one Submit.
+- Employer confirmation: “Thank you for applying! Thank you for your interest in joining Attain Partners. We've successfully received your application.”
+- Observation: The normal application flow reached the posting-specific confirmation page.
+- Verification: Exact employer receipt, screenshot, private applied history and canonical one-attempt ledger were reconciled. Raw applicant and session data remain private. This is an application receipt, not an interview or offer.
