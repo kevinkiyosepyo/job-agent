@@ -1334,3 +1334,21 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Employer confirmation: “Application Submitted” and “Your application has been successfully submitted.”
 - Receipt cross-check: Candidate Home displayed the exact role and requisition JR2029682 with “Application Received” and a November 17, 2026 submission date. Submit was not repeated.
 - Result and limits: One employer-confirmed application, not an interview, offer, or hiring outcome. This run does not establish unattended scheduled-controller readiness. Raw evidence and applicant information remain private.
+
+## November 17, 2026 — Garner Health — Associate Software Engineer — requisition 700
+
+- Official posting: https://job-boards.greenhouse.io/garnerhealth/jobs/6174210004
+- Route: agent-operated existing native Chrome, in a finite requested batch; not a recurring scheduled run.
+- Flow: Current applicant facts and the approved resume were used. Actual fields, selections, consent and the uploaded attachment were reread before one Submit.
+- Employer confirmation: “Thank you for applying. Your application has been received.”
+- Observation: The normal application flow reached the posting-specific confirmation page.
+- Verification: Exact employer receipt, screenshot, private applied history and canonical one-attempt ledger were reconciled. Raw applicant and session data remain private. This is an application receipt, not an interview or offer.
+
+## November 17, 2026 — Rubrik — Sales Engineering Intern, Summer 2027 — requisition 11550
+
+- Official posting: https://www.rubrik.com/company/careers/departments/job.8268237?gh_jid=8268237
+- Route: agent-operated existing native Chrome, in a finite requested batch; not a recurring scheduled run.
+- Flow: Current applicant facts and the approved resume were used. Actual fields, selections, consent and the uploaded attachment were reread before one Submit.
+- Employer confirmation: “Thank You For Applying. Your application has been received. If there is a fit, someone will be getting back to you.”
+- Observation: An initial post-click observer could not match the redirected URL. Read-only inspection verified the exact posting-specific thank-you page; Submit was not repeated.
+- Verification: Exact employer receipt, screenshot, private applied history and canonical one-attempt ledger were reconciled. Raw applicant and session data remain private. This is an application receipt, not an interview or offer.
