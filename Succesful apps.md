@@ -1391,3 +1391,9 @@ An earlier history-reader error stopped preparation before Submit. After it was 
 Official posting: https://ats.rippling.com/uplinq/jobs/db54b553-b172-4569-ac5f-933a5f8a8d8c
 
 The résumé parser initially suggested a location; it was corrected and the actual answers and approved attachment were checked in the existing Chrome profile. One Apply was sent. Rippling then displayed the employer confirmation: “You have successfully applied to Software Engineer Intern - ASU”. This was an agent-operated finite application, not a scheduled run.
+
+## November 20, 2026 — Snowflake — Software Engineer Intern (Database Engineering) - Summer 2027
+
+Official posting: https://jobs.ashbyhq.com/snowflake/0223923d-4f0f-44e6-9649-0d1a9eda950d/application?embed=true
+
+Résumé and application answers were reviewed in existing Chrome. After one Submit, the employer displayed: “Your application was successfully submitted.” This was an agent-operated, finite local application.
