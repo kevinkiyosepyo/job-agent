@@ -1385,3 +1385,9 @@ The guarded route submitted once. Skydio used a different success phrase than th
 Official posting: https://job-boards.greenhouse.io/crystaldynamics/jobs/4747682005
 
 An earlier history-reader error stopped preparation before Submit. After it was repaired, the application was completed in the existing native Chrome session. The form answers and approved résumé attachment were reviewed before a single Submit. Crystal Dynamics confirmed: “Your application has been received by the Crystal Dynamics Team.” The employer receipt and private application record were verified. This was a finite, agent-operated application, not a scheduled run.
+
+## November 20, 2026 — Uplinq Inc — Software Engineer Intern - ASU
+
+Official posting: https://ats.rippling.com/uplinq/jobs/db54b553-b172-4569-ac5f-933a5f8a8d8c
+
+The résumé parser initially suggested a location; it was corrected and the actual answers and approved attachment were checked in the existing Chrome profile. One Apply was sent. Rippling then displayed the employer confirmation: “You have successfully applied to Software Engineer Intern - ASU”. This was an agent-operated finite application, not a scheduled run.
