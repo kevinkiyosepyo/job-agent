@@ -1397,3 +1397,9 @@ The résumé parser initially suggested a location; it was corrected and the act
 Official posting: https://jobs.ashbyhq.com/snowflake/0223923d-4f0f-44e6-9649-0d1a9eda950d/application?embed=true
 
 Résumé and application answers were reviewed in existing Chrome. After one Submit, the employer displayed: “Your application was successfully submitted.” This was an agent-operated, finite local application.
+
+## November 20, 2026 — Lucid Motors — Intern, AI & Data (Applied AI/Machine Learning), Summer 2027
+
+Official posting: https://lucidmotors.com/careers/search/5290919007?gh_jid=5290919007
+
+Résumé and application answers were reviewed in existing Chrome. After one Submit, the employer displayed: “Your application has been received. If there is a fit, someone will be getting back to you.” This was an agent-operated, finite local application.
