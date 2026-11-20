@@ -1379,3 +1379,9 @@ The guarded route submitted once. Skydio used a different success phrase than th
 - Employer confirmation: “Thank you for applying! Thank you for your interest in joining Attain Partners. We've successfully received your application.”
 - Observation: The normal application flow reached the posting-specific confirmation page.
 - Verification: Exact employer receipt, screenshot, private applied history and canonical one-attempt ledger were reconciled. Raw applicant and session data remain private. This is an application receipt, not an interview or offer.
+
+## November 20, 2026 — Crystal Dynamics — Game Design Intern [Spring 2027] — requisition 26-039
+
+Official posting: https://job-boards.greenhouse.io/crystaldynamics/jobs/4747682005
+
+An earlier history-reader error stopped preparation before Submit. After it was repaired, the application was completed in the existing native Chrome session. The form answers and approved résumé attachment were reviewed before a single Submit. Crystal Dynamics confirmed: “Your application has been received by the Crystal Dynamics Team.” The employer receipt and private application record were verified. This was a finite, agent-operated application, not a scheduled run.
