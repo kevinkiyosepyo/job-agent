@@ -1403,3 +1403,9 @@ Résumé and application answers were reviewed in existing Chrome. After one Sub
 Official posting: https://lucidmotors.com/careers/search/5290919007?gh_jid=5290919007
 
 Résumé and application answers were reviewed in existing Chrome. After one Submit, the employer displayed: “Your application has been received. If there is a fit, someone will be getting back to you.” This was an agent-operated, finite local application.
+
+## November 20, 2026 — Lucid Motors — Intern, Infotainment Software, Summer 2027
+
+Official posting: https://lucidmotors.com/careers/search/5290921007?gh_jid=5290921007
+
+Résumé and application answers were reviewed in existing Chrome. After one Submit, the employer displayed: “Your application has been received. If there is a fit, someone will be getting back to you.” This was an agent-operated, finite local application.
