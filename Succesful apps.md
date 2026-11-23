@@ -1415,3 +1415,9 @@ Résumé and application answers were reviewed in existing Chrome. After one Sub
 Official posting: https://jobs.lever.co/momsmeals/9cc07826-a8bc-4ad4-a570-b54eabc95774/apply
 
 The résumé and application answers were reviewed in the existing Chrome profile for a one-off application. After one Submit, the employer displayed: “Application submitted!”
+
+## 2026-11-23 — Method, a GlobalLogic company — Residency Internship Program - Product Management
+
+Official posting: https://job-boards.greenhouse.io/method/jobs/8207585003
+
+The résumé and application answers were reviewed in the existing Chrome profile for a one-off application. After one Submit, the employer displayed: “We received your application and it will be reviewed by a human being.”
