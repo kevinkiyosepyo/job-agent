@@ -1409,3 +1409,9 @@ Résumé and application answers were reviewed in existing Chrome. After one Sub
 Official posting: https://lucidmotors.com/careers/search/5290921007?gh_jid=5290921007
 
 Résumé and application answers were reviewed in existing Chrome. After one Submit, the employer displayed: “Your application has been received. If there is a fit, someone will be getting back to you.” This was an agent-operated, finite local application.
+
+## 2026-11-23 — Mom's Meals — Data Analytics Intern
+
+Official posting: https://jobs.lever.co/momsmeals/9cc07826-a8bc-4ad4-a570-b54eabc95774/apply
+
+The résumé and application answers were reviewed in the existing Chrome profile for a one-off application. After one Submit, the employer displayed: “Application submitted!”
