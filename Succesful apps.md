@@ -1439,3 +1439,39 @@ The résumé and application answers were reviewed in the existing Chrome profil
 Official posting: https://jobs.ashbyhq.com/Strava/96968b02-dde9-4e0d-b6a8-d2363f550126/application?embed=true
 
 The approved résumé was attached through the existing native Chrome application form; all required fields and truthful screening answers were reviewed. The application was submitted once within the owner-approved local batch. The employer removed the form and displayed: “Your application was successfully submitted. We'll contact you if there are next steps.”
+
+## November 25, 2026 — Strava — Software Engineering Intern, Server, Next Sports — ATS posting 0a1c94e3-c19c-47a4-9974-5cc86b74e3e9
+
+- Official application: https://jobs.ashbyhq.com/Strava/0a1c94e3-c19c-47a4-9974-5cc86b74e3e9/application?embed=true
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Strava — Software Engineering Intern, Android, Subscriptions — ATS posting 02999001-164a-45c2-a763-03dedf458f0c
+
+- Official application: https://jobs.ashbyhq.com/Strava/02999001-164a-45c2-a763-03dedf458f0c/application?embed=true
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Strava — Software Engineering Intern, AI/ML Data Products — ATS posting e4e04f82-bc91-4bc1-b775-85b2b2549023
+
+- Official application: https://jobs.ashbyhq.com/Strava/e4e04f82-bc91-4bc1-b775-85b2b2549023/application?embed=true
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Strava — Software Engineering Intern, Server, User Lifecycle — ATS posting 12d85f67-5fac-4dfa-8fd7-a4f886b4a10a
+
+- Official application: https://jobs.ashbyhq.com/Strava/12d85f67-5fac-4dfa-8fd7-a4f886b4a10a/application?embed=true
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
