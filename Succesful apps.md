@@ -1433,3 +1433,9 @@ The résumé and application answers were reviewed in the existing Chrome profil
 Official posting: https://job-boards.greenhouse.io/icapitalnetwork/jobs/8945261002
 
 The résumé and application answers were reviewed in the existing Chrome profile for a one-off application. After one Submit, the employer displayed: “Your application has been received. If there is a fit, someone will be getting back to you.”
+
+## 2026-11-25 — Strava — Software Engineering Intern, Server, Comms
+
+Official posting: https://jobs.ashbyhq.com/Strava/96968b02-dde9-4e0d-b6a8-d2363f550126/application?embed=true
+
+The approved résumé was attached through the existing native Chrome application form; all required fields and truthful screening answers were reviewed. The application was submitted once within the owner-approved local batch. The employer removed the form and displayed: “Your application was successfully submitted. We'll contact you if there are next steps.”
