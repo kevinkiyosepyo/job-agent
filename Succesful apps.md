@@ -1475,3 +1475,30 @@ The approved résumé was attached through the existing native Chrome applicatio
 - Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
 - Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
 - Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Illumio — Engineering Intern, Architecture Platform — ATS posting a211377c-7db7-4c62-97ba-8176c5a61293
+
+- Official application: https://jobs.ashbyhq.com/illumio/a211377c-7db7-4c62-97ba-8176c5a61293/application?embed=true
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Illumio — Technical Product Management Intern — ATS posting 37c87203-d74b-40f9-8ce6-30559f1594af
+
+- Official application: https://jobs.ashbyhq.com/illumio/37c87203-d74b-40f9-8ce6-30559f1594af/application?embed=true
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Illumio — Engineering Intern, Security Platforms — ATS posting 95bc7491-9b2f-493c-9297-e9cb36a63b45
+
+- Official application: https://jobs.ashbyhq.com/illumio/95bc7491-9b2f-493c-9297-e9cb36a63b45/application?embed=true
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
