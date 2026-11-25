@@ -1502,3 +1502,21 @@ The approved résumé was attached through the existing native Chrome applicatio
 - Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
 - Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
 - Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Illumio — Product Management Intern, Solution Economics — ATS posting 96759634-4161-4931-9cf3-5933035be101
+
+- Official application: https://jobs.ashbyhq.com/illumio/96759634-4161-4931-9cf3-5933035be101/application?embed=true
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Illumio — Product Manager Intern — ATS posting 1dbbc51c-ede6-4067-98df-9e4d9d06f6d3
+
+- Official application: https://jobs.ashbyhq.com/illumio/1dbbc51c-ede6-4067-98df-9e4d9d06f6d3/application?embed=true
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Your application was successfully submitted. We'll contact you if there are next steps.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
