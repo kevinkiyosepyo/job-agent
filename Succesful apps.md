@@ -1619,3 +1619,12 @@ The approved résumé was attached through the existing native Chrome applicatio
 - Employer confirmation: “Thank you for applying. Your application has been received. If there is a fit, someone will be getting back to you.”
 - Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
 - Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — iCapital Network — SI and Annuities - Summer 2027 Intern — Requisition 4814 (ATS posting 8958714002)
+
+- Official application: https://job-boards.greenhouse.io/icapitalnetwork/jobs/8958714002
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Thank you for applying. Your application has been received. If there is a fit, someone will be getting back to you.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
