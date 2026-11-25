@@ -1628,3 +1628,12 @@ The approved résumé was attached through the existing native Chrome applicatio
 - Employer confirmation: “Thank you for applying. Your application has been received. If there is a fit, someone will be getting back to you.”
 - Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
 - Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Bandwidth — Software Engineer Intern - Summer 2027 — Requisition R-102263 (ATS posting 8414430)
+
+- Official application: https://job-boards.greenhouse.io/bandwidth/jobs/8414430
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Thank you for Applying! Our recruiting team is currently reviewing all applications. If you are selected for an interview, one of our recruiters will contact you via email (be sure to periodically check your spam or promotions tab). In any case, we will keep you posted on the status of your application.”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
