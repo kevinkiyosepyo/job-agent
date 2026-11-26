@@ -1709,3 +1709,11 @@ The approved résumé was attached through the existing native Chrome applicatio
 - Employer confirmation: “successfully applied for:”
 - Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
 - Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 26, 2026 — NVIDIA — Software Engineering Intern, Simulation Technology - Summer 2027 — JR2029531
+
+- Official posting: https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Software-Engineering-Intern--Simulation-Technology---Summer-2027_JR2029531/apply?source=Eightfold
+- Route: agent-operated existing local Chrome; one explicitly requested application, not an unattended scheduled run.
+- Flow: Reused the existing candidate account after normal saved-login sign-in, attached the approved resume, corrected resume-parser education and skill errors, and completed the required application sections. Reviewed the saved form and all selected skills before one Submit.
+- Employer confirmation: “Application Submitted” — “Your application has been successfully submitted.” The exact Candidate Home row for JR2029531 shows “Application Received” with November 26, 2026 as the submission date.
+- Verification: Preserved the employer receipt and reconciled the original canonical attempt and private application ledger. No repeat Submit. Raw applicant details and screenshots remain private.
