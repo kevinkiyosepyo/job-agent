@@ -1691,3 +1691,12 @@ The approved résumé was attached through the existing native Chrome applicatio
 - Employer confirmation: “Your application has been received. If there is a fit, someone will be getting back to you. Thank you for applying!”
 - Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
 - Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
+
+## November 25, 2026 — Exowatt — Software & AI Spring Intern (Austin, TX) — ATS posting 86589116-72a5-44f1-893a-1c688d15f2cf
+
+- Official application: https://jobs.lever.co/exowatt/86589116-72a5-44f1-893a-1c688d15f2cf/apply
+- Route: agent-guided, existing local Chrome; a finite owner-requested application batch, not recurring scheduled execution.
+- Flow: Checked the exact official internship and current history, attached the approved resume, completed the live form and reviewed the rendered answers, then reserved and dispatched one submission.
+- Employer confirmation: “Application submitted!”
+- Observation: Native input delivery alone was not counted as success. The exact employer page replaced the application form with its success panel; no second Submit was issued.
+- Verification: The original canonical attempt, applied-ledger entry and native confirmation screenshot were reconciled. This is an application receipt, not an interview or offer.
