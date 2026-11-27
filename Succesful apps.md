@@ -1741,3 +1741,11 @@ The approved résumé was attached through the existing native Chrome applicatio
 - Flow: Completed the ordinary Greenhouse guest application using the applicant's verified profile, selected the actual country and city options, and attached the approved resume. Reviewed the rendered form and issued one native Submit.
 - Employer confirmation: “Thank you for applying. Your application has been received. If there is a fit, someone will be getting back to you.” The same employer posting navigated to its posting-specific confirmation page and the application form was gone.
 - Verification: The private receipt, single canonical attempt, and application ledger were reconciled. Raw applicant details and screenshots remain private.
+
+## November 27, 2026 — NVIDIA — Developer Technology Intern, AI - Summer 2027 — JR2030178
+
+- Official posting: https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Developer-Technology-Intern--AI---Summer-2027_JR2030178/apply/apply?source=Eightfold
+- Route: agent-operated existing local Chrome; explicitly requested finite weekly application, not an unattended scheduled run.
+- Flow: Completed the authenticated Workday application using the verified applicant profile and approved resume. Corrected resume-parser errors, checked the saved Review including all expanded skills, and issued one native Submit.
+- Employer confirmation: The employer displayed an Application Submitted modal. The authenticated Candidate Home row for JR2030178 showed Application Received, dated November 27, 2026.
+- Verification: The private receipt, single canonical attempt, and application ledger were reconciled. Raw applicant details and screenshots remain private.
