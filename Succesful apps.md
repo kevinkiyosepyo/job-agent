@@ -1733,3 +1733,11 @@ The approved résumé was attached through the existing native Chrome applicatio
 - Flow: Completed the ordinary Greenhouse guest application using the applicant's verified profile, selected the actual country and city options, and attached the approved resume. Reviewed the rendered form and issued one native Submit.
 - Employer confirmation: “Thank you for applying. Your application has been received. If there is a fit, someone will be getting back to you.” The same employer posting navigated to its posting-specific confirmation page and the application form was gone.
 - Verification: The private receipt, single canonical attempt, and application ledger were reconciled. Raw applicant details and screenshots remain private.
+
+## November 27, 2026 — ICONIQ Capital — 2027 Data & Analytics (Science) Intern — 830
+
+- Official posting: https://job-boards.greenhouse.io/iconiqhandshake/jobs/8391972
+- Route: agent-operated existing local Chrome; explicitly requested finite weekly application, not an unattended scheduled run.
+- Flow: Completed the ordinary Greenhouse guest application using the applicant's verified profile, selected the actual country and city options, and attached the approved resume. Reviewed the rendered form and issued one native Submit.
+- Employer confirmation: “Thank you for applying. Your application has been received. If there is a fit, someone will be getting back to you.” The same employer posting navigated to its posting-specific confirmation page and the application form was gone.
+- Verification: The private receipt, single canonical attempt, and application ledger were reconciled. Raw applicant details and screenshots remain private.
